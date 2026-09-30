@@ -35,6 +35,7 @@ async def main() -> None:
                     stop,
                     partition=settings.relay_partition,
                     partitions=settings.relay_partitions,
+                    max_attempts=settings.relay_max_attempts,
                 )
             )
     finally:

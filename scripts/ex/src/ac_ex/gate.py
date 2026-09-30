@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ac_ex import catalog, testing
-from ac_ex.catalog import Step
+from ac_ex.catalog import Step, is_test_file
 
 
 @dataclass(frozen=True)
@@ -24,10 +24,16 @@ class GateResult:
 
 
 def check_step(root: Path, step: Step) -> GateResult:
-    """The problem's tests must fail (not error) and the solution's must pass."""
+    """The problem dir's tests must fail (not error) against the problem code and pass
+    against the solution code."""
     reasons: list[str] = []
     if not step.slots:
         reasons.append("graded step declares no slots, so its tests can't grade anything")
+    if stray := [f.name for f in step.files(step.solution_dir) if is_test_file(f)]:
+        reasons.append(
+            f"{step.solution_dir.relative_to(root)} has test files ({', '.join(stray)}); "
+            "a step's tests live in its problem dir only"
+        )
     for directory in (step.problem_dir, step.solution_dir):
         for file in step.slots.values():
             if not (directory / file).is_file():

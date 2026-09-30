@@ -49,8 +49,18 @@ function json(body: unknown, status = 200, cookies: string[] = []): Response {
 }
 
 /** Only same-origin paths, so `returnTo` can't be used as an open redirect. */
-function safeReturnTo(value: string | null): string {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+function safeReturnTo(env: Env, value: string | null): string {
+  if (!value) return "/";
+  const origin = new URL(env.AC_WEB_ORIGIN).origin;
+  let url: URL;
+  try {
+    url = new URL(value, origin);
+  } catch {
+    return "/";
+  }
+  const path = url.pathname + url.search + url.hash;
+  // `/..//evil.example` resolves on our origin to the path `//evil.example`, which a browser reads as a host.
+  return url.origin === origin && !path.startsWith("//") ? path : "/";
 }
 
 export function createBff({ env, store, oidc, fetch }: BffDeps) {
@@ -82,8 +92,9 @@ export function createBff({ env, store, oidc, fetch }: BffDeps) {
         idToken: tokens.idToken ?? session.idToken,
         expiresAt: tokens.expiresAt,
       };
-      await store.update(id, refreshed);
-      return { id, session: refreshed };
+      // A logout or another refresh got there first: theirs stands, and a logged-out session stays gone.
+      if (!(await store.update(id, refreshed))) return await currentSession(request);
+      return { id, session: { ...refreshed, version: refreshed.version + 1 } };
     } catch {
       await store.destroy(id);
       return null;
@@ -103,7 +114,7 @@ export function createBff({ env, store, oidc, fetch }: BffDeps) {
       const nonce = client.randomNonce();
       const codeVerifier = client.randomPKCECodeVerifier();
       const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
-      const returnTo = safeReturnTo(url.searchParams.get("returnTo"));
+      const returnTo = safeReturnTo(env, url.searchParams.get("returnTo"));
 
       let authorizationUrl;
       try {

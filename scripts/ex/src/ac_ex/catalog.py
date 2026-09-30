@@ -8,6 +8,7 @@ from ac_ex.errors import ExError
 StepType = Literal["graded", "guided", "lab"]
 STEP_TYPES: tuple[StepType, ...] = ("graded", "guided", "lab")
 IGNORED = {"README.mdx", "__pycache__", ".pytest_cache"}
+TEST_FILES = "test_*.py"
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,14 @@ class Step:
     def files(self, directory: Path) -> list[Path]:
         """The step's own files in a problem or solution dir, flat."""
         return sorted(p for p in directory.iterdir() if p.is_file() and p.name not in IGNORED)
+
+    def code_files(self, directory: Path) -> list[Path]:
+        """The files a learner works on: everything but the tests, which stay in the problem dir."""
+        return [p for p in self.files(directory) if not is_test_file(p)]
+
+
+def is_test_file(path: Path) -> bool:
+    return path.match(TEST_FILES)
 
 
 @dataclass(frozen=True)

@@ -36,18 +36,22 @@ def upgrade() -> None:
             payload jsonb NOT NULL,
             partition_key text NOT NULL,
             created_at timestamptz NOT NULL DEFAULT now(),
-            published_at timestamptz
+            published_at timestamptz,
+            attempts integer NOT NULL DEFAULT 0,
+            last_error text,
+            failed_at timestamptz
         )
     """)
     op.execute(
-        "CREATE INDEX outbox_unpublished_idx ON outbox (created_at) WHERE published_at IS NULL"
+        "CREATE INDEX outbox_pending_idx ON outbox (created_at)"
+        " WHERE published_at IS NULL AND failed_at IS NULL"
     )
     # Enabled, not forced: the table owner (the app role, for now) still bypasses it.
     # Section 09 forces it and moves the app onto a non-owner role.
     op.execute("ALTER TABLE outbox ENABLE ROW LEVEL SECURITY")
     op.execute("""
         CREATE POLICY tenant_isolation ON outbox
-            USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+            USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
     """)
 
 

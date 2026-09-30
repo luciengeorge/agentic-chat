@@ -47,6 +47,26 @@ async def test_me_reads_the_forwarded_payload(client: httpx.AsyncClient, padded:
     }
 
 
+async def test_tenant_comes_from_the_issuer(client: httpx.AsyncClient) -> None:
+    claims = {**CLAIMS, "tenant": "harbour", "iss": "http://localhost:8081/realms/harbour"}
+    response = await client.get("/v1/me", headers={"x-jwt-payload": encode(claims)})
+    assert response.json()["tenant"] == "harbour"
+
+
+async def test_tenant_claim_that_disagrees_with_the_issuer_is_403(
+    client: httpx.AsyncClient,
+) -> None:
+    claims = {**CLAIMS, "tenant": "harbour"}  # issued by the kestrel realm
+    response = await client.get("/v1/me", headers={"x-jwt-payload": encode(claims)})
+    assert response.status_code == 403
+
+
+async def test_unknown_issuer_is_401(client: httpx.AsyncClient) -> None:
+    claims = {**CLAIMS, "iss": "http://evil.example/realms/kestrel"}
+    response = await client.get("/v1/me", headers={"x-jwt-payload": encode(claims)})
+    assert response.status_code == 401
+
+
 async def test_me_without_payload_is_401(client: httpx.AsyncClient) -> None:
     assert (await client.get("/v1/me")).status_code == 401
 

@@ -3,6 +3,10 @@ name: agentic-chat
 # App containers talk to the infra over the Compose network, so every address
 # from ac_core.settings is overridden with a service name. Postgres is not in
 # Compose: it runs on the host (brew postgresql@18 + pgvector).
+#
+# Published ports bind to 127.0.0.1 only: Redis holds the BFF's tokens and none
+# of these services authenticates. The api publishes nothing: it trusts the
+# x-jwt-payload header, so it must be reachable through Envoy alone.
 x-app-env: &app-env
   AC_ENV: dev
   AC_DATABASE_URL: postgresql+psycopg://ac:ac@host.docker.internal:5432/ac
@@ -31,7 +35,7 @@ services:
     image: valkey/valkey:9.1.2-alpine3.24
     profiles: [infra]
     command: ["valkey-server", "--appendonly", "yes"]
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
     volumes:
       - redis-data:/data
     healthcheck:
@@ -47,7 +51,7 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    ports: ["9000:9000", "9001:9001"]
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes:
       - minio-data:/data
     healthcheck:
@@ -66,7 +70,7 @@ services:
       OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
     ulimits:
       nofile: { soft: 65536, hard: 65536 }
-    ports: ["9200:9200"]
+    ports: ["127.0.0.1:9200:9200"]
     volumes:
       - opensearch-data:/usr/share/opensearch/data
     healthcheck:
@@ -80,7 +84,7 @@ services:
     image: temporalio/temporal:1.9.1
     profiles: [infra]
     command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/home/temporal/temporal.db"]
-    ports: ["7233:7233", "8233:8233"]
+    ports: ["127.0.0.1:7233:7233", "127.0.0.1:8233:8233"]
     volumes:
       - temporal-data:/home/temporal
     healthcheck:
@@ -99,7 +103,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HOSTNAME: http://localhost:8081
       KC_HEALTH_ENABLED: "true"
-    ports: ["8081:8080"]
+    ports: ["127.0.0.1:8081:8080"]
     volumes:
       - ../fixtures/directory:/opt/keycloak/data/import:ro
     healthcheck:
@@ -133,7 +137,7 @@ services:
     image: envoyproxy/envoy:v1.39.1
     profiles: [infra]
     command: ["envoy", "-c", "/etc/envoy/envoy.yaml"]
-    ports: ["8080:8080", "9901:9901"]
+    ports: ["127.0.0.1:8080:8080", "127.0.0.1:9901:9901"]
     volumes:
       - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     depends_on:
@@ -150,7 +154,7 @@ services:
   grafana:
     image: grafana/otel-lgtm:0.34.0
     profiles: [infra]
-    ports: ["3001:3000", "4317:4317", "4318:4318"]
+    ports: ["127.0.0.1:3001:3000", "127.0.0.1:4317:4317", "127.0.0.1:4318:4318"]
     volumes:
       - grafana-data:/data
     healthcheck:
@@ -163,7 +167,6 @@ services:
     <<: *app
     build: { context: .., dockerfile: apps/api/Dockerfile, target: dev }
     environment: *app-env
-    ports: ["8000:8000"]
     depends_on: *infra-ready
     healthcheck: &health
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -200,7 +203,7 @@ services:
     environment:
       <<: *app-env
       HF_HOME: /home/app/.cache/huggingface
-    ports: ["8200:8200"]
+    ports: ["127.0.0.1:8200:8200"]
     volumes:
       - ..:/repo
       - uv-cache:/home/app/.cache/uv
@@ -215,7 +218,7 @@ services:
     <<: *app
     build: { context: .., dockerfile: apps/fake_workspace/Dockerfile, target: dev }
     environment: *app-env
-    ports: ["8100:8100"]
+    ports: ["127.0.0.1:8100:8100"]
     depends_on: *infra-ready
     healthcheck:
       <<: *health

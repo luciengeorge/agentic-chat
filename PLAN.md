@@ -92,7 +92,7 @@ The seeded corpus contains the traps on purpose:
 
 These are where the pieces meet, and where a naive build breaks. Each is a decision, not an open item.
 
-**Slots vs Temporal.** Temporal's Python sandbox re-imports workflow modules on every run and forbids I/O inside them, workers register workflows at start, and changing code under an in-flight run breaks replay. So slots resolve **once, at process start**: `AC_ACTIVE_STEP` is read by a meta-path finder installed before any app import, and playground imports inside workflow code go through `workflow.unsafe.imports_passed_through()`. `ex start` restarts the workers (watchfiles on `playground/`) and terminates open runs in the dev namespace. uvicorn reloads as normal.
+**Slots vs Temporal.** Temporal's Python sandbox re-imports workflow modules on every run and forbids I/O inside them, workers register workflows at start, and changing code under an in-flight run breaks replay. So slots resolve **once, at process start**: `AC_ACTIVE_STEP` is read by a meta-path finder installed before any app import, and playground imports inside workflow code go through `workflow.unsafe.imports_passed_through()`. So a step switch (`ex start`, `ex reset`, `ex solution`) stops the api, workers and relay, terminates the open runs in the dev namespace, swaps the playground files, and only then starts the services again. If termination fails while Temporal is up, the switch fails and nothing changes. Between switches the apps run under watchfiles, which restarts them when `playground/` changes.
 
 **Grading with a fake model.** Your prompts, tool schemas and ordering will differ from the reference, so recordings keyed by a request hash can't grade your code. Two tools instead:
 - **Scripted fakes** grade steps: `FakeChatModel(turns=[...])` returns scripted outputs, and each test asserts only what matters about the request (the tool was offered, the context contained the chunk).
@@ -102,7 +102,7 @@ These are where the pieces meet, and where a naive build breaks. Each is a decis
 
 **Two records, one truth.** Section 14 is Postgres-only: the event log has a unique `(run_id, seq)`, runs have a `version` column for optimistic concurrency, and messages carry client idempotency keys. Section 15 adds Temporal and owns the consistency between them: events are written inside activities with deterministic event ids, so a retried activity inserts nothing twice, and the step covers the case where the activity finished but its event insert failed.
 
-**Outbox semantics (section 05).** The relay delivers at least once. A workflow's id is derived from its outbox row, starts use `WorkflowIdConflictPolicy`, and messages into a live conversation use `signal_with_start`. Signals carry ids, and workflows dedupe them. Per-conversation ordering comes from partitioning the relay (`FOR UPDATE SKIP LOCKED`, one relay per partition). The step also teaches the other valid shape, **Temporal-first** (start the workflow, which writes the row in its first activity; Temporal's own recommendation), and when each fits: outbox when the write must commit with other data, such as a webhook receipt and its dedupe key; Temporal-first when the workflow owns the lifecycle.
+**Outbox semantics (section 05).** The relay delivers at least once. A workflow's id is derived from its outbox row, starts use `WorkflowIdConflictPolicy`, and messages into a live conversation use `signal_with_start`. Signals carry ids, and workflows dedupe them. Per-conversation ordering comes from partitioning the relay (`FOR UPDATE SKIP LOCKED`), with one owner per partition at a time: each batch takes the partition's transaction-scoped advisory lock first, because SKIP LOCKED alone would let a second relay publish a later row for a key while the first still holds an earlier one. Rows fail one at a time. A failed start counts an attempt and holds back later rows for its key; after a bounded number of attempts (at once, for an unknown kind) the row is marked failed and skipped, so one poison row can't block the partition. The step also teaches the other valid shape, **Temporal-first** (start the workflow, which writes the row in its first activity; Temporal's own recommendation), and when each fits: outbox when the write must commit with other data, such as a webhook receipt and its dedupe key; Temporal-first when the workflow owns the lifecycle.
 
 **ACLs across two stores (section 09).**
 - Postgres `document_acl` is the **only** authorisation decision point. The ACL fields in OpenSearch and on pgvector rows are recall pre-filters, so a stale index can over-fetch but never leak.
@@ -110,7 +110,7 @@ These are where the pieces meet, and where a naive build breaks. Each is a decis
 - Keycloak has no webhooks, so directory sync is a full pull through the admin API plus admin-events polling. `/groups/{id}/children` is paginated, and `/users/{id}/groups` returns direct membership only, so we compute the nested closure ourselves (a member of `Finance/AP` is also in `Finance`).
 - Until login lands in section 11, sections 09 and 10 use a dev-only identity header that is refused outside dev.
 
-**Login and SSE (section 11).** The web app is a **backend-for-frontend**: TanStack Start's server holds the tokens and the browser holds only an httpOnly session cookie (the pattern the IETF's browser-apps guidance recommends). The BFF calls Envoy with a bearer token and streams with `fetch` + ReadableStream; `EventSource` can't send headers. Envoy's `jwt_authn` validates at request start only. SSE routes need `timeout: 0s`, a raised `stream_idle_timeout`, and a 15-second heartbeat. Rate-limit descriptors come from JWT claims through dynamic metadata.
+**Login and SSE (section 11).** The web app is a **backend-for-frontend**: TanStack Start's server holds the tokens and the browser holds only an httpOnly session cookie (the pattern the IETF's browser-apps guidance recommends). The BFF calls Envoy with a bearer token and streams with `fetch` + ReadableStream; `EventSource` can't send headers. Envoy's `jwt_authn` validates at request start only. SSE routes need `timeout: 0s`, a raised `stream_idle_timeout`, and a 15-second heartbeat. Rate-limit descriptors come from JWT claims through dynamic metadata. The api trusts the claims Envoy forwards in `x-jwt-payload`, so it must be reachable only through Envoy: locally it publishes no port, and in the cloud it sits on the private network only. It still takes the tenant from the verified issuer, never from a claim alone. Authenticating the Envoy to api hop (mTLS, or a signed internal header) is a hardening option for later.
 
 **Local reranker.** TEI has no official Apple-silicon image. Locally, a small FastAPI + sentence-transformers service exposes TEI's `/rerank` schema. TEI itself runs in CI and the cloud. Same interface, so section 08 doesn't change.
 
@@ -220,10 +220,10 @@ exercises/09.acls/
   FINISHED.mdx                   recap and what to notice
 ```
 
-**Slots.** The finished app imports each learnable piece through a slot, resolved at process start (see Design seams). `ex start 09.2` copies the step's problem files into `playground/`, sets the active step, and restarts what needs restarting. So:
+**Slots.** The finished app imports each learnable piece through a slot, resolved at process start (see Design seams). `ex start 09.2` copies the step's problem files, but not its tests, into `playground/`, sets the active step, and restarts what needs restarting. It refuses to discard playground changes to another step unless you pass `--force`. So:
 
 - a step folder holds only the files it touches, and a slip in section 4 never blocks section 9
-- the tests import through the slot, so they grade your playground copy
+- the tests stay in the problem dir and import through the slot, so they grade your playground copy, and nothing you edit can change them
 - the whole stack keeps running, so you also see your code work in the app, the traces and the labs
 
 Commands: `ex up`, `ex down`, `ex list`, `ex start <step>`, `ex test <step>`, `ex reset <step>`, `ex diff <step>`, `ex solution <step>`, `ex record`, `ex fixtures`, `ex gate`, `ex smoke`. Every command takes `--json`; the workshop app shells out to `ex` and reads that output, so the logic lives in one place.
@@ -247,7 +247,7 @@ Commands: `ex up`, `ex down`, `ex list`, `ex start <step>`, `ex test <step>`, `e
 
 Section 12 is graded with Vitest instead of pytest.
 
-**Quality gate.** CI runs every `graded` step both ways: the problem's tests must fail and the solution's must pass. That catches a step whose tests grade nothing.
+**Quality gate.** CI runs every `graded` step's tests both ways: against the problem code they must fail, and against the solution code they must pass. That catches a step whose tests grade nothing. Tests live only in the problem dir (a solution dir with `test_*.py` fails the gate), so there is one copy to trust.
 
 **The workshop app** (`apps/workshop`, local only) shows the step list with progress, the README and hints, your files with a diff against the solution, a test runner that streams results, an "open in editor" link, and a **lab panel** per section, wired to the running stack.
 
@@ -272,7 +272,7 @@ Slots are independent, so another order is possible later if wanted.
 | 06 | Embeddings + vectors | 5 | Batch embedding; pgvector and HNSW (M, ef_search, iterative scan); exact vs ANN recall; dimension truncation; `halfvec` and `bit` with rescoring, plus sizing | Recall vs latency chart |
 | 07 | Lexical + hybrid | 5 | BM25 by hand; the OpenSearch index, mappings and analyzers; keeping it in sync; reindex with alias cutover (and dual-index for an embedding model change); RRF | Rankings side by side |
 | 08 | Rerank + query | 4 | Cross-encoder rerank and rerank depth; query rewriting and expansion; HyDE; document-level routing | Rankings with rerank deltas |
-| 09 | Identity + ACLs | 6 | Directory sync from Keycloak with the nested closure; principal cache and invalidation; ACL stamping, with Postgres as the decision point; the over-fetch filter; ACL sync loop and audit log; tenant isolation (row-level security, tenant-scoped OpenSearch queries, workflow-id prefixes and per-tenant task queues, per-tenant rate limits and budgets) | User and tenant switcher |
+| 09 | Identity + ACLs | 6 | Directory sync from Keycloak with the nested closure; principal cache and invalidation; ACL stamping, with Postgres as the decision point; the over-fetch filter; ACL sync loop and audit log; tenant isolation (row-level security, which needs the app on a non-owner role, since the table owner bypasses RLS unless it is forced, plus the tenant set per transaction with `SET LOCAL` and an explicit cross-tenant role for the relay; tenant-scoped OpenSearch queries, workflow-id prefixes and per-tenant task queues, per-tenant rate limits and budgets) | User and tenant switcher |
 | 10 | Generation + citations | 4 | Prompt assembly and token budget; grounding and abstention; SSE streaming; the citation validator | Prompt inspector |
 | 11 | Login + gateway | 5 | OIDC login through the BFF; a gateway by hand (JWT via JWKS, routing, request ids); a token bucket on Redis; Envoy with the global rate limit service; SSE through the BFF and Envoy | Request log |
 | 12 | Frontend | 4 | The generated OpenAPI client; streaming chat; citation to page viewer; run timeline and approval inbox | The app itself |
@@ -325,16 +325,18 @@ Enough for a fresh agent to start without guessing. Versions are pinned at scaff
 | web | 3000 | postgres | 5432 |
 | workshop | 3100 | redis | 6379 |
 | envoy | 8080 (admin 9901) | minio | 9000 (console 9001) |
-| api | 8000 | opensearch | 9200 |
+| api | 8000 (Compose network only) | opensearch | 9200 |
 | fake-workspace | 8100 | temporal | 7233 (UI 8233) |
 | reranker | 8200 | keycloak | 8081 |
 | grafana | 3001 (OTLP 4317/4318) | | |
+
+Published ports bind to 127.0.0.1 only. The api publishes none: it trusts Envoy's `x-jwt-payload`.
 
 **Schema (initial entities)**
 - Tenancy: `tenants`; `tenant_id` on every table from the first migration, with row-level security policies (enforced from section 09)
 - Identity: `principals` (users and groups mirrored from Keycloak), `group_members` (direct), `group_closure` (computed)
 - Content: `documents` (source, external_id, version, content_hash, status, valid_from/valid_to), `document_acl` (principal, allow/deny, acl_version), `chunks` (document, ordinal, text, page range, section, token count, embedding, embedding_model_version)
-- Sync and ingest: `sync_state` (connector cursor or delta token), `outbox` (id, kind, payload, partition_key, created_at, published_at)
+- Sync and ingest: `sync_state` (connector cursor or delta token), `outbox` (id, kind, payload, partition_key, created_at, published_at, attempts, last_error, failed_at)
 - Conversation: `conversations`, `messages` (unique idempotency key)
 - Runs: `runs` (status, version, workflow_id, budget), `run_events` (run_id, seq unique, type, payload), `approvals`
 - Audit: `retrieval_audit` (user, query hash, returned ids, denied ids, acl_version, timestamp)

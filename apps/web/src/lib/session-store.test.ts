@@ -23,7 +23,7 @@ describe("session store", () => {
 
     expect(id).toMatch(/^[\w-]{43}$/);
     expect(kv.entries.get(`bff:session:${id}`)?.ex).toBe(SESSION_TTL_SECONDS);
-    expect(await store.get(id)).toEqual(session);
+    expect(await store.get(id)).toEqual({ ...session, version: 0 });
   });
 
   it("issues a different id for every session", async () => {
@@ -35,10 +35,24 @@ describe("session store", () => {
     const store = createSessionStore(memoryKv());
     const id = await store.create(session);
 
-    await store.update(id, { ...session, accessToken: "at-2" });
-    expect((await store.get(id))?.accessToken).toBe("at-2");
+    expect(await store.update(id, { ...(await store.get(id))!, accessToken: "at-2" })).toBe(true);
+    expect(await store.get(id)).toMatchObject({ accessToken: "at-2", version: 1 });
 
     await store.destroy(id);
+    expect(await store.get(id)).toBeNull();
+  });
+
+  it("refuses an update from a stale read or to a destroyed session", async () => {
+    const store = createSessionStore(memoryKv());
+    const id = await store.create(session);
+    const read = (await store.get(id))!;
+
+    expect(await store.update(id, { ...read, accessToken: "first" })).toBe(true);
+    expect(await store.update(id, { ...read, accessToken: "stale" })).toBe(false);
+    expect((await store.get(id))?.accessToken).toBe("first");
+
+    await store.destroy(id);
+    expect(await store.update(id, { ...read, version: 1 })).toBe(false);
     expect(await store.get(id)).toBeNull();
   });
 

@@ -60,10 +60,7 @@ def repo(tmp_path: Path) -> Path:
                 "greeting.py": "def greet(name):\n    raise NotImplementedError\n",
                 "test_greeting.py": test_file,
             },
-            "solution": {
-                "greeting.py": "def greet(name):\n    return f'hello {name}'\n",
-                "test_greeting.py": test_file,
-            },
+            "solution": {"greeting.py": "def greet(name):\n    return f'hello {name}'\n"},
         },
     )
     return root
