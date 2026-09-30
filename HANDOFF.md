@@ -6,7 +6,7 @@ For the next agent picking this up. Read this first, then `PLAN.md` (the source 
 
 - **What:** a hands-on workshop repo where Lucien builds a production-grade AI application (a small Cohere North) layer by layer, Epic React style: problem and solution folders, hints inline, tests as the grader, run from a local workshop web app with a lab panel per section.
 - **Why:** Cohere rejected him after the onsite. The feedback named one gap: "autonomous agent orchestration and state management."
-- **State:** planning is done and independently reviewed; no open questions. Nothing is scaffolded. The next step is milestone M0a in `PLAN.md`.
+- **State:** M0a (infra + tooling) is done and merged to `main`; `ex up` then `ex smoke` pass. The next step is milestone M0b (schema, fixtures, fake-workspace) in `PLAN.md`.
 - **Repo:** `~/src/luciengeorge/agentic-chat` (local git, no remote).
 
 ## Who Lucien is
@@ -128,15 +128,21 @@ A second independent review through Codex (per `CLAUDE.md`) wasn't possible from
 
 Superseded along the way: a Hono/TypeScript backend, Drizzle, pg-boss, better-auth, BM25 on our own Postgres tables, ParadeDB, and folding web and API into one TanStack Start app.
 
+### 6. M0a: infra and tooling (30 Sep 2026)
+
+- **How it ran:** I wrote a contract (`docs/m0a-contract.md`) and the uv skeleton, then four Opus lanes ran in parallel on disjoint files: Python core, infra, the `ex` CLI + slots, and TypeScript. An integrator brought `ex smoke` to green. A fresh Fable reviewer and a read-only Codex review (gpt-6-sol) ran independently; Opus applied 19 accepted fixes, and a fresh Fable verifier reverted each high-risk fix to prove its test goes red. It caught one regression (Temporal outages counted as row attempts), which was fixed in a second round.
+- **Lucien's calls:** install OrbStack via brew; **local Postgres is host brew `postgresql@18` + `pgvector`**, not a container (brew `postgresql@14` had been holding 5432; its data, including `lucien_george_com_development`, is still on disk); stop brew `redis`, which shadowed the Compose Valkey; clean the npm, pnpm and brew caches (the disk had 2.4 GiB free); merge with a merge commit.
+- **Worth knowing:** neither review found everything. Codex alone caught the logout/refresh race, the slot-switch ordering, relay per-key ordering and the unbound tenant claim; Fable alone caught the gate's blind spot and the template gaps. `minio/minio` is gone from registries (we use `pgsty/minio`). httpx drops custom cookie policies (it copies the cookies into a default-policy jar on every request). FastAPI 0.142 auto-configures its own OTLP exporter unless it's turned off. The openai SDK 3.22 uses `httpx2`.
+
 ## Environment gotchas
 
 - **Stale git locks.** The Cowork sandbox cannot delete files inside `.git`, so commits there leave `.git/HEAD.lock` and `.git/index.lock` behind and every later git write fails. On the host: `cd ~/src/luciengeorge/agentic-chat && rm -f .git/HEAD.lock .git/index.lock && git add -A && git commit -m "plan: review fixes, handoff, prep docs"`. If you commit from a sandbox, expect this again.
 - **No git identity in the sandbox.** Commit with `git -c user.name="Lucien George" -c user.email="luciengeorge95@gmail.com"`, the identity his other repos use.
 - **Path mapping.** Bash sees host folders under `/sessions/<id>/mnt/...`, while the file tools use host paths. Claude's own data folders under `~/Library/Application Support/Claude/` are unreadable, so the raw transcript can't be exported from inside a session.
 - **The shared vault.** Other agents write to the same daily note at the same time. Append rather than rewriting, and `git add` only your own paths.
-- **Docker.** It runs on the host (OrbStack), not in the sandbox. Compose commands must run on his machine.
+- **Docker.** OrbStack, installed via brew on 30 Sep. Postgres is **not** in Compose: it's brew `postgresql@18` on :5432 (role, password and database all `ac`), reached from containers at `host.docker.internal`. The `psql` on PATH may still be the v14 client; use `/opt/homebrew/opt/postgresql@18/bin/psql`. `ex up` refuses to start if a non-Docker process holds a published port.
 - **Private GitHub repos return 404** in the in-app browser, which isn't signed in.
-- **Model gotcha (from poof):** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly. His `CLAUDE.md` lists `gpt-6-luna` and `gpt-6-sol` (for Codex), so a GPT-6 tier likely supersedes `gpt-5.6-luna` as the cheap default. Confirm before pinning.
+- **Model gotcha (from poof):** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly. His `CLAUDE.md` lists `gpt-6-luna` and `gpt-6-sol` (for Codex), and `gpt-6-luna` is now pinned as the default: it's the cheapest tier, and its reasoning default is medium.
 
 ## Where things are
 
@@ -150,8 +156,8 @@ Superseded along the way: a Hono/TypeScript backend, Drizzle, pg-boss, better-au
 
 ## Next steps for whoever picks this up
 
-1. Check the locks are gone and everything is committed (`git status` shows a clean tree). As of this writing, `PLAN.md` changes, `HANDOFF.md` and `docs/` are uncommitted.
-2. Read `PLAN.md` end to end.
-3. Start M0 following `CLAUDE.md`: split the work, have Opus subagents implement, and have a fresh agent review.
-4. Work through the "To verify while scaffolding" list in `PLAN.md` early, especially TEI on Apple silicon and the current OpenAI model IDs.
+1. Read `PLAN.md` end to end, then `docs/m0a-contract.md` (the names, ports, env vars, slot rule and `ex --json` shapes that everything now depends on).
+2. `uv run ex up`, start `pnpm --filter web dev` and `pnpm --filter workshop dev`, then `uv run ex smoke --json` to confirm the stack is green before changing anything.
+3. Start M0b the same way M0a ran: a contract first, parallel Opus lanes on disjoint files, an integrator, then a fresh Fable review plus a read-only Codex review, and a fresh verifier on the fixes.
+4. Carry the deferred item into section 09.6: enforcing RLS needs a non-owner app role (the owner bypasses RLS unless `FORCE`), `SET LOCAL` tenant context per transaction, and an explicit cross-tenant role for the relay.
 5. Log every change to the vault's daily note and the project hub.
