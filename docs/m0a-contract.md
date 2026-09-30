@@ -43,7 +43,7 @@ Settings live in `ac_core.settings` (pydantic-settings). Defaults target the hos
 
 ## Services
 
-Ports are the `PLAN.md` appendix. Compose service names: `postgres`, `redis`, `minio`, `opensearch`, `temporal`, `keycloak`, `envoy`, `ratelimit`, `grafana`, `api`, `workers`, `relay`, `reranker`, `fake-workspace`. `web` and `workshop` run on the host as dev servers.
+Ports are the `PLAN.md` appendix. Compose service names: `redis`, `minio`, `opensearch`, `temporal`, `keycloak`, `envoy`, `ratelimit`, `grafana`, `api`, `workers`, `relay`, `reranker`, `fake-workspace`. `web` and `workshop` run on the host as dev servers. Postgres also runs on the host: brew `postgresql@18` with `pgvector` on 5432 (role, password and database all `ac`); containers reach it at `host.docker.internal:5432`.
 
 Compose profiles: `infra` (datastores, Temporal, Keycloak, Envoy, ratelimit, Grafana) and `apps` (the Python services). The Python app containers bind-mount the repo at `/repo`, keep their venv at `/opt/venv` (`UV_PROJECT_ENVIRONMENT`), and run with reload (uvicorn `--reload`; workers and relay under `watchfiles`) so `ex start` only needs `docker compose restart`.
 

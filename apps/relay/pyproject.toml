@@ -3,8 +3,18 @@ name = "ac-relay"
 version = "0.0.0"
 description = "outbox to Temporal relay"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = [
+    "ac-core",
+    "ac-db",
+    "fastapi>=0.142.2",
+    "temporalio>=1.33.0",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.11,<0.12"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+ac-core = { workspace = true }
+ac-db = { workspace = true }

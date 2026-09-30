@@ -155,7 +155,7 @@ The same images run two ways.
 |---|---|---|
 | web | TanStack Start dev server | Vercel |
 | Backend services (api, workers, relay, reranker, Keycloak, Envoy) | Docker Compose | Container platform: Fly or Railway, same images |
-| Postgres | pgvector container | Neon: direct connection for workers and relay, pooled for api |
+| Postgres | brew `postgresql@18` + `pgvector` on the host (CI: pgvector container) | Neon: direct connection for workers and relay, pooled for api |
 | Temporal | Dev server in Compose | Temporal Cloud or self-hosted |
 | OpenSearch | Container | Managed (AWS OpenSearch) or self-hosted |
 | Reranker | sentence-transformers service | TEI |

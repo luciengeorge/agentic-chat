@@ -1,0 +1,7 @@
+domain: agentic-api
+descriptors:
+  # No value, so each distinct `sub` gets its own bucket.
+  - key: sub
+    rate_limit:
+      unit: minute
+      requests_per_unit: 600

@@ -3,8 +3,15 @@ name = "ac-api"
 version = "0.0.0"
 description = "FastAPI api"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = [
+    "ac-core",
+    "fastapi>=0.142.2",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.11,<0.12"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+ac-core = { workspace = true }
