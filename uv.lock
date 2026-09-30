@@ -1,0 +1,67 @@
+version = 1
+revision = 3
+requires-python = "==3.13.*"
+
+[manifest]
+members = [
+    "ac-api",
+    "ac-core",
+    "ac-db",
+    "ac-ex",
+    "ac-fake-workspace",
+    "ac-models",
+    "ac-relay",
+    "ac-reranker",
+    "ac-workers",
+    "agentic-chat",
+]
+
+[[package]]
+name = "ac-api"
+version = "0.0.0"
+source = { editable = "apps/api" }
+
+[[package]]
+name = "ac-core"
+version = "0.0.0"
+source = { editable = "packages/core" }
+
+[[package]]
+name = "ac-db"
+version = "0.0.0"
+source = { editable = "packages/db" }
+
+[[package]]
+name = "ac-ex"
+version = "0.0.0"
+source = { editable = "scripts/ex" }
+
+[[package]]
+name = "ac-fake-workspace"
+version = "0.0.0"
+source = { editable = "apps/fake_workspace" }
+
+[[package]]
+name = "ac-models"
+version = "0.0.0"
+source = { editable = "packages/models" }
+
+[[package]]
+name = "ac-relay"
+version = "0.0.0"
+source = { editable = "apps/relay" }
+
+[[package]]
+name = "ac-reranker"
+version = "0.0.0"
+source = { editable = "apps/reranker" }
+
+[[package]]
+name = "ac-workers"
+version = "0.0.0"
+source = { editable = "apps/workers" }
+
+[[package]]
+name = "agentic-chat"
+version = "0.0.0"
+source = { virtual = "." }
