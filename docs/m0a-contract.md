@@ -36,7 +36,7 @@ Settings live in `ac_core.settings` (pydantic-settings). Defaults target the hos
 | `AC_S3_ENDPOINT` / `AC_S3_ACCESS_KEY` / `AC_S3_SECRET_KEY` | `http://localhost:9000` / `minioadmin` / `minioadmin` | |
 | `AC_RERANKER_URL` | `http://localhost:8200` | |
 | `AC_KEYCLOAK_URL` | `http://localhost:8081` | issuers are `<url>/realms/<tenant>`; the api trusts only these |
-| `AC_RELAY_PARTITION` / `AC_RELAY_PARTITIONS` | `0` / `1` | |
+| `AC_RELAY_PARTITION` / `AC_RELAY_PARTITIONS` | `0` / `1` | every relay must use the same `AC_RELAY_PARTITIONS` |
 | `AC_RELAY_MAX_ATTEMPTS` | `5` | failed starts before the relay gives up on a row |
 | `AC_MODEL_PROVIDER` | `fake` | `fake` / `cassette` / `openai` |
 | `OPENAI_API_KEY` | unset | only needed when provider is `openai` |
@@ -49,7 +49,7 @@ Settings live in `ac_core.settings` (pydantic-settings). Defaults target the hos
 
 Ports are the `PLAN.md` appendix. Compose service names: `redis`, `minio`, `opensearch`, `temporal`, `keycloak`, `envoy`, `ratelimit`, `grafana`, `api`, `workers`, `relay`, `reranker`, `fake-workspace`. `web` and `workshop` run on the host as dev servers. Postgres also runs on the host: brew `postgresql@18` with `pgvector` on 5432 (role, password and database all `ac`); containers reach it at `host.docker.internal:5432`.
 
-Published ports bind to `127.0.0.1` only. The api publishes no port: it trusts `x-jwt-payload`, so only Envoy may reach it, over the Compose network. `ex up` first checks every published port and fails, naming the port and the process (from `lsof`), if anything other than Docker/OrbStack already listens there.
+Published ports bind to `127.0.0.1` only. The api publishes no port: it trusts `x-jwt-payload`, so only Envoy may reach it, over the Compose network. That keeps it off the LAN, but it isn't airtight on the developer's own machine: OrbStack's host-only DNS (`api.agentic-chat.orb.local:8000`) still reaches the container directly from the host. `ex up` first checks every published port and fails, naming the port and the process (from `lsof`), if anything other than Docker/OrbStack already listens there.
 
 Compose profiles: `infra` (datastores, Temporal, Keycloak, Envoy, ratelimit, Grafana) and `apps` (the Python services). The Python app containers bind-mount the repo at `/repo`, keep their venv at `/opt/venv` (`UV_PROJECT_ENVIRONMENT`), and all run under `watchfiles` via `infra/python/dev-run.sh` (not uvicorn `--reload`), which restarts the process when `packages/`, the app's `src/` or `playground/` change.
 
@@ -88,8 +88,8 @@ Alembic in `ac_db`, first migration `0001_init`:
 ## Relay and the hello workflow
 
 - Task queue `ac-default`. Workers register `HelloWorkflow` (input `{"name": str}`, returns `"hello <name>"`) with one activity, `format_greeting`, that calls `ac_workers.hello.greeting.format_greeting(name)`. That function is the sample slot (see below).
-- The relay claims unpublished rows with `FOR UPDATE SKIP LOCKED`, in batches, for partition `AC_RELAY_PARTITION` of `AC_RELAY_PARTITIONS` (hash of `partition_key`). Each batch first takes `pg_try_advisory_xact_lock` on the partition and skips the batch if another relay holds it, so a partition has one owner and each key stays in order. For `kind = "hello"` it starts `HelloWorkflow` with workflow id `<tenant_slug>:hello:<outbox_id>`, `id_conflict_policy=USE_EXISTING`, `id_reuse_policy=REJECT_DUPLICATE`, then sets `published_at`. At-least-once delivery.
-- Rows fail one at a time. A failed start increments `attempts`, records `last_error`, and holds back later rows with the same `partition_key` in that batch. After `AC_RELAY_MAX_ATTEMPTS` attempts, or at once for an unknown kind, the row gets `failed_at` and is never claimed again.
+- The relay claims unpublished rows with `FOR UPDATE SKIP LOCKED`, in batches, for partition `AC_RELAY_PARTITION` of `AC_RELAY_PARTITIONS` (hash of `partition_key`). Each batch first takes `pg_try_advisory_xact_lock` on the partition and skips the batch if another relay holds it, so a partition has one owner and each key stays in order. The lock is keyed on the partition number alone, so every relay must share the same `AC_RELAY_PARTITIONS`; relays with different counts would hash keys into different partitions and could publish one key out of order. For `kind = "hello"` it starts `HelloWorkflow` with workflow id `<tenant_slug>:hello:<outbox_id>`, `id_conflict_policy=USE_EXISTING`, `id_reuse_policy=REJECT_DUPLICATE`, then sets `published_at`. At-least-once delivery.
+- Rows fail one at a time. A failed start increments `attempts`, records `last_error`, and holds back later rows with the same `partition_key` in that batch. After `AC_RELAY_MAX_ATTEMPTS` attempts, or at once for an unknown kind, the row gets `failed_at` and is never claimed again. Only per-row errors count. Temporal being unreachable or overloaded (an `RPCError` with status `UNAVAILABLE`, `DEADLINE_EXCEEDED` or `RESOURCE_EXHAUSTED`, or a connection or timeout error) aborts the batch and rolls it back with nothing counted, so an outage of any length costs no attempts. The relay polls again without sleeping only after a batch made full progress (`BATCH_SIZE` rows published or failed), so held-back rows can't make it spin.
 - `format_greeting` runs with an explicit retry policy (5 attempts, exponential backoff, `NotImplementedError` non-retryable). Later activities copy that shape.
 
 ## Models
@@ -124,7 +124,7 @@ Step id is `<NN>.<M>` (`09.2`). A section or step with `hidden: true` in its fro
 
 `ex start <step>` copies the problem dir's code files (everything but `README.mdx` and `test_*.py`) flat into `playground/` and writes `.ex/state.json`. If the playground differs from both the problem and the solution copy of the active step, it refuses unless `--force`. Both `playground/` and `.ex/` are git-ignored.
 
-`ex start`, `ex reset` and `ex solution` switch the slotted code in this order: stop whichever of `api`, `workers` and `relay` are running; terminate the open workflow runs in the dev namespace; replace the playground files; start the stopped services again. If Temporal is reachable but termination fails, the command fails (non-zero, JSON error), the files stay as they were, and the services restart on the old code. If Temporal isn't running there are no runs to close, so the switch goes ahead and reports it under `skipped`.
+`ex start`, `ex reset` and `ex solution` switch the slotted code in this order: stop whichever of `api`, `workers` and `relay` are running; terminate the open workflow runs in the dev namespace; replace the playground files; start the stopped services again. If Temporal is reachable but termination fails, or `compose stop` fails, the command fails (non-zero, JSON error), the files stay as they were, and whatever was stopped starts again on the old code. If Temporal is unreachable while `workers` is running, the command refuses too: those workers may hold runs it can't see, so start Temporal (`ex up`) or stop the workers first. Only when Temporal is unreachable and no workers run does the switch go ahead, reporting it under `skipped`.
 
 ## `ex --json` shapes
 

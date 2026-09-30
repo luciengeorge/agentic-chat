@@ -19,6 +19,7 @@ class FakeServices:
         self.events: list[tuple[str, str | None]] = []
         self.running = ["workers"]
         self.terminate_error: Exception | None = None
+        self.stop_error: Exception | None = None
 
     def _event(self, name: str) -> None:
         self.events.append((name, state.read(self.root).active_step))
@@ -29,6 +30,8 @@ class FakeServices:
 
         def stop(root: Path, names: list[str]) -> None:
             self._event(f"stop {' '.join(names)}")
+            if self.stop_error is not None:
+                raise self.stop_error
 
         def start(root: Path, names: list[str]) -> None:
             self._event(f"start {' '.join(names)}")
@@ -131,11 +134,44 @@ def test_a_failed_termination_leaves_the_step_unswitched(
     assert fake_services.events[-1] == ("start workers", None)  # back up on the old code
 
 
-def test_switching_goes_ahead_when_temporal_is_not_running(fake_services: FakeServices) -> None:
-    fake_services.terminate_error = services.TerminateSkippedError("Temporal isn't running")
+@pytest.mark.parametrize("running", [[], ["api", "relay"]])
+def test_switching_goes_ahead_when_temporal_is_not_running_and_no_workers_are(
+    fake_services: FakeServices, running: list[str]
+) -> None:
+    fake_services.running = running
+    fake_services.terminate_error = services.TemporalUnreachableError("Temporal isn't running")
     out = ex("start", "_smoke.1")
     assert out["terminated"] == []
     assert out["skipped"] == ["terminate: Temporal isn't running"]
+
+
+def test_switching_is_refused_when_workers_run_but_temporal_is_unreachable(
+    repo: Path, fake_services: FakeServices
+) -> None:
+    """The workers may hold open runs we can't see or end, and the new code would break them."""
+    fake_services.terminate_error = services.TemporalUnreachableError("Temporal isn't running")
+    out = ex("start", "_smoke.1", ok=False)
+    assert out["error"] == (
+        "the workers are running but Temporal is unreachable, so their open runs can't be "
+        "terminated; start Temporal (`ex up`) or stop the workers, then switch again"
+    )
+    assert out["detail"] == "Temporal isn't running"
+    assert state.read(repo).active_step is None
+    assert fake_services.events[-1] == ("start workers", None)
+
+
+def test_switching_outside_dev_skips_termination(fake_services: FakeServices) -> None:
+    fake_services.terminate_error = services.TerminateSkippedError("AC_ENV is test, not dev")
+    assert ex("start", "_smoke.1")["skipped"] == ["terminate: AC_ENV is test, not dev"]
+
+
+def test_a_failed_stop_still_restarts_the_services(repo: Path, fake_services: FakeServices) -> None:
+    fake_services.running = ["api", "workers"]
+    fake_services.stop_error = ExError("docker compose stop api workers failed")
+    out = ex("start", "_smoke.1", ok=False)
+    assert out["error"] == "docker compose stop api workers failed"
+    assert state.read(repo).active_step is None
+    assert [name for name, _ in fake_services.events] == ["stop api workers", "start api workers"]
 
 
 def test_switching_without_the_stack_restarts_nothing(

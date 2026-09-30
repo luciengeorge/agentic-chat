@@ -19,7 +19,11 @@ TERMINATE_TIMEOUT_S = 30.0
 
 
 class TerminateSkippedError(Exception):
-    """There are no runs to terminate: Temporal isn't running, or this isn't dev."""
+    """Termination didn't happen: Temporal isn't running, or this isn't dev."""
+
+
+class TemporalUnreachableError(TerminateSkippedError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -92,8 +96,8 @@ def start_services(root: Path, names: list[str]) -> None:
 
 
 async def terminate_open_workflows(address: str, namespace: str, reason: str) -> list[str]:
-    """Terminate every running workflow in the namespace. Raises TerminateSkippedError if Temporal
-    isn't there to connect to; any failure after connecting propagates."""
+    """Terminate every running workflow in the namespace. Raises TemporalUnreachableError if
+    Temporal isn't there to connect to; any failure after connecting propagates."""
     from temporalio.client import Client
 
     try:
@@ -101,7 +105,7 @@ async def terminate_open_workflows(address: str, namespace: str, reason: str) ->
             Client.connect(address, namespace=namespace), TEMPORAL_CONNECT_TIMEOUT_S
         )
     except Exception as exc:  # whatever the reason, nothing is listening there
-        raise TerminateSkippedError(
+        raise TemporalUnreachableError(
             f"Temporal isn't running at {address} ({type(exc).__name__})"
         ) from exc
     terminated: list[str] = []
