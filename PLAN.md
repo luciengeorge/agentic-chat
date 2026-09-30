@@ -2,7 +2,7 @@
 
 A hands-on workshop for building a production-grade AI application: a small version of Cohere's North. You build every layer yourself, one step at a time, against a finished reference app that runs the whole way through.
 
-Status: **planning.** Agreed 2026-09-30; revised the same day for a Python backend, a "no shortcuts" rule, and an independent review (see `HANDOFF.md`). Nothing scaffolded yet. No open questions.
+Status: **planning.** Agreed 2026-09-30; revised the same day for a Python backend, a "no shortcuts" rule, and an independent review (see `HANDOFF.md`). **M0a done** (2026-09-30): `ex up` then `ex smoke` pass; see `HANDOFF.md` §6. Next: M0b.
 
 ## Why this exists
 
@@ -134,7 +134,7 @@ These are where the pieces meet, and where a naive build breaks. Each is a decis
 | Cache + rate limits | Redis (Valkey) | Rate limits, principal cache, embedding cache, token streams | |
 | Files | MinIO locally, S3 in the cloud | S3 API everywhere | |
 | Models | OpenAI Responses API via the official SDK behind our interface | Lucien's choice | LangChain, LlamaIndex, OpenAI Agents SDK and Agents API as the main path |
-| Chat model | The cheapest current tier by default (confirm `gpt-6-luna` vs `gpt-5.6-luna`); ids in one config file; reasoning effort always explicit | | |
+| Chat model | `gpt-6-luna`, the cheapest tier ($0.10 in / $0.50 out per 1M tokens, reasoning default medium); ids in `ac_models/config.py`; reasoning effort always explicit | | |
 | Embeddings | `text-embedding-3-small` | Its `dimensions` parameter gives the truncation exercise | |
 | Reranker | bge-reranker: a sentence-transformers service locally, TEI in CI and cloud | Models run in their own serving layer, never inside the api | Loading models into api processes |
 | Parsing | docling in the pipeline; pdfplumber + pytesseract + python-docx for the hand-built version | Build to understand, then use the production parser | |
@@ -145,7 +145,7 @@ These are where the pieces meet, and where a naive build breaks. Each is a decis
 | CI | GitHub Actions: lint, types, tests, the step quality gate | | |
 | Images | Multi-stage Dockerfiles, non-root | | |
 
-**Model gotcha, carried over from poof:** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly, or agents run with reasoning off and nothing errors. Check whether the same applies to whichever model we pick.
+**Model gotcha, carried over from poof:** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly, or agents run with reasoning off and nothing errors. `gpt-6-luna` defaults to medium, and so does the `gpt-5.6-luna` docs page as of 2026-09-30. Effort is still a required argument in our interface.
 
 ## Deployment profiles
 
@@ -307,7 +307,6 @@ Exercises are carved out of a working app. The agent reference is written **befo
 
 These can change details, not the architecture:
 
-- Current OpenAI model ids and prices, and each model's reasoning default
 - Python 3.13 vs 3.14 for docling and torch
 - pytesseract quality on the synthetic handwriting
 - Temporal dev server in Compose, and the worker restart on `ex start`
