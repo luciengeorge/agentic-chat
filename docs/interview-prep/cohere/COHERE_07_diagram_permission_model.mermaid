@@ -1,0 +1,37 @@
+%% Permission-aware retrieval — the enterprise differentiator
+%% The hard gate is BEFORE generation. You cannot prompt your way out of a leak.
+
+flowchart TB
+    subgraph Ingest["At ingestion — stamp ACLs onto chunks"]
+        direction TB
+        SRC[Source document<br/>SharePoint / Drive / Confluence]
+        ACL[Read source ACL]
+        CHUNK["Chunk record:<br/>{ chunk_id, text, embedding,<br/>allowed_principals[],<br/>acl_version, tenant_id }"]
+        SRC --> ACL --> CHUNK
+    end
+
+    subgraph Query["At query time — resolve and enforce"]
+        direction TB
+        U[User asks question]
+        RESOLVE[Resolve principal set<br/>user_id + all groups + all roles<br/>walk nested groups · cache with<br/>event-driven invalidation]
+        FETCH[Over-fetch: retrieve top k×m<br/>cheap pre-filters applied:<br/>tenant_id, language]
+        FILTER{Filter by<br/>allowed_principals<br/>∩ principal set}
+        SHORT{Got enough<br/>results?}
+        RETRY[Increase multiplier m<br/>and retry]
+        RERANK[Rerank survivors]
+        GATE([HARD GATE<br/>only authorised chunks<br/>proceed past this line])
+        GEN[Generate answer]
+
+        U --> RESOLVE --> FETCH --> FILTER
+        FILTER --> SHORT
+        SHORT -- no --> RETRY --> FETCH
+        SHORT -- yes --> RERANK --> GATE --> GEN
+    end
+
+    CHUNK -.indexed.-> FETCH
+
+    AUDIT[(Audit log<br/>user_id · query_hash<br/>returned_chunk_ids<br/>denied_chunk_ids<br/>acl_version · timestamp)]
+    FILTER -.-> AUDIT
+
+    STALE[["ACL staleness = security window<br/>sync lag is exposure time<br/>drive with change events<br/>SLO in minutes, not hours"]]
+    ACL -.-> STALE

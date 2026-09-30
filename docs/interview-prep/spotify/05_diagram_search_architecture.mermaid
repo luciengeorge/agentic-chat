@@ -1,0 +1,38 @@
+%% Search architecture
+%% Two query paths (typeahead, full search) + indexer pipeline driven by CDC
+
+flowchart LR
+    subgraph Q [Query path]
+        direction TB
+        T[Typeahead<br/>per keystroke<br/>p99 < 50ms]
+        S[Full search<br/>one query, ranked<br/>p99 < 200ms]
+    end
+
+    APIGW[API gateway]
+    SRCH[Search service]
+    REDIS[(Redis<br/>prefix cache + result cache)]
+    OS[(OpenSearch cluster<br/>3 shards x 3 nodes<br/>~10M docs)]
+
+    subgraph IDX [Indexing pipeline]
+        direction TB
+        PG[(Postgres catalog)]
+        CDC[Debezium CDC]
+        BUS{{Kafka: catalog.changes}}
+        IW[Indexer worker<br/>bulk POST]
+        CH[(ClickHouse: play_events)]
+        AGG[Nightly popularity job]
+    end
+
+    T --> APIGW
+    S --> APIGW
+    APIGW --> SRCH
+
+    SRCH -- prefix lookup --> REDIS
+    SRCH -- on miss --> OS
+    SRCH -- write through --> REDIS
+
+    SRCH -- top-N + personalize re-rank --> SRCH
+    SRCH -- in-app re-rank using user library / locale --> APIGW
+
+    PG --> CDC --> BUS --> IW --> OS
+    CH --> AGG -- bulk update popularity field --> OS

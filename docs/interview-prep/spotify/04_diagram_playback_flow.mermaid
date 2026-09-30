@@ -1,0 +1,46 @@
+%% Playback flow with HLS over CDN
+%% Note: only the manifest fetch hits your services; segments stream straight from CDN
+
+sequenceDiagram
+    autonumber
+    participant Cl as Client (player)
+    participant API as API gateway
+    participant Pb as Playback service
+    participant R as Redis (hot meta)
+    participant Pg as Postgres
+    participant CDN as CDN edge POP
+    participant S3 as S3 origin (us-east + eu-west)
+    participant Bus as Kafka (analytics)
+    participant CH as ClickHouse
+
+    Cl->>API: GET /tracks/abc/manifest (JWT)
+    API->>Pb: forward (with user_id, region)
+    Pb->>R: GET track:abc
+    alt cache hit
+        R-->>Pb: {hls_manifest_url, available_regions, ...}
+    else cache miss
+        Pb->>Pg: SELECT track WHERE id=abc
+        Pg-->>Pb: row
+        Pb->>R: SETEX 5min
+    end
+    Pb->>Pb: check region + tier + license
+    Pb-->>Cl: 302 → signed CDN URL (15-min expiry)
+
+    Note over Cl,CDN: Audio path bypasses your services entirely
+    Cl->>CDN: GET /track/abc/v1/aac128/playlist.m3u8
+    alt edge cache hit (~99% on hot tracks)
+        CDN-->>Cl: m3u8
+    else miss
+        CDN->>S3: origin pull
+        S3-->>CDN: m3u8
+        CDN-->>Cl: m3u8 (filled cache)
+    end
+
+    loop For each segment (ABR may switch bitrate)
+        Cl->>CDN: GET /track/abc/v1/aac128/seg-NNN.aac
+        CDN-->>Cl: bytes (range-friendly, immutable, 30d cache)
+    end
+
+    Cl-)API: POST /plays (fire-and-forget, 202)
+    API->>Bus: emit play_started event
+    Bus->>CH: append (async)

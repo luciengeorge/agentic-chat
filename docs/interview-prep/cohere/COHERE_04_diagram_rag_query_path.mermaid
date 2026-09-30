@@ -1,0 +1,33 @@
+%% Enterprise RAG query path — the core diagram to redraw in Excalidraw
+%% Note the two-stage retrieval and the ACL constraint on stage 1.
+
+flowchart TB
+    User[User asks a question]
+    GW[Gateway<br/>authn · rate limit · tenant routing]
+    ORCH[Orchestrator]
+    ID[(Identity service<br/>user → principal set)]
+
+    subgraph Retrieval["Retrieval service"]
+        direction TB
+        S1[Stage 1 — high RECALL<br/>dense vector ANN ∥ BM25<br/>fused with RRF<br/>filtered by principal set]
+        S2[Stage 2 — high PRECISION<br/>cross-encoder Rerank]
+        S1 -- top 150 candidates --> S2
+    end
+
+    VS[(Vector store<br/>chunks + embeddings + ACLs)]
+    BM[(Lexical index<br/>BM25)]
+
+    PROMPT[Assemble prompt<br/>chunks + metadata<br/>+ grounding instructions]
+    GEN[Generate — Command]
+    OUT[Stream answer + citations]
+
+    User --> GW --> ORCH
+    ORCH <--> ID
+    ORCH --> S1
+    S1 <--> VS
+    S1 <--> BM
+    S2 -- top 8 chunks --> PROMPT
+    PROMPT --> GEN --> OUT
+
+    AUDIT[(Audit log<br/>returned + denied chunk ids)]
+    Retrieval -.-> AUDIT

@@ -1,0 +1,51 @@
+%% Upload + ingestion pipeline
+%% Sync (top): publisher uploads master directly to S3
+%% Async (bottom): event-driven processing fans out, then finalize
+
+sequenceDiagram
+    autonumber
+    participant Pub as Publisher portal
+    participant API as Upload service
+    participant S3 as S3
+    participant Bus as Kafka / SQS
+    participant V as Validate worker
+    participant F as Fingerprint worker
+    participant T as Transcode worker (FFmpeg)
+    participant Fin as Finalize worker
+    participant Cat as Catalog (Postgres)
+    participant Idx as Search indexer
+    participant CDN as CDN
+
+    Note over Pub,API: Synchronous upload phase
+    Pub->>API: POST /uploads {filename, size, checksum}
+    API->>S3: CreateMultipartUpload
+    API-->>Pub: {upload_id, presigned part URLs}
+    Pub->>S3: PUT part 1..N (parallel, resumable)
+    Pub->>API: POST /uploads/{id}/complete
+    API->>S3: CompleteMultipartUpload
+    API->>Cat: insert track row (status=PROCESSING)
+    S3-->>Bus: ObjectCreated event
+
+    Note over Bus,Fin: Async processing (fan-out, then join)
+    Bus->>V: dispatch
+    V->>S3: ffprobe master
+    V-->>Bus: validate.ok / validate.fail
+
+    Bus->>F: dispatch
+    F->>S3: read master
+    F->>F: chromaprint / ACRCloud lookup
+    F-->>Bus: fingerprint.ok / fingerprint.blocked
+
+    Bus->>T: dispatch
+    T->>S3: read master
+    T->>T: HLS encode 96/128/256 kbps + LUFS norm + waveform
+    T->>S3: write derived /track_id/v1/...
+    T-->>Bus: transcode.complete
+
+    Bus->>Fin: validate.ok + fingerprint.ok + transcode.complete
+    Fin->>Cat: status=READY, hls_manifest_url=...
+    Cat-->>Bus: catalog.changes (CDC)
+    Bus->>Idx: index update
+    Idx->>Idx: bulk POST OpenSearch
+    Fin->>CDN: pre-warm first segment from N regions
+    Fin-->>Pub: webhook "track live"

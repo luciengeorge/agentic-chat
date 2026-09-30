@@ -1,0 +1,53 @@
+%% Agent loop with tool calling
+%% The three things that matter: iteration cap, per-action authorisation,
+%% and human approval for consequential actions.
+
+flowchart TB
+    TRIG[Trigger<br/>chat · schedule · webhook · event]
+    DEF[(Agent definition<br/>system prompt · tool allowlist<br/>data scopes · approval policy)]
+
+    START[Agent Runtime starts run<br/>iteration = 0]
+
+    PLAN[Model plans next step<br/>Command with tool schemas]
+    DECIDE{Needs a tool?}
+
+    AUTHZ{Policy engine<br/>is THIS user allowed<br/>THIS action?}
+    CONSEQ{Consequential<br/>action?}
+    APPROVE[Human approval queue<br/>run pauses — state persisted]
+
+    TOOL[Execute tool<br/>idempotency key applied]
+    OBS[Observe result<br/>append to context]
+
+    CAP{iteration < cap?<br/>typically 5-10}
+    ANSWER[Final answer]
+    ABORT[Abort — surface partial<br/>result and reason]
+
+    TRACE[(Trace store<br/>every plan, call, args, result)]
+
+    TRIG --> START
+    DEF --> START
+    START --> PLAN
+    PLAN --> DECIDE
+    DECIDE -- no --> ANSWER
+    DECIDE -- yes --> AUTHZ
+    AUTHZ -- denied --> OBS
+    AUTHZ -- allowed --> CONSEQ
+    CONSEQ -- yes --> APPROVE --> TOOL
+    CONSEQ -- no --> TOOL
+    TOOL --> OBS
+    OBS --> CAP
+    CAP -- yes --> PLAN
+    CAP -- no --> ABORT
+
+    PLAN -.-> TRACE
+    TOOL -.-> TRACE
+    OBS -.-> TRACE
+
+    subgraph Tools["Tool registry — typed schemas"]
+        T1[search_documents<br/>→ RAG layer]
+        T2[send_email]
+        T3[update_crm]
+        T4[create_ticket]
+    end
+
+    TOOL --- Tools

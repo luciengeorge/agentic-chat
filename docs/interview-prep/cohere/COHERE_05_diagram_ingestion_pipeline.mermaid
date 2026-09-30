@@ -1,0 +1,41 @@
+%% Document ingestion + indexing pipeline
+%% Key points: connectors do crawl-then-sync; ACLs captured at ingestion;
+%% ACL sync runs on a separate faster loop than content sync.
+
+flowchart TB
+    subgraph Sources["Customer source systems"]
+        SP[SharePoint]
+        GD[Google Drive]
+        CF[Confluence]
+        SL[Slack]
+    end
+
+    CONN[Connectors<br/>initial crawl → incremental sync<br/>change events, polling fallback]
+
+    Q{{Work queue<br/>per-tenant fairness<br/>incremental prioritised over backfill}}
+
+    subgraph Pipeline["Processing pipeline — idempotent per doc_id + content_hash"]
+        direction TB
+        P1[1 · Fetch bytes]
+        P2[2 · Dedupe by content hash]
+        P3[3 · Parse<br/>PDF/Office/HTML → text + structure<br/>OCR if scanned · Transcribe if audio]
+        P4[4 · Chunk<br/>structure-aware ~500 tokens, 15% overlap<br/>keep tables and code intact]
+        P5[5 · Capture ACL from source<br/>stamp allowed_principals + acl_version]
+        P6[6 · Embed — batched on GPU]
+        P7[7 · Upsert to indexes]
+        P1 --> P2 --> P3 --> P4 --> P5 --> P6 --> P7
+    end
+
+    VS[(Vector store)]
+    BM[(BM25 index)]
+    META[(Metadata DB<br/>doc status, versions)]
+    DLQ[(Dead letter queue<br/>parse failures, surfaced to customer)]
+
+    ACLSYNC[ACL sync loop<br/>runs more frequently than content sync<br/>permissions change fast and matter more]
+
+    Sources --> CONN --> Q --> Pipeline
+    P7 --> VS
+    P7 --> BM
+    P7 --> META
+    Pipeline -.failures.-> DLQ
+    Sources --> ACLSYNC --> VS

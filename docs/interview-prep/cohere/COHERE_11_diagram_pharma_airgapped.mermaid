@@ -1,0 +1,70 @@
+%% Pharma air-gapped enterprise assistant
+%% Everything inside the perimeter. No egress, ever.
+%% Note: splitter (size skew), citation validator (regulatory), local-only observability.
+
+flowchart TB
+    subgraph AIRGAP["AIR-GAPPED CUSTOMER ENVIRONMENT — no egress"]
+
+        USER[Scientist / regulatory staff]
+        GW[Gateway — Envoy or Kong<br/>TLS · authn · per-user rate limit]
+        ID[(Identity service<br/>syncs from their AD<br/>→ principal set)]
+        ORCH[Orchestrator]
+
+        subgraph RET["Retrieval service"]
+            direction TB
+            RW[0 · query rewrite / expansion]
+            S1[1 · HIGH RECALL<br/>dense ANN ∥ BM25 → RRF<br/>cheap pre-filters only]
+            ACL[2 · ACL FILTER<br/>intersect principal set<br/>over-fetch 600 → ~150]
+            S2[3 · HIGH PRECISION<br/>cross-encoder rerank → top 8]
+            RW --> S1 --> ACL --> S2
+        end
+
+        VS[(Vector store — Qdrant/Milvus<br/>512 dims · int8 · ~410 GB)]
+        BM[(BM25 index)]
+
+        PROMPT[Prompt assembly<br/>chunks + doc_id + page_no<br/>+ grounding instructions]
+        GEN[Generation — Command]
+        CITE{{CITATION VALIDATOR<br/>do cited IDs exist?<br/>were they in the context?}}
+        OUT[Stream answer + verified citations]
+
+        USER --> GW
+        GW <--> ID
+        GW --> ORCH --> RW
+        S1 <--> VS
+        S1 <--> BM
+        S2 --> PROMPT --> GEN --> CITE --> OUT
+
+        subgraph ING["Ingestion — async"]
+            direction TB
+            SRC[(Their DMS · file shares · lab systems)]
+            CONN[Connectors — crawl then incremental]
+            SPLIT[SPLITTER — the size-skew fix<br/>10,000pp submission → 100 × 100pp sub-jobs<br/>parallel · checkpointed]
+            Q{{Work queue — incremental &gt; backfill}}
+            PARSE[PARSE<br/>native PDF → text layer, ms<br/>scanned print → OCR ~3s/page<br/>handwritten → OCR + confidence<br/>low confidence → human review<br/>TABLES kept intact]
+            CHUNK[CHUNK structure-aware<br/>stamp ACL · acl_version<br/>doc_id · page_no<br/>valid_from / valid_to]
+            EMB[EMBED batched on GPU]
+            SRC --> CONN --> SPLIT --> Q --> PARSE --> CHUNK --> EMB
+        end
+
+        EMB --> VS
+        EMB --> BM
+
+        subgraph SERVE["Model serving — their GPUs"]
+            M1[Embed · Rerank · Command<br/>4-bit · 2× H100<br/>separate pools:<br/>bulk ingestion vs interactive]
+        end
+
+        subgraph STORE["Supporting stores"]
+            PG[(Postgres — metadata<br/>versions · job state)]
+            MINIO[(MinIO — raw docs<br/>NOT S3)]
+            OBS[(Prometheus + Grafana<br/>LOCAL ONLY — no egress)]
+            AUDIT[(Audit log — append-only<br/>21 CFR Part 11)]
+        end
+
+        S1 -.-> M1
+        S2 -.-> M1
+        GEN -.-> M1
+        EMB -.-> M1
+        ACL -.-> AUDIT
+        CHUNK -.-> PG
+        PARSE -.-> MINIO
+    end

@@ -1,0 +1,38 @@
+%% High-level architecture for simplified Spotify (~1M MAU global)
+%% Two parallel paths from clients: CDN for audio, API Gateway for JSON.
+%% Keep this version simple. Use it to memorize the shape.
+
+flowchart TB
+    Clients[Clients<br/>mobile, web, desktop, publishers]
+
+    CDN[CDN]
+    API[API Gateway]
+
+    Services[Services<br/>Catalog · Playback · Search · Upload]
+
+    PG[(Postgres)]
+    Redis[(Redis)]
+    OS[(OpenSearch)]
+    S3[(S3)]
+
+    Queue{{Queue}}
+    Workers[Workers<br/>transcode · fingerprint · indexer]
+
+    Clients -- audio --> CDN
+    Clients -- API calls --> API
+
+    CDN --> S3
+
+    API --> Services
+
+    Services --> PG
+    Services --> Redis
+    Services --> OS
+    Services --> S3
+
+    Services --> Queue
+    S3 --> Queue
+    Queue --> Workers
+    Workers --> S3
+    Workers --> PG
+    Workers --> OS
