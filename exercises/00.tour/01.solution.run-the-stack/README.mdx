@@ -1,0 +1,38 @@
+---
+title: Run the stack
+type: guided
+---
+
+# Run the stack
+
+👨‍💼 Kestrel Pay's assistant is about a dozen services working together. Before changing any of them, get them all running on your machine.
+
+## Terms
+
+- **Docker Compose** runs several containers from one file, `infra/compose.yaml`. A **container** is a program packaged with everything it needs to run.
+- A **profile** is a named group of Compose services. `infra` holds the databases, Temporal, Keycloak, Envoy and Grafana. `apps` holds our Python services.
+- **Keycloak** stands in for a customer's login system. It holds the users and hands out tokens.
+- **Envoy** is the gateway: every api request passes through it, and it checks the token first.
+- A **BFF** (backend for frontend) is the web app's own server. It signs you in and keeps your tokens, so the browser only holds a cookie.
+
+## Do this
+
+1. 🐨 Start the containers and wait until they're healthy:
+   ```sh
+   uv run ex up
+   ```
+2. 🐨 In two more terminals, start the web app and this workshop app:
+   ```sh
+   pnpm --filter web dev        # http://localhost:3000
+   pnpm --filter workshop dev   # http://localhost:3100
+   ```
+3. 🐨 Open http://localhost:3000, sign in as `smoke.kestrel` with password `smoke-password`, and check that the page shows the tenant `kestrel`.
+4. 🐨 Run the end-to-end check:
+   ```sh
+   uv run ex smoke
+   ```
+   Every line should say `ok`. Each line is one check, and a failure names the service to look at.
+
+🦉 `ex smoke` signs in the same way you just did, then sends a row through the outbox and waits for a worker to answer. If that works, every service on the path is up.
+
+📜 [Docker Compose profiles](https://docs.docker.com/compose/how-tos/profiles/)

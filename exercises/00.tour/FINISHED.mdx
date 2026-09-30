@@ -1,0 +1,15 @@
+---
+title: Tour, done
+---
+
+# Tour, done
+
+You started the stack, signed in through the web app, and read a trace.
+
+What to notice:
+
+- The browser never saw a token. It holds a session cookie, and the web app's server keeps the tokens.
+- Envoy checked the token before the api saw the request. The api trusts Envoy for that.
+- The hello workflow ran in a worker, not in the api. Long work always leaves the request.
+
+Next up, section 01: you write the client that talks to the model.

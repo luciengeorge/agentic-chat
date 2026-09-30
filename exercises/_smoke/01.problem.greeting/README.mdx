@@ -1,0 +1,12 @@
+---
+title: Greeting
+type: graded
+slots:
+  ac_workers.hello.greeting: greeting.py
+---
+
+# Greeting
+
+The hello workflow greets whoever the outbox row names. Its one activity calls `format_greeting`, and this step swaps that function for your copy in `playground/greeting.py`.
+
+Make `format_greeting("smoke")` return `"hello smoke"`, then run `ex test _smoke.1`.
