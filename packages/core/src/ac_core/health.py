@@ -8,6 +8,8 @@ import uvicorn
 from fastapi import APIRouter, FastAPI, Response, status
 from pydantic import BaseModel
 
+from ac_core.tracing import FASTAPI_TELEMETRY
+
 
 class Health(BaseModel):
     status: Literal["ok", "loading"]
@@ -29,7 +31,7 @@ def health_router(service: str, ready: Callable[[], bool] = lambda: True) -> API
 
 
 def health_app(service: str) -> FastAPI:
-    app = FastAPI(title=service, openapi_url=None)
+    app = FastAPI(title=service, openapi_url=None, telemetry=FASTAPI_TELEMETRY)
     app.include_router(health_router(service))
     return app
 

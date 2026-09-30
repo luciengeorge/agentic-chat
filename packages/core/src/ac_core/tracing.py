@@ -1,3 +1,7 @@
+from collections.abc import MutableMapping
+from typing import Any
+
+from fastapi.telemetry import TelemetryConfig
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
@@ -15,3 +19,12 @@ def configure_tracing(service: str, settings: Settings) -> TracerProvider:
     )
     trace.set_tracer_provider(provider)
     return provider
+
+
+def _is_health_check(scope: MutableMapping[str, Any]) -> bool:
+    return scope.get("path") == "/health"
+
+
+# FastAPI's native telemetry records on the global providers configure_tracing sets. Its own
+# OTLP auto-export would add a second, HTTP exporter aimed at our gRPC endpoint.
+FASTAPI_TELEMETRY: TelemetryConfig = {"auto_configure": False, "exclude": _is_health_check}

@@ -6,15 +6,17 @@ import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
+from http.cookiejar import Cookie, DefaultCookiePolicy
 from pathlib import Path
 from typing import cast
+from urllib.request import Request
 
 import httpx
 
 from ac_ex import services
 
+# Compose services only: Postgres runs on the host, and the hello check exercises it.
 EXPECTED_SERVICES = (
-    "postgres",
     "redis",
     "minio",
     "opensearch",
@@ -113,6 +115,21 @@ async def check_services(
 # 2. Login through the BFF
 
 
+class LocalhostCookiePolicy(DefaultCookiePolicy):
+    """Sends `Secure` cookies to http://localhost, as browsers do (it's a secure context).
+
+    Keycloak marks its login-session cookies `Secure; SameSite=None`, and the stdlib policy
+    only sends those over https, so the credentials POST would arrive without them. The flag
+    is cleared as the cookie is stored because httpx copies the cookies into a jar with the
+    default policy for every request.
+    """
+
+    def set_ok(self, cookie: Cookie, request: Request) -> bool:
+        if request.host.partition(":")[0] == "localhost":
+            cookie.secure = False
+        return super().set_ok(cookie, request)
+
+
 class LoginFormParser(HTMLParser):
     """Finds Keycloak's login form (`#kc-form-login`) and its action URL."""
 
@@ -151,6 +168,12 @@ async def check_login(client: httpx.AsyncClient, endpoints: Endpoints) -> str | 
     if tenant != "kestrel":
         raise SmokeError(f"/api/me tenant is {tenant!r}, expected 'kestrel'")
     return f"signed in as {SMOKE_USER}"
+
+
+def http_client(transport: httpx.AsyncBaseTransport | None = None) -> httpx.AsyncClient:
+    client = httpx.AsyncClient(transport=transport, follow_redirects=True, timeout=10.0)
+    client.cookies.jar.set_policy(LocalhostCookiePolicy())
+    return client
 
 
 # 3. Envoy
@@ -274,7 +297,7 @@ class Smoke:
     fake_model: Check = check_fake_model
 
     def client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(transport=self.transport, follow_redirects=True, timeout=10.0)
+        return http_client(self.transport)
 
     async def run(self) -> list[CheckResult]:
         async with self.client() as shared, self.client() as login_client:

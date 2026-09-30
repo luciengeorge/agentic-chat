@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from ac_core.health import health_router
+from ac_core.tracing import FASTAPI_TELEMETRY
 from ac_reranker.scorer import Scorer
 
 SERVICE = "reranker"
@@ -59,7 +60,7 @@ def create_app(load_scorer: Callable[[], Scorer]) -> FastAPI:
         yield
         task.cancel()
 
-    app = FastAPI(title="reranker", lifespan=lifespan)
+    app = FastAPI(title="reranker", lifespan=lifespan, telemetry=FASTAPI_TELEMETRY)
     app.include_router(health_router(SERVICE, ready=lambda: scorer is not None))
 
     @app.post(

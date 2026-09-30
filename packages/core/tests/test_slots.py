@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -287,3 +288,33 @@ def test_install_with_an_unknown_step_fails(repo: Path) -> None:
     result = run_python(INSTALL, cwd=repo, env={"AC_ACTIVE_STEP": "99.1"})
     assert result.returncode != 0
     assert "no problem directory for step 99.1" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("env", "expected"),
+    [({}, "None"), ({"AC_ACTIVE_STEP": "_t.1"}, None)],
+)
+def test_install_outside_a_checkout(
+    tmp_path: Path, env: dict[str, str], expected: str | None
+) -> None:
+    """A prod image has the installed package but no repo around it."""
+    site = tmp_path / "site"
+    shutil.copytree(Path(slots.__file__).parent, site / "ac_core")
+    code = """
+        from ac_core.slots import install
+        print(install().step)
+    """
+    result = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(code)],
+        cwd=tmp_path,
+        env={"PATH": "/usr/bin:/bin", "PYTHONPATH": str(site), **env},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if expected is None:
+        assert result.returncode != 0
+        assert "can't find the repo root" in result.stderr
+    else:
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == expected
