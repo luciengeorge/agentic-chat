@@ -1,0 +1,234 @@
+name: agentic-chat
+
+# App containers talk to the infra over the Compose network, so every address
+# from ac_core.settings is overridden with a service name. Postgres is not in
+# Compose: it runs on the host (brew postgresql@18 + pgvector).
+#
+# Published ports bind to 127.0.0.1 only: Redis holds the BFF's tokens and none
+# of these services authenticates. The api publishes nothing: it trusts the
+# x-jwt-payload header, so it must be reachable through Envoy alone.
+x-app-env: &app-env
+  AC_ENV: dev
+  AC_DATABASE_URL: postgresql+psycopg://ac:ac@host.docker.internal:5432/ac
+  AC_DATABASE_URL_POOLED: postgresql+psycopg://ac:ac@host.docker.internal:5432/ac
+  AC_REDIS_URL: redis://redis:6379/0
+  AC_TEMPORAL_ADDRESS: temporal:7233
+  AC_OPENSEARCH_URL: http://opensearch:9200
+  AC_S3_ENDPOINT: http://minio:9000
+  AC_RERANKER_URL: http://reranker:8200
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://grafana:4317
+
+x-app: &app
+  profiles: [apps]
+  extra_hosts: ["host.docker.internal:host-gateway"]
+  volumes:
+    - ..:/repo
+    - uv-cache:/home/app/.cache/uv
+  restart: unless-stopped
+
+x-infra-ready: &infra-ready
+  redis: { condition: service_healthy, required: false }
+  temporal: { condition: service_healthy, required: false }
+
+services:
+  redis:
+    image: valkey/valkey:9.1.2-alpine3.24
+    profiles: [infra]
+    command: ["valkey-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    profiles: [infra]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  opensearch:
+    image: opensearchproject/opensearch:3.9.0
+    profiles: [infra]
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    ports: ["127.0.0.1:9200:9200"]
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  temporal:
+    image: temporalio/temporal:1.9.1
+    profiles: [infra]
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/home/temporal/temporal.db"]
+    ports: ["127.0.0.1:7233:7233", "127.0.0.1:8233:8233"]
+    volumes:
+      - temporal-data:/home/temporal
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # No volume: every recreate re-imports the realms from fixtures/directory.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    profiles: [infra]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:8081
+      KC_HEALTH_ENABLED: "true"
+    ports: ["127.0.0.1:8081:8080"]
+    volumes:
+      - ../fixtures/directory:/opt/keycloak/data/import:ro
+    healthcheck:
+      # The image ships no HTTP client; this is the check Keycloak's docs give.
+      test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep -q 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  ratelimit:
+    image: envoyproxy/ratelimit:63c7e9cc
+    profiles: [infra]
+    command: ["/bin/ratelimit"]
+    environment:
+      LOG_LEVEL: info
+      USE_STATSD: "false"
+      REDIS_SOCKET_TYPE: tcp
+      REDIS_URL: redis:6379
+      RUNTIME_ROOT: /data
+      RUNTIME_SUBDIRECTORY: ratelimit
+      RUNTIME_WATCH_ROOT: "false"
+    volumes:
+      - ./envoy/ratelimit:/data/ratelimit/config:ro
+    depends_on:
+      redis: { condition: service_healthy }
+    # Distroless image with no shell or HTTP client, so no healthcheck. Envoy
+    # fails open (failure_mode_deny is false) while it is down.
+
+  envoy:
+    image: envoyproxy/envoy:v1.39.1
+    profiles: [infra]
+    command: ["envoy", "-c", "/etc/envoy/envoy.yaml"]
+    ports: ["127.0.0.1:8080:8080", "127.0.0.1:9901:9901"]
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    depends_on:
+      # Keycloak keeps no volume, so a recreate rotates its signing keys; restart
+      # Envoy with it rather than wait out the cached JWKS.
+      keycloak: { condition: service_healthy, restart: true }
+      ratelimit: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "bash", "-c", "{ printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&0; grep -q LIVE; } 0<>/dev/tcp/localhost/9901"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  grafana:
+    image: grafana/otel-lgtm:0.34.0
+    profiles: [infra]
+    ports: ["127.0.0.1:3001:3000", "127.0.0.1:4317:4317", "127.0.0.1:4318:4318"]
+    volumes:
+      - grafana-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  api:
+    <<: *app
+    build: { context: .., dockerfile: apps/api/Dockerfile, target: dev }
+    environment: *app-env
+    depends_on: *infra-ready
+    healthcheck: &health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  workers:
+    <<: *app
+    build: { context: .., dockerfile: apps/workers/Dockerfile, target: dev }
+    environment: *app-env
+    depends_on: *infra-ready
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8300/health')"]
+
+  relay:
+    <<: *app
+    build: { context: .., dockerfile: apps/relay/Dockerfile, target: dev }
+    command: ["/repo/infra/python/dev-run.sh", "python", "-m", "ac_db.migrate"]
+    environment:
+      <<: *app-env
+      AC_RELAY_PARTITION: "0"
+      AC_RELAY_PARTITIONS: "1"
+    depends_on: *infra-ready
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8301/health')"]
+
+  reranker:
+    <<: *app
+    build: { context: .., dockerfile: apps/reranker/Dockerfile, target: dev }
+    environment:
+      <<: *app-env
+      HF_HOME: /home/app/.cache/huggingface
+    ports: ["127.0.0.1:8200:8200"]
+    volumes:
+      - ..:/repo
+      - uv-cache:/home/app/.cache/uv
+      - reranker-models:/home/app/.cache/huggingface
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8200/health')"]
+      # The first start downloads the model.
+      start_period: 300s
+
+  fake-workspace:
+    <<: *app
+    build: { context: .., dockerfile: apps/fake_workspace/Dockerfile, target: dev }
+    environment: *app-env
+    ports: ["127.0.0.1:8100:8100"]
+    depends_on: *infra-ready
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+
+volumes:
+  redis-data:
+  minio-data:
+  opensearch-data:
+  temporal-data:
+  grafana-data:
+  uv-cache:
+  reranker-models:
