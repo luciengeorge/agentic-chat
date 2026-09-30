@@ -153,12 +153,24 @@ def installed() -> SlotFinder | None:
 
 
 def install(root: Path | None = None, environ: Mapping[str, str] | None = None) -> Resolution:
-    """Put the slot finder first on sys.meta_path. Later calls return the first resolution."""
+    """Put the slot finder first on sys.meta_path. Later calls return the first resolution.
+
+    Outside a checkout (a prod image ships no exercises) nothing is slotted, unless
+    AC_ACTIVE_STEP asks for a step, which is an error.
+    """
     if (finder := installed()) is not None:
         return finder.resolution
-    resolution = resolve(
-        root or find_repo_root(),
-        os.environ if environ is None else environ,
+    environ = os.environ if environ is None else environ
+    if root is None:
+        try:
+            root = find_repo_root()
+        except SlotError:
+            if environ.get("AC_ACTIVE_STEP"):
+                raise
+    resolution = (
+        resolve(root, environ)
+        if root is not None
+        else Resolution(step=None, slot_root=Path(DEFAULT_SLOT_ROOT), slots={})
     )
     already = sorted(module for module in resolution.slots if module in sys.modules)
     if already:

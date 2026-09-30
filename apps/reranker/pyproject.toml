@@ -7,12 +7,20 @@ dependencies = [
     "ac-core",
     "fastapi>=0.142.2",
     "sentence-transformers>=6.1.0",
+    "torch>=2.14.0",
     "uvicorn[standard]>=0.54.0",
 ]
 
 [build-system]
-requires = ["uv_build>=0.11,<0.12"]
+requires = ["uv_build>=0.11,<0.13"]
 build-backend = "uv_build"
 
 [tool.uv.sources]
 ac-core = { workspace = true }
+# PyPI's Linux torch wheels pull in CUDA; containers and CI only need the CPU build.
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

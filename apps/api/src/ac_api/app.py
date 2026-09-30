@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, ValidationError
 
 from ac_core.health import health_router
+from ac_core.tracing import FASTAPI_TELEMETRY
 
 SERVICE = "api"
 
@@ -36,7 +37,7 @@ def jwt_claims(x_jwt_payload: Annotated[str | None, Header()] = None) -> Claims:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="agentic-chat api")
+    app = FastAPI(title="agentic-chat api", telemetry=FASTAPI_TELEMETRY)
     app.include_router(health_router(SERVICE))
 
     @app.get("/v1/me")

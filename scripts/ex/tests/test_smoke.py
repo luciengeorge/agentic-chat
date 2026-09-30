@@ -34,8 +34,12 @@ def stack(
                 assert url.params["tenant"] == "kestrel"
                 return httpx.Response(302, headers={"location": f"{KC}/realms/kestrel/auth"})
             case ("GET", _, "/realms/kestrel/auth"):
-                return httpx.Response(200, text=form)
+                # Keycloak's own login-session cookie, which it needs back on the POST.
+                cookie = "AUTH_SESSION_ID=k1; Path=/realms/kestrel/; Secure; SameSite=None"
+                return httpx.Response(200, text=form, headers={"set-cookie": cookie})
             case ("POST", _, "/realms/kestrel/login-actions/authenticate"):
+                if "AUTH_SESSION_ID=k1" not in request.headers.get("cookie", ""):
+                    return httpx.Response(400, text="Cookie not found")
                 assert url.params["execution"] == "b"
                 body = request.content.decode()
                 assert "username=smoke.kestrel" in body
@@ -65,7 +69,7 @@ def stack(
 
 
 def client(transport: httpx.AsyncBaseTransport) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=transport, follow_redirects=True)
+    return smoke.http_client(transport)
 
 
 def healthy() -> list[services.ServiceStatus]:
