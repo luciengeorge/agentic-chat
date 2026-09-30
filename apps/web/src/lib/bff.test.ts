@@ -184,12 +184,32 @@ describe("bff", () => {
       expect([...kv.entries.keys()].some((k) => k.startsWith("bff:session:"))).toBe(false);
     });
 
-    it("ignores off-site returnTo values", async () => {
-      const login = await bff.login(request("/auth/login?returnTo=//evil.example"));
+    async function landsOn(returnTo: string) {
+      const login = await bff.login(request(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`));
       const response = await bff.callback(
         request("/auth/callback?code=abc", { ac_login: setCookies(login).ac_login!.value }),
       );
-      expect(response.headers.get("location")).toBe("/");
+      return response.headers.get("location");
+    }
+
+    it.each([
+      "//evil.example",
+      "/\\evil.example",
+      "\\\\evil.example",
+      "/\t/evil.example",
+      "/\n/evil.example",
+      "/..//evil.example",
+      "/.//evil.example",
+      "https://evil.example/",
+      "http://localhost:3001/",
+      "javascript:alert(1)",
+    ])("ignores the off-site returnTo %j", async (returnTo) => {
+      expect(await landsOn(returnTo)).toBe("/");
+    });
+
+    it("keeps a same-origin returnTo's path, query and fragment", async () => {
+      expect(await landsOn("/chat?c=1#m")).toBe("/chat?c=1#m");
+      expect(await landsOn("http://localhost:3000/chat")).toBe("/chat");
     });
   });
 
@@ -229,6 +249,55 @@ describe("bff", () => {
       expect(new Headers(upstream.mock.calls[0]![1]?.headers).get("authorization")).toBe("Bearer access-2");
       const stored = JSON.parse(kv.entries.get(`bff:session:${sessionId}`)!.value);
       expect(stored).toMatchObject({ accessToken: "access-2", refreshToken: "refresh-2" });
+    });
+
+    it("keeps the session's remaining TTL when it refreshes", async () => {
+      oidc.exchangeCode.mockResolvedValueOnce(tokens({ expiresAt: Date.now() + 5_000 }));
+      const sessionId = await signIn();
+      kv.entries.get(`bff:session:${sessionId}`)!.ex = 60;
+
+      await bff.me(request("/api/me", { ac_session: sessionId }));
+
+      const entry = kv.entries.get(`bff:session:${sessionId}`)!;
+      expect(JSON.parse(entry.value)).toMatchObject({ accessToken: "access-2" });
+      expect(entry.ex).toBe(60);
+    });
+
+    it("lets a logout during a refresh win", async () => {
+      oidc.exchangeCode.mockResolvedValueOnce(tokens({ expiresAt: Date.now() + 5_000 }));
+      const sessionId = await signIn();
+      let finishRefresh!: () => void;
+      oidc.refresh.mockImplementationOnce(
+        () => new Promise((resolve) => (finishRefresh = () => resolve(tokens({ accessToken: "access-2" })))),
+      );
+
+      const me = bff.me(request("/api/me", { ac_session: sessionId }));
+      await vi.waitFor(() => expect(oidc.refresh).toHaveBeenCalled());
+      await bff.logout(request("/auth/logout", { ac_session: sessionId }, { method: "POST" }));
+      finishRefresh();
+
+      expect((await me).status).toBe(401);
+      expect(kv.entries.has(`bff:session:${sessionId}`)).toBe(false);
+      expect(upstream).not.toHaveBeenCalled();
+    });
+
+    it("uses the session another request refreshed first", async () => {
+      oidc.exchangeCode.mockResolvedValueOnce(tokens({ expiresAt: Date.now() + 5_000 }));
+      const sessionId = await signIn();
+      let finishRefresh!: () => void;
+      oidc.refresh.mockImplementationOnce(
+        () => new Promise((resolve) => (finishRefresh = () => resolve(tokens({ accessToken: "access-slow" })))),
+      );
+
+      const slow = bff.me(request("/api/me", { ac_session: sessionId }));
+      await vi.waitFor(() => expect(oidc.refresh).toHaveBeenCalledTimes(1));
+      await bff.me(request("/api/me", { ac_session: sessionId }));
+      finishRefresh();
+      await slow;
+
+      const stored = JSON.parse(kv.entries.get(`bff:session:${sessionId}`)!.value);
+      expect(stored.accessToken).toBe("access-2");
+      expect(new Headers(upstream.mock.calls[1]![1]?.headers).get("authorization")).toBe("Bearer access-2");
     });
 
     it("signs the user out when the refresh fails", async () => {

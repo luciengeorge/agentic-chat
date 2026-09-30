@@ -31,11 +31,13 @@ class Settings(BaseSettings):
         default="http://localhost:4317", validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT"
     )
 
-    active_step: str | None = None
-    slot_root: str = "playground"
+    # One realm per tenant; its issuer is `<keycloak_url>/realms/<tenant>` (KC_HOSTNAME fixes it).
+    keycloak_url: str = "http://localhost:8081"
+    tenants: tuple[str, ...] = ("kestrel", "harbour")
 
     relay_partition: int = Field(default=0, ge=0)
     relay_partitions: int = Field(default=1, ge=1)
+    relay_max_attempts: int = Field(default=5, ge=1)
 
     @model_validator(mode="after")
     def _check(self) -> Self:
@@ -44,6 +46,11 @@ class Settings(BaseSettings):
         if self.relay_partition >= self.relay_partitions:
             raise ValueError("AC_RELAY_PARTITION must be less than AC_RELAY_PARTITIONS")
         return self
+
+    @property
+    def issuers(self) -> dict[str, str]:
+        """Trusted token issuer -> the tenant it speaks for."""
+        return {f"{self.keycloak_url.rstrip('/')}/realms/{t}": t for t in self.tenants}
 
 
 @lru_cache

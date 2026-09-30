@@ -142,6 +142,15 @@ describe("oidc client", () => {
     expect(tokenRequest(fetch).body.get("refresh_token")).toBe("refresh-1");
   });
 
+  it("allows plain-http Keycloak only in dev", async () => {
+    for (const AC_ENV of ["test", "prod"] as const) {
+      const oidc = createOidcClient({ ...env, AC_ENV }, { fetch: fakeKeycloak("n") });
+      await expect(oidc.authorizationUrl("kestrel", { state: "s", nonce: "n", codeChallenge: "c" })).rejects.toThrow(
+        /HTTPS/i,
+      );
+    }
+  });
+
   it("discovers each realm once", async () => {
     const fetch = fakeKeycloak("n");
     const oidc = createOidcClient(env, { fetch: fetch });

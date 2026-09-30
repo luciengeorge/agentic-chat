@@ -52,7 +52,7 @@ export function createOidcClient(env: Env, options: { fetch?: client.CustomFetch
         undefined,
         client.ClientSecretPost(env.AC_WEB_CLIENT_SECRET),
         {
-          execute: issuer.protocol === "http:" ? [client.allowInsecureRequests] : [],
+          execute: env.AC_ENV === "dev" ? [client.allowInsecureRequests] : [],
           ...(options.fetch && { [client.customFetch]: options.fetch }),
         },
       );

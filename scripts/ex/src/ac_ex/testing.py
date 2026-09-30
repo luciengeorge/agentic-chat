@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
 
-from ac_ex.catalog import Step
+from ac_ex.catalog import TEST_FILES, Step
 from ac_ex.errors import ExError
 
 Target = Literal["playground", "problem", "solution"]
@@ -41,17 +41,21 @@ def target_dir(root: Path, step: Step, target: Target) -> Path:
 
 
 def run(root: Path, step: Step, target: Target, *, capture: bool) -> StepRun:
-    """Run a step's tests with its slots pointed at `target`, in a fresh interpreter."""
-    directory = target_dir(root, step, target)
-    if not any(directory.glob("test_*.py")):
-        raise ExError(f"no test_*.py in {directory.relative_to(root)}")
+    """Run a step's tests with its slots pointed at `target`, in a fresh interpreter.
+
+    The tests always come from the problem dir, which the learner doesn't edit; only the
+    code under test (the slot root) changes with the target.
+    """
+    tests = step.problem_dir
+    if not any(tests.glob(TEST_FILES)):
+        raise ExError(f"no {TEST_FILES} in {tests.relative_to(root)}")
     with tempfile.TemporaryDirectory() as tmp:
         report = Path(tmp) / "report.json"
         env = {
             **os.environ,
             "AC_ENV": "test",
             "AC_ACTIVE_STEP": step.id,
-            "AC_SLOT_ROOT": str(directory),
+            "AC_SLOT_ROOT": str(target_dir(root, step, target)),
             "AC_EX_REPORT": str(report),
             "PYTHONDONTWRITEBYTECODE": "1",
         }
@@ -59,7 +63,7 @@ def run(root: Path, step: Step, target: Target, *, capture: bool) -> StepRun:
             sys.executable,
             "-m",
             "pytest",
-            str(directory),
+            str(tests),
             "--rootdir",
             str(root),
             "-p",

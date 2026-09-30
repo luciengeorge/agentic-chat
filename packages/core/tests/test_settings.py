@@ -22,8 +22,10 @@ def test_defaults_target_the_host() -> None:
     assert s.temporal_address == "localhost:7233"
     assert s.model_provider == "fake"
     assert s.otel_exporter_otlp_endpoint == "http://localhost:4317"
-    assert s.slot_root == "playground"
-    assert s.active_step is None
+    assert s.issuers == {
+        "http://localhost:8081/realms/kestrel": "kestrel",
+        "http://localhost:8081/realms/harbour": "harbour",
+    }
 
 
 def test_reads_prefixed_and_standard_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:

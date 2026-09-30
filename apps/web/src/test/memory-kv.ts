@@ -12,5 +12,11 @@ export function memoryKv(): KeyValue & { entries: Map<string, { value: string; e
       return value;
     },
     del: async (key) => entries.delete(key),
+    setIfVersion: async (key, version, value) => {
+      const entry = entries.get(key);
+      if (!entry || JSON.parse(entry.value).version !== version) return false;
+      entry.value = value;
+      return true;
+    },
   };
 }

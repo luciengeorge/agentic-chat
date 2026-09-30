@@ -110,6 +110,7 @@ def up(
     def body() -> tuple[object, str, bool]:
         root = _root()
         profiles = tuple(profile or services.PROFILES)
+        services.preflight(root, profiles)
         services.compose(root, "up", "--detach", "--wait", profiles=profiles, capture=as_json)
         statuses = services.status(root)
         text = "\n".join(
@@ -181,42 +182,85 @@ class AfterSwitch:
         return {"restarted": self.restarted, "terminated": self.terminated, "skipped": self.skipped}
 
 
-def _after_switch(root: Path) -> AfterSwitch:
-    """Restart the slot services and end open runs, so nothing uses the old step's code."""
-    after = AfterSwitch()
+def _terminate_open_runs() -> list[str]:
+    from ac_core.settings import get_settings
+
+    settings = get_settings()
+    if settings.env != "dev":
+        raise services.TerminateSkippedError(f"AC_ENV is {settings.env}, not dev")
+    return asyncio.run(
+        services.terminate_open_workflows(
+            settings.temporal_address, settings.temporal_namespace, reason="ex switched steps"
+        )
+    )
+
+
+@dataclass
+class SlotSwitch:
+    """Swaps the slotted code with nothing running on it (PLAN.md, "Slots vs Temporal").
+
+    Stop the slot services, terminate the open runs (whose replay the new code would break),
+    swap the files, then start the services again. A failed termination aborts the switch
+    and starts the services on the old code.
+    """
+
+    running: Callable[[Path], list[str]] = services.running_slot_services
+    stop: Callable[[Path, list[str]], None] = services.stop_services
+    start: Callable[[Path, list[str]], None] = services.start_services
+    terminate: Callable[[], list[str]] = _terminate_open_runs
+
+    def run(self, root: Path, swap: Callable[[], list[str]]) -> tuple[list[str], AfterSwitch]:
+        after = AfterSwitch()
+        try:
+            running = self.running(root)
+        except ExError as exc:  # no Docker or no stack: nothing to restart
+            running = []
+            after.skipped.append(f"restart: {exc.message}")
+        if running:
+            self.stop(root, running)
+        try:
+            try:
+                after.terminated = self.terminate()
+            except services.TerminateSkippedError as exc:
+                after.skipped.append(f"terminate: {exc}")
+            except Exception as exc:
+                raise ExError(
+                    "couldn't terminate the open workflow runs, so the step wasn't switched",
+                    detail=f"{type(exc).__name__}: {exc}",
+                ) from exc
+            files = swap()
+        finally:
+            if running:
+                self.start(root, running)
+        after.restarted = running
+        return files, after
+
+
+SWITCH = SlotSwitch()
+
+
+def _refuse_to_discard(root: Path, step: Step, current: state.State) -> None:
+    if current.active_step in (None, step.id):
+        return
     try:
-        after.restarted = services.restart_slot_services(root)
-    except ExError as exc:
-        after.skipped.append(f"restart: {exc.message}")
-    try:
-        from ac_core.settings import get_settings
-
-        settings = get_settings()
-        if settings.env != "dev":
-            after.skipped.append(f"terminate: AC_ENV is {settings.env}, not dev")
-        else:
-            after.terminated = asyncio.run(
-                asyncio.wait_for(
-                    services.terminate_open_workflows(
-                        settings.temporal_address,
-                        settings.temporal_namespace,
-                        reason="ex start switched steps",
-                    ),
-                    timeout=5,
-                )
-            )
-    except Exception as exc:  # Temporal down is normal when the stack isn't running
-        after.skipped.append(f"terminate: Temporal unreachable ({type(exc).__name__})")
-    return after
+        active = catalog.find(root, current.active_step)
+    except ExError:  # the active step is gone from exercises/; nothing to compare against
+        return
+    if workspace.has_changes(root, active):
+        raise ExError(
+            f"playground/ has changes to {active.id} that `ex start {step.id}` would discard",
+            detail=f"`ex diff {active.id}` shows them; `ex start {step.id} --force` discards them",
+        )
 
 
-def _switch(step: Step, root: Path, *, force: bool) -> tuple[object, str, bool]:
+def _switch(step: Step, root: Path, *, restart: bool, force: bool) -> tuple[object, str, bool]:
     current = state.read(root)
-    if current.active_step == step.id and not force:
+    if current.active_step == step.id and not restart:
         text = f"{step.id} is already active; `ex reset {step.id}` starts it over"
         return {"step": step.id, "files": [], "already_active": True}, text, True
-    files = workspace.activate(root, step)
-    after = _after_switch(root)
+    if not force:
+        _refuse_to_discard(root, step, current)
+    files, after = SWITCH.run(root, lambda: workspace.activate(root, step))
     lines = [f"started {step.id} {step.title}", *(f"  playground/{f}" for f in files)]
     if after.restarted:
         lines.append(f"restarted {', '.join(after.restarted)}")
@@ -225,12 +269,18 @@ def _switch(step: Step, root: Path, *, force: bool) -> tuple[object, str, bool]:
 
 
 @app.command()
-def start(step_id: StepArg, as_json: JsonFlag = False) -> None:
+def start(
+    step_id: StepArg,
+    as_json: JsonFlag = False,
+    force: Annotated[
+        bool, typer.Option("--force", help="Discard playground changes to the active step.")
+    ] = False,
+) -> None:
     """Copy a step's problem files into playground/ and make it active."""
 
     def body() -> tuple[object, str, bool]:
         root = _root()
-        return _switch(catalog.find(root, step_id), root, force=False)
+        return _switch(catalog.find(root, step_id), root, restart=False, force=force)
 
     _run(as_json, body)
 
@@ -241,7 +291,7 @@ def reset(step_id: StepArg, as_json: JsonFlag = False) -> None:
 
     def body() -> tuple[object, str, bool]:
         root = _root()
-        return _switch(catalog.find(root, step_id), root, force=True)
+        return _switch(catalog.find(root, step_id), root, restart=True, force=True)
 
     _run(as_json, body)
 
@@ -294,8 +344,9 @@ def solution(step_id: StepArg, as_json: JsonFlag = False) -> None:
         root = _root()
         step = catalog.find(root, step_id)
         workspace.require_active(root, step)
-        files = workspace.fill_playground(root, step.solution_dir, step)
-        after = _after_switch(root)
+        files, after = SWITCH.run(
+            root, lambda: workspace.fill_playground(root, step.solution_dir, step)
+        )
         text = "\n".join([f"copied the {step.id} solution", *(f"  playground/{f}" for f in files)])
         return {"step": step.id, "files": files, **after.to_json()}, text, True
 

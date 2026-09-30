@@ -24,16 +24,32 @@ def require_active(root: Path, step: Step) -> None:
 
 
 def fill_playground(root: Path, source: Path, step: Step) -> list[str]:
-    """Replace playground/ with the step's files from `source`, flat."""
+    """Replace playground/ with the step's code files from `source`, flat. Tests aren't copied:
+    `ex test` runs them from the problem dir, so editing a copy can't change the grade."""
     target = playground(root)
     if target.exists():
         shutil.rmtree(target)
     target.mkdir(parents=True)
     copied: list[str] = []
-    for file in step.files(source):
+    for file in step.code_files(source):
         shutil.copy2(file, target / file.name)
         copied.append(file.name)
     return copied
+
+
+def _snapshot(files: list[Path]) -> dict[str, bytes]:
+    return {f.name: f.read_bytes() for f in files}
+
+
+def has_changes(root: Path, step: Step) -> bool:
+    """Whether playground/ holds work that matches neither the step's problem nor its solution."""
+    ours = playground(root)
+    if not ours.is_dir():
+        return False
+    current = _snapshot(step.files(ours))
+    return all(
+        current != _snapshot(step.code_files(d)) for d in (step.problem_dir, step.solution_dir)
+    )
 
 
 def activate(root: Path, step: Step) -> list[str]:
@@ -68,8 +84,8 @@ def diff(root: Path, step: Step) -> list[FileDiff]:
     """Playground against the solution, one entry per file in either."""
     ours = playground(root)
     names = sorted(
-        {f.name for f in step.files(step.solution_dir)}
-        | {f.name for f in (step.files(ours) if ours.is_dir() else [])}
+        {f.name for f in step.code_files(step.solution_dir)}
+        | {f.name for f in (step.code_files(ours) if ours.is_dir() else [])}
     )
     result: list[FileDiff] = []
     for name in names:

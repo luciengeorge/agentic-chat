@@ -11,6 +11,8 @@ export interface KeyValue {
   set(key: string, value: string, options: { EX: number }): Promise<unknown>;
   getDel(key: string): Promise<string | null>;
   del(key: string): Promise<unknown>;
+  /** Overwrites `key` only if it still exists and its JSON `version` is `version`, keeping its remaining TTL. */
+  setIfVersion(key: string, version: number, value: string): Promise<boolean>;
 }
 
 const TenantSchema = z.enum(TENANTS);
@@ -32,6 +34,8 @@ const SessionSchema = z.object({
   refreshToken: z.string().optional(),
   idToken: z.string().optional(),
   expiresAt: z.number(),
+  /** Bumped on every write, so a refresh that lost a race can't overwrite the winner (or revive a logout). */
+  version: z.number().int().nonnegative(),
 });
 export type Session = z.infer<typeof SessionSchema>;
 
@@ -59,16 +63,18 @@ export function createSessionStore(kv: KeyValue) {
     async takeLogin(id: string): Promise<PendingLogin | null> {
       return decode(PendingLoginSchema, await kv.getDel(loginKey(id)));
     },
-    async create(session: Session): Promise<string> {
+    async create(session: Omit<Session, "version">): Promise<string> {
       const id = newId();
-      await kv.set(sessionKey(id), JSON.stringify(session), { EX: SESSION_TTL_SECONDS });
+      await kv.set(sessionKey(id), JSON.stringify({ ...session, version: 0 }), { EX: SESSION_TTL_SECONDS });
       return id;
     },
     async get(id: string): Promise<Session | null> {
       return decode(SessionSchema, await kv.get(sessionKey(id)));
     },
-    async update(id: string, session: Session): Promise<void> {
-      await kv.set(sessionKey(id), JSON.stringify(session), { EX: SESSION_TTL_SECONDS });
+    /** Writes `session` over the version it was read at. False if the session has since changed or gone. */
+    async update(id: string, session: Session): Promise<boolean> {
+      const next = { ...session, version: session.version + 1 };
+      return kv.setIfVersion(sessionKey(id), session.version, JSON.stringify(next));
     },
     async destroy(id: string): Promise<void> {
       await kv.del(sessionKey(id));
