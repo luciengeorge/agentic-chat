@@ -200,8 +200,8 @@ class SlotSwitch:
     """Swaps the slotted code with nothing running on it (PLAN.md, "Slots vs Temporal").
 
     Stop the slot services, terminate the open runs (whose replay the new code would break),
-    swap the files, then start the services again. A failed termination aborts the switch
-    and starts the services on the old code.
+    swap the files, then start the services again. A failed stop or termination, or running
+    workers with Temporal unreachable, aborts the switch and starts the services on the old code.
     """
 
     running: Callable[[Path], list[str]] = services.running_slot_services
@@ -216,11 +216,21 @@ class SlotSwitch:
         except ExError as exc:  # no Docker or no stack: nothing to restart
             running = []
             after.skipped.append(f"restart: {exc.message}")
-        if running:
-            self.stop(root, running)
         try:
+            if running:
+                self.stop(root, running)
             try:
                 after.terminated = self.terminate()
+            except services.TemporalUnreachableError as exc:
+                # Workers without a reachable Temporal may still hold runs we can't see or end.
+                if "workers" in running:
+                    raise ExError(
+                        "the workers are running but Temporal is unreachable, so their open runs "
+                        "can't be terminated; start Temporal (`ex up`) or stop the workers, "
+                        "then switch again",
+                        detail=str(exc),
+                    ) from exc
+                after.skipped.append(f"terminate: {exc}")
             except services.TerminateSkippedError as exc:
                 after.skipped.append(f"terminate: {exc}")
             except Exception as exc:

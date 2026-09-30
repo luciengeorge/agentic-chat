@@ -11,7 +11,9 @@ workflow.
 
 Rows fail one at a time. A failed start counts an attempt and holds back the
 later rows for its key until it succeeds or runs out of attempts; then it gets
-`failed_at` and is never claimed again. An unknown kind fails at once.
+`failed_at` and is never claimed again. An unknown kind fails at once. Temporal
+being down or overloaded isn't the row's fault: that aborts the batch and rolls
+it back without counting anything, and the rows go out once Temporal is back.
 """
 
 import asyncio
@@ -26,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from temporalio.client import Client
 from temporalio.common import WorkflowIDConflictPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
+from temporalio.service import RPCError, RPCStatusCode
 
 from ac_core.temporal import DEFAULT_TASK_QUEUE
 from ac_db.models import Outbox, Tenant
@@ -58,6 +61,18 @@ class WorkflowStart:
 
 class UnknownKindError(ValueError):
     pass
+
+
+OUTAGE_STATUSES = frozenset(
+    {RPCStatusCode.UNAVAILABLE, RPCStatusCode.DEADLINE_EXCEEDED, RPCStatusCode.RESOURCE_EXHAUSTED}
+)
+
+
+def is_outage(error: Exception) -> bool:
+    """Temporal unreachable or overloaded: it says nothing about the row being published."""
+    if isinstance(error, RPCError):
+        return error.status in OUTAGE_STATUSES
+    return isinstance(error, (ConnectionError, TimeoutError))
 
 
 def workflow_start(row: OutboxRow) -> WorkflowStart:
@@ -152,12 +167,14 @@ async def relay_once(
     partitions: int,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
 ) -> int:
-    """Relay one batch. Returns how many rows it claimed (0 if another relay owns the partition)."""
+    """Relay one batch. Returns how many rows it published or recorded a failure for (0 if
+    another relay owns the partition). Raises, counting nothing, if Temporal is down."""
     async with engine.begin() as conn:
         if not await own_partition(conn, partition):
             return 0
         rows = await claim(conn, partition=partition, partitions=partitions)
         published: list[uuid.UUID] = []
+        failed = 0
         held_keys: set[str] = set()
         for row in rows:
             if row.partition_key in held_keys:
@@ -165,10 +182,13 @@ async def relay_once(
             try:
                 await publish(client, workflow_start(row))
             except Exception as error:
+                if is_outage(error):
+                    raise
                 final = isinstance(error, UnknownKindError) or row.attempts + 1 >= max_attempts
                 if not final:
                     held_keys.add(row.partition_key)
                 await record_failure(conn, row, error, final=final)
+                failed += 1
             else:
                 published.append(row.id)
         if published:
@@ -177,7 +197,7 @@ async def relay_once(
             )
     if published:
         log.info("outbox.published", count=len(published), partition=partition)
-    return len(rows)
+    return len(published) + failed
 
 
 async def run(
@@ -191,16 +211,20 @@ async def run(
 ) -> None:
     while not stop.is_set():
         try:
-            claimed = await relay_once(
+            progressed = await relay_once(
                 engine,
                 client,
                 partition=partition,
                 partitions=partitions,
                 max_attempts=max_attempts,
             )
-        except Exception:
-            log.exception("outbox.relay_failed", partition=partition)
-            claimed = 0
-        if claimed < BATCH_SIZE:
+        except Exception as error:
+            if is_outage(error):
+                log.warning("outbox.temporal_unavailable", partition=partition, error=str(error))
+            else:
+                log.exception("outbox.relay_failed", partition=partition)
+            progressed = 0
+        # Go straight on only after a full batch of progress; held-back rows don't count.
+        if progressed < BATCH_SIZE:
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(stop.wait(), POLL_INTERVAL_S)

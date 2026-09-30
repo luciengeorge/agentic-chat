@@ -8,22 +8,26 @@ import pytest
 from sqlalchemy import insert, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 from temporalio.client import Client, WorkflowExecutionStatus
+from temporalio.service import RPCError, RPCStatusCode
 from temporalio.testing import WorkflowEnvironment
 
 from ac_db.engine import create_direct_engine
 from ac_db.models import Outbox, Tenant
 from ac_relay.relay import (
+    BATCH_SIZE,
     OutboxRow,
     UnknownKindError,
     WorkflowStart,
     claim,
     publish,
     relay_once,
+    run,
     workflow_start,
 )
 from ac_workers.worker import create_worker
 
 ROW_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+DEFAULT_ATTEMPTS = 5
 
 
 def test_hello_row_starts_hello_workflow() -> None:
@@ -230,3 +234,62 @@ async def test_one_relay_at_a_time_per_partition(engine: AsyncEngine) -> None:
     assert await relay_a == 1
     assert await relay_once(engine, fake.client, partition=0, partitions=1) == 1
     assert fake.started == [f"kestrel:hello:{earlier}", f"kestrel:hello:{later}"]
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "outage",
+    [
+        RPCError("dns error", RPCStatusCode.UNAVAILABLE, b""),
+        RPCError("timed out", RPCStatusCode.DEADLINE_EXCEEDED, b""),
+        RPCError("busy", RPCStatusCode.RESOURCE_EXHAUSTED, b""),
+        ConnectionRefusedError("refused"),
+    ],
+    ids=["unavailable", "deadline", "exhausted", "refused"],
+)
+async def test_a_temporal_outage_costs_no_attempts(engine: AsyncEngine, outage: Exception) -> None:
+    row_id = await insert_hello(engine, "smoke", "conv-1")
+    fake = FakeClient(failing={f"kestrel:hello:{row_id}": outage})
+
+    for _ in range(DEFAULT_ATTEMPTS + 1):
+        with pytest.raises(type(outage)):
+            await relay_once(engine, fake.client, partition=0, partitions=1)
+    down = await outbox_row(engine, row_id)
+    assert (down["attempts"], down["last_error"], down["failed_at"]) == (0, None, None)
+
+    fake.failing.clear()  # Temporal is back
+    assert await relay_once(engine, fake.client, partition=0, partitions=1) == 1
+    up = await outbox_row(engine, row_id)
+    assert up["published_at"] is not None
+    assert up["attempts"] == 0
+
+
+@pytest.mark.postgres
+async def test_a_full_batch_without_progress_waits_for_the_next_poll(engine: AsyncEngine) -> None:
+    """A retrying row holds back the rest of a full batch; the relay mustn't spin on it."""
+    stuck = await insert_hello(engine, "stuck", "conv-1")
+    async with engine.begin() as conn:
+        tenant_id = (
+            await conn.execute(select(Tenant.id).where(Tenant.slug == "kestrel"))
+        ).scalar_one()
+        await conn.execute(
+            insert(Outbox),
+            [
+                {
+                    "tenant_id": tenant_id,
+                    "kind": "hello",
+                    "payload": {"name": "n"},
+                    "partition_key": "conv-1",
+                }
+                for _ in range(BATCH_SIZE)
+            ],
+        )
+    fake = FakeClient(failing={f"kestrel:hello:{stuck}": RuntimeError("hiccup")})
+    stop = asyncio.Event()
+
+    relay = asyncio.create_task(run(engine, fake.client, stop, partition=0, partitions=1))
+    await asyncio.sleep(0.3)  # under one poll interval
+    stop.set()
+    await relay
+
+    assert (await outbox_row(engine, stuck))["attempts"] == 1
