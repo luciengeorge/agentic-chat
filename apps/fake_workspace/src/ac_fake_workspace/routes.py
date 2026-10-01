@@ -51,10 +51,14 @@ async def runtime(request: Request) -> Runtime:
 RuntimeDep = Annotated[Runtime, Depends(runtime)]
 
 
+def not_ready() -> GraphError:
+    return GraphError(503, "serviceNotReady", "No corpus is loaded yet.")
+
+
 async def authorize(rt: RuntimeDep, authorization: Annotated[str | None, Header()] = None) -> str:
     """The site the bearer token opens."""
     if not rt.workspace.loaded:
-        raise GraphError(503, "serviceNotReady", "No corpus is loaded yet.")
+        raise not_ready()
     scheme, _, token = (authorization or "").partition(" ")
     site = rt.workspace.site_for_token(token) if scheme.lower() == "bearer" else None
     if site is None:
@@ -69,7 +73,11 @@ async def site_access(
     if token_site != site:
         raise GraphError(403, "accessDenied", "The token can't open this site.")
     await rt.faults.apply(site, request.url.path)
-    return rt.workspace.sites[site]
+    # An injected wait can outlast a reset, and a failed reset leaves no corpus.
+    drive = rt.workspace.sites.get(site)
+    if drive is None:
+        raise not_ready()
+    return drive
 
 
 async def subscriber(

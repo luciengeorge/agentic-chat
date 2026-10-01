@@ -35,6 +35,7 @@ class ServiceStatus:
     name: str
     state: str
     health: str
+    id: str = ""  # the container's
 
     @property
     def healthy(self) -> bool:
@@ -77,6 +78,7 @@ def parse_ps(output: str) -> list[ServiceStatus]:
             name=str(row.get("Service", "")),
             state=str(row.get("State", "")),
             health=str(row.get("Health") or ""),
+            id=str(row.get("ID") or ""),
         )
         for row in rows
     ]

@@ -82,7 +82,7 @@ Always quote the `request_id` when you raise a ticket with Payments Engineering.
 | KP-4001 | 402 | Declined by the issuer, no reason given | Once, after the customer checks their details | Ask the customer to use another card or call their bank. Do not retry the same card more than once in 24 hours. |
 | KP-4005 | 402 | Insufficient funds | No | Ask for another payment method. |
 | KP-4012 | 402 | Card expired | No | Ask for an up-to-date card. |
-| KP-4019 | 402 | Incorrect CVC | Yes, with corrected details | Ask the customer to re-enter the security code. Three failures in a row on one card lead to KP-4040. |
+| KP-4019 | 402 | Incorrect CVC | Yes, with corrected details | Ask the customer to re-enter the security code. Repeated failures on one card lead to KP-4040. |
 | KP-4030 | 402 | Deprecated. Was "3-D Secure required or failed" | n/a | Replaced in March 2026 by KP-4031, KP-4032 and KP-4033. Integrations pinned to API version 2025-11-01 still receive it. |
 | KP-4031 | 402 | Soft decline: the issuer requires Strong Customer Authentication | Yes, with 3-D Secure only | Retry the same payment with 3-D Secure by setting `authentication.mode` to `challenge`, and send the customer through their bank's check (app approval or a one-time passcode). A retry without 3-D Secure will be declined again. |
 | KP-4032 | 402 | 3-D Secure authentication failed | No | The customer failed their bank's check. Ask them to use another card or contact their bank. |

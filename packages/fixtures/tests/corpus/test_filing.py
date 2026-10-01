@@ -3,7 +3,7 @@ import json
 import re
 import shutil
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -370,3 +370,107 @@ def test_q2_complaints_follow_the_compliance_report(sheets: list[Page]) -> None:
 def test_no_sentence_ends_twice(sheets: list[Page]) -> None:
     doubled = [line for page in sheets for line in blocks.lines(page) if ".." in line]
     assert not doubled, doubled[:3]
+
+
+# The hand-written documents that quote the filing. Every figure they take from it is checked
+# against the generated pages, so a change to the generator or its random draws can't move one
+# unnoticed: the fact pages and the totals above, and the complaint, safeguarding and incident
+# figures below.
+REPORT = SOURCES / "legal-compliance-monitoring-q2-2026.md"
+BOARD_PACK = SOURCES / "exec-board-pack-2026-07.md"
+QUARTERS = {"Q1": ("January", "February", "March"), "Q2": ("April", "May", "June")}
+
+
+def complaints(sheets: list[Page], quarter: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for page in sheets:
+        month = re.match(r"Schedule 7\. Complaints register: (\w+) 2026", heading(page))
+        if month and month[1] in QUARTERS[quarter]:
+            rows += tables(page)[0]
+    return rows
+
+
+def positions(sheets: list[Page]) -> list[tuple[str, date, dict[str, Decimal]]]:
+    """Each daily safeguarding page: its currency, the day and its balance lines."""
+    found: list[tuple[str, date, dict[str, Decimal]]] = []
+    for page in sheets:
+        title = heading(page)
+        if title.startswith("Schedule 4"):
+            (position,) = blocks.lines(page[1:2])
+            when = position.removeprefix("Position at 17:00 on ")
+            day = datetime.strptime(when, "%A %d %B %Y").date()
+            lines = {r[0].split(":")[0]: amount(r[1]) for r in tables(page)[0]}
+            found.append((title.rsplit(" ", 1)[1], day, lines))
+    return found
+
+
+def test_complaint_counts_and_rates_follow_the_compliance_report(sheets: list[Page]) -> None:
+    """432 complaints a quarter, 93.5% resolved within 15 business days in Q1 and 96.8% in Q2,
+    as the compliance report and the board pack say."""
+    report, pack = REPORT.read_text(encoding="utf-8"), BOARD_PACK.read_text(encoding="utf-8")
+    received = re.search(r"\| Complaints received \| ([\d,]+) \| ([\d,]+) \|", report)
+    resolved = re.search(
+        r"\| Resolved within 15 business days \| ([\d.]+)% \| ([\d.]+)% \|", report
+    )
+    assert received is not None
+    assert resolved is not None
+    for quarter, count, rate in zip(QUARTERS, received.groups(), resolved.groups(), strict=True):
+        rows = complaints(sheets, quarter)
+        within = sum(int(r[6]) <= 15 for r in rows)
+        assert len(rows) == number(count), quarter
+        assert f"{100 * within / len(rows):.1f}" == rate, (quarter, within, len(rows))
+    quoted = re.findall(r"([\d.]+)% resolved within 15 business days", report + pack)
+    assert len(quoted) == 2
+    assert set(quoted) == {resolved[2]}
+    assert re.search(rf"\b{received[2]} complaints; {resolved[2]}% resolved", pack)
+
+
+def test_safeguarding_and_incident_figures_follow_the_compliance_report(
+    sheets: list[Page],
+) -> None:
+    report = REPORT.read_text(encoding="utf-8")
+    days = re.search(r"There were (\d+) UK business days in Q2\. All \1 reconciliations", report)
+    held = re.search(
+        r"At 30 June 2026 .+? held £[\d.]+bn of customer funds: £([\d.]+)bn in GBP and €(\d+)m",
+        report,
+    )
+    reported = re.search(
+        r"In Q1 we reported (\w+) incidents to the FCA: (\w+) P1 incidents and major incident "
+        r"(MI-\d{4}-\d+) on (\d+ \w+), .+? caused (\d+) minutes",
+        report,
+    )
+    assert days is not None
+    assert held is not None
+    assert reported is not None
+    assert "none showed a shortfall" in report
+
+    found = positions(sheets)
+    q2 = [(currency, day, lines) for currency, day, lines in found if day >= date(2026, 4, 1)]
+    assert {day for _, day, _ in q2} == set(
+        filing.business_days(date(2026, 4, 1), date(2026, 6, 30))
+    )
+    assert len({day for _, day, _ in q2}) == int(days[1])
+    assert all(lines["Excess (shortfall)"] >= 0 for _, _, lines in q2)
+    # The one shortfall in the period is breach SG-2025-02 (page 130).
+    short = [(c, d) for c, d, lines in found if lines["Excess (shortfall)"] < 0]
+    assert short == [("GBP", date(2025, 11, 14))]
+    last = {
+        currency: lines["Requirement"] for currency, day, lines in found if day == date(2026, 6, 30)
+    }
+    assert f"{last['GBP'] / 10**9:.2f}" == held[1]
+    assert f"{last['EUR'] / 10**6:.0f}" == held[2]
+
+    words = {"four": 4, "five": 5}
+    p1 = [
+        line.split(" | ")
+        for page in sheets
+        if heading(page).startswith("Schedule 8. Incident register")
+        for line in blocks.lines(page)
+        if " | P1 | " in line and "2026 |" in line
+    ]
+    q1 = [r for r in p1 if datetime.strptime(r[1], "%d %B %Y").month <= 3]
+    assert len(q1) == len(p1) == words[reported[1]]
+    assert sum(r[0].startswith("INC-") for r in q1) == words[reported[2]]
+    (major,) = [r for r in q1 if r[0] == reported[3]]
+    assert major[1] == f"{reported[4]} 2026"
+    assert major[4] == f"{reported[5]} min"

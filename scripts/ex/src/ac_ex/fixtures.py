@@ -10,7 +10,7 @@ import tempfile
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,8 +23,9 @@ if TYPE_CHECKING:
     from ac_fixtures.corpus.build import BuildReport
 
 WORKSPACE_URL = "http://localhost:8100"
-# The digest of the realm exports Keycloak last loaded, so a reload that failed is retried.
+# Which realm exports which Keycloak container loaded, so a reload that failed is retried.
 REALMS_APPLIED = Path(".ex/realm-applied.json")
+REALM_EXPORTS = "*-realm.json"
 
 
 @dataclass(frozen=True)
@@ -151,25 +152,43 @@ def _differences(first: Path, second: Path) -> list[str]:
 
 
 def exports_digest(directory: Path) -> str:
-    """One sha256 over every realm export: what Keycloak imports when its container is created."""
+    """One sha256 over the realm exports: what Keycloak imports when its container is created."""
     digest = hashlib.sha256()
-    for path in sorted(p for p in directory.iterdir() if p.is_file()):
+    for path in sorted(directory.glob(REALM_EXPORTS)):
         digest.update(f"{path.name}\0{path.stat().st_size}\0".encode())
         digest.update(path.read_bytes())
     return digest.hexdigest()
 
 
-def _applied(root: Path) -> str | None:
+@dataclass(frozen=True)
+class Applied:
+    """What `.ex/realm-applied.json` says Keycloak and Envoy last loaded."""
+
+    digest: str | None = None
+    keycloak: str | None = None
+    """The container that imported `digest`. None: no container did, so whichever Keycloak runs
+    next is reloaded, since nothing says which exports it was created from."""
+    envoy_pending: bool = False
+    """Keycloak was recreated, but Envoy may still hold the old container's keys."""
+
+
+def _applied(root: Path) -> Applied:
     try:
-        return json.loads((root / REALMS_APPLIED).read_text(encoding="utf-8"))["digest"]
+        data = json.loads((root / REALMS_APPLIED).read_text(encoding="utf-8"))
+        return Applied(data["digest"], data.get("keycloak"), bool(data.get("envoy_pending")))
     except (OSError, ValueError, KeyError, TypeError):
-        return None
+        return Applied()
 
 
-def _mark_applied(root: Path, digest: str) -> None:
+def _mark_applied(root: Path, applied: Applied) -> None:
     path = root / REALMS_APPLIED
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"digest": digest}) + "\n", encoding="utf-8")
+    body = {
+        "digest": applied.digest,
+        "keycloak": applied.keycloak,
+        "envoy_pending": applied.envoy_pending,
+    }
+    path.write_text(json.dumps(body) + "\n", encoding="utf-8")
 
 
 def _load_realms(root: Path, stack: Stack) -> tuple[list[str], str | None, bool]:
@@ -180,43 +199,56 @@ def _load_realms(root: Path, stack: Stack) -> tuple[list[str], str | None, bool]
     with new keys, and Envoy would answer 401 until its JWKS cache expired, so a running Envoy is
     recreated after it: it fetches the keys before it opens its listener.
 
-    The exports are written before this runs, so a run that fails here leaves them unchanged for
-    the next one. Hence the record of what Keycloak last loaded: the reload stays pending until
-    it succeeds, whether or not the exports change again.
+    The record names the exports and the Keycloak container that loaded them. The exports are
+    written before this runs, so a failed reload leaves them unchanged for the next run, and a
+    Keycloak made elsewhere (another branch's `ex up`) can hold other exports under the same
+    digest. Either way the container no longer matches, and the reload happens. A Keycloak that
+    reloaded before Envoy failed isn't recreated again: only Envoy is.
     """
     digest = exports_digest(root / "fixtures" / "directory")
-    if _applied(root) == digest:
-        return [], None, True
+    applied = _applied(root)
     try:
         found = {s.name: s for s in stack.status(root)}
     except services.DockerMissingError:
+        if applied.digest == digest:
+            return [], None, True
         return [], "docker isn't on PATH, so the realm reload waits for the next run", True
     except ExError as exc:
         return (
             [],
-            f"couldn't read the stack's status, so the realms weren't reloaded{_why(exc)}",
+            f"couldn't read the stack's status, so the realms weren't checked{_why(exc)}",
             False,
         )
     keycloak = found.get("keycloak")
     if keycloak is None:  # no stack: `ex up` creates Keycloak with these exports
-        _mark_applied(root, digest)
+        _mark_applied(root, Applied(digest))
         return [], None, True
     envoy = found.get("envoy")
     recreated: list[str] = []
     try:
         if keycloak.state != "running":
             stack.remove(root, "keycloak")
-            _mark_applied(root, digest)
+            _mark_applied(root, Applied(digest))
             return [], "removed the stopped Keycloak, so `ex up` imports the new exports", True
-        stack.recreate(root, "keycloak")
-        recreated.append("keycloak")
-        if envoy is not None and envoy.state == "running":
-            stack.recreate(root, "envoy")
-            recreated.append("envoy")
+        if (applied.digest, applied.keycloak) != (digest, keycloak.id):
+            stack.recreate(root, "keycloak")
+            recreated.append("keycloak")
+            new = next((s.id for s in stack.status(root) if s.name == "keycloak"), None)
+            applied = Applied(digest, new, envoy_pending=True)
+            _mark_applied(root, applied)
+        if applied.envoy_pending:
+            # A stopped Envoy fetches the new keys when it starts.
+            if envoy is not None and envoy.state == "running":
+                stack.recreate(root, "envoy")
+                recreated.append("envoy")
+            _mark_applied(root, replace(applied, envoy_pending=False))
     except ExError as exc:
         return recreated, f"couldn't reload the realms{_why(exc)}", False
-    _mark_applied(root, digest)
-    return recreated, f"recreated {' and '.join(recreated)} to load the new realm exports", True
+    if not recreated:
+        return [], None, True
+    if recreated == ["envoy"]:
+        return recreated, "recreated envoy, which still had the old Keycloak's keys", True
+    return recreated, f"recreated {' and '.join(recreated)} to load the realm exports", True
 
 
 def _why(exc: ExError) -> str:

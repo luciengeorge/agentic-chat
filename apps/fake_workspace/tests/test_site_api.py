@@ -165,6 +165,31 @@ async def test_children_paging_survives_changes_between_pages(
     assert (third, url) == (["echo.md", "foxtrot.md"], None)
 
 
+async def test_a_child_renamed_ahead_of_the_cursor_comes_back(
+    client: httpx.AsyncClient, corpus: Corpus
+) -> None:
+    """Keyset paging returns an item again when a rename moves it past the cursor, as Graph
+    may: a crawl dedupes by id, keeping the latest copy."""
+    alpha = corpus.id("kestrel", "/Company/alpha.md")
+    body = (await client.get(item_url(corpus.id("kestrel", "/Company"), "/children?$top=2"))).json()
+    assert [child["name"] for child in body["value"]] == ["alpha.md", "Bravo.md"]
+    rename = f"/_control/sites/kestrel/items/{alpha}/rename"
+    assert (await client.post(rename, json={"name": "zulu.md"})).status_code == 200
+    seen = list(body["value"])
+    while "@odata.nextLink" in body:
+        body = (await client.get(body["@odata.nextLink"])).json()
+        seen += body["value"]
+    assert [child["id"] for child in seen].count(alpha) == 2
+    latest = {child["id"]: child["name"] for child in seen}
+    assert sorted(latest.values(), key=str.casefold) == [
+        "Bravo.md",
+        "charlie.md",
+        "Delta.md",
+        "echo.md",
+        "zulu.md",
+    ]
+
+
 async def test_children_default_page_and_root_alias(
     client: httpx.AsyncClient, corpus: Corpus
 ) -> None:

@@ -50,8 +50,10 @@ def test_every_app_has_a_dockerfile() -> None:
 
 @pytest.mark.parametrize("dockerfile", DOCKERFILES, ids=lambda p: p.parent.name)
 def test_the_prod_stage_sets_ac_env_prod(dockerfile: Path) -> None:
-    prod = stages(dockerfile.read_text(encoding="utf-8"))["prod"]
-    assert env(prod).get("AC_ENV") == "prod"
+    named = stages(dockerfile.read_text(encoding="utf-8"))
+    assert env(named["prod"]).get("AC_ENV") == "prod"
+    # The last stage is what a build without --target makes, so that's prod too.
+    assert list(named)[-1] == "prod"
 
 
 def test_the_parser_reads_both_env_forms() -> None:

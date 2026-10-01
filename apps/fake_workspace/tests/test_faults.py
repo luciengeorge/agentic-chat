@@ -1,10 +1,21 @@
+import asyncio
+from collections.abc import Callable
+
 import httpx
 import pytest
 
-from ac_fake_workspace.testing import MakeClient, ManualClock
+from ac_fake_workspace.testing import Corpus, MakeClient, ManualClock
 
 ITEMS = "/v1.0/sites/kestrel/drive/items"
 HARBOUR = {"Authorization": "Bearer dev-workspace-harbour"}
+
+
+async def eventually(condition: Callable[[], object]) -> None:
+    for _ in range(1000):
+        if condition():
+            return
+        await asyncio.sleep(0.01)
+    raise AssertionError("timed out")
 
 
 async def add_fault(client: httpx.AsyncClient, **fault: object) -> None:
@@ -82,6 +93,24 @@ async def test_latency_fault(make_client: MakeClient) -> None:
     assert (await client.get("/v1.0/sites/kestrel/drive/root")).status_code == 200
     # Latencies stack, a count runs out, and other paths wait for nothing.
     assert clock.waits == [0.15, 0.05, 0.15]
+
+
+async def test_a_reset_that_fails_during_a_latency_wait_is_503(
+    make_client: MakeClient, corpus: Corpus
+) -> None:
+    """The request passed its corpus check before the wait; the corpus is gone after it."""
+    clock = ManualClock()
+    clock.gate = asyncio.Event()
+    client = make_client(clock=clock)
+    await add_fault(client, kind="latency", latency_ms=100, path_prefix=ITEMS)
+    waiting = asyncio.create_task(client.get(f"{ITEMS}/root"))
+    await eventually(lambda: clock.waits)
+    (corpus.dir / "manifest.json").write_text("{}")
+    assert (await client.post("/_control/reset")).status_code == 503
+    clock.gate.set()
+    response = await waiting
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "serviceNotReady"
 
 
 async def test_faults_apply_to_subscriptions(client: httpx.AsyncClient) -> None:

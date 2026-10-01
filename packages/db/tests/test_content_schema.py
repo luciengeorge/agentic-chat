@@ -1,3 +1,4 @@
+import json
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -284,6 +285,19 @@ def test_acl_versions_come_from_one_sequence_across_documents(
     assert dict(rows) == {first.id: first.acl_version, second.id: second.acl_version}
 
 
+def test_acl_high_water_mark_is_0_then_the_latest_version(database_url: str) -> None:
+    """The read `RetrievalAudit.acl_version` documents. Its own database: rollbacks keep nextval."""
+    mark = text("SELECT CASE WHEN is_called THEN last_value ELSE 0 END FROM acl_version_seq")
+    with temporary_database(database_url) as url:
+        engine = create_engine(url)
+        with engine.connect() as conn:
+            assert conn.scalar(mark) == 0
+            conn.scalar(select(acl_version_seq.next_value()))
+            latest = conn.scalar(select(acl_version_seq.next_value()))
+            assert (latest, conn.scalar(mark)) == (2, 2)
+        engine.dispose()
+
+
 @pytest.mark.parametrize(
     ("self_row", "depth", "constraint"),
     [(True, 1, "group_closure_no_self_check"), (False, 0, "group_closure_depth_check")],
@@ -316,6 +330,53 @@ def test_message_content_can_be_a_list(session: Session, kestrel: uuid.UUID) -> 
 
     stored = session.scalars(select(Message.content).where(Message.id == message.id)).one()
     assert stored == blocks
+
+
+def insert_message(session: Session, conversation: Conversation, content: str) -> uuid.UUID:
+    return session.scalars(
+        text(
+            "INSERT INTO messages (tenant_id, conversation_id, seq, role, content)"
+            " VALUES (:tenant_id, :conversation_id, 1, 'user', CAST(:content AS jsonb))"
+            " RETURNING id"
+        ),
+        {
+            "tenant_id": conversation.tenant_id,
+            "conversation_id": conversation.id,
+            "content": content,
+        },
+    ).one()
+
+
+@pytest.mark.parametrize("content", ['"hello"', "42", "null"])
+def test_message_content_refuses_json_scalars(
+    session: Session, kestrel: uuid.UUID, content: str
+) -> None:
+    conversation = add(session, new_conversation(add(session, new_principal(kestrel))))
+    with pytest.raises(IntegrityError) as exc, session.begin_nested():
+        insert_message(session, conversation, content)
+    assert violation(exc) == ("CheckViolation", "messages_content_check")
+
+
+def test_message_content_refuses_none(session: Session, kestrel: uuid.UUID) -> None:
+    """The ORM writes None as JSON null, which NOT NULL alone lets through."""
+    conversation = add(session, new_conversation(add(session, new_principal(kestrel))))
+    message = Message(
+        tenant_id=kestrel, conversation_id=conversation.id, seq=1, role="user", content=None
+    )
+    with pytest.raises(IntegrityError) as exc, session.begin_nested():
+        session.add(message)
+    assert violation(exc) == ("CheckViolation", "messages_content_check")
+
+
+@pytest.mark.parametrize("content", ['{"text": "hello"}', "[]"])
+def test_message_content_can_be_an_object_or_an_array(
+    session: Session, kestrel: uuid.UUID, content: str
+) -> None:
+    conversation = add(session, new_conversation(add(session, new_principal(kestrel))))
+    message_id = insert_message(session, conversation, content)
+
+    stored = session.scalars(select(Message.content).where(Message.id == message_id)).one()
+    assert stored == json.loads(content)
 
 
 def test_updates_bump_updated_at(session: Session, kestrel: uuid.UUID) -> None:

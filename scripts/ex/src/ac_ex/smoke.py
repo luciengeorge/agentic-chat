@@ -47,6 +47,7 @@ HERON_GROUP = "/Kestrel/Exec"
 HERON_ROLES = ["write"]  # /Exec's grant in world.yaml; the memo adds none of its own
 DIRECTORY_USER = "leo.martin"
 DISABLED_USER = "peter.hall"
+DISABLED_MESSAGE = "Account is disabled"  # Keycloak's error for a disabled user's sign-in
 NESTED_GROUP = "/Kestrel/Finance/AP"
 
 
@@ -380,11 +381,15 @@ async def check_workspace(
 ) -> str | None:
     drive = f"{endpoints.workspace}/v1.0/sites/kestrel/drive"
     root = await _graph(client, f"{drive}/root", "kestrel")
+    expected = root["folder"]["childCount"]
+    limit = -(-expected // 2) + 1  # the pages $top=2 needs, and one to spare
     names: list[str] = []
     pages = 0
     url: str | None = f"{drive}/items/root/children"
     params: dict[str, int] | None = {"$top": 2}
     while url is not None:
+        if pages == limit:
+            raise SmokeError(f"the root's children still had a nextLink after {limit} pages")
         page = await _graph(client, url, "kestrel", params)
         params = None  # the nextLink carries the query
         if len(page["value"]) > 2:
@@ -392,7 +397,6 @@ async def check_workspace(
         names.extend(child["name"] for child in page["value"])
         pages += 1
         url = page.get("@odata.nextLink")
-    expected = root["folder"]["childCount"]
     if len(names) != expected or len(set(names)) != len(names):
         raise SmokeError(f"paging the root gave {names}, expected {expected} distinct children")
 
@@ -453,6 +457,10 @@ async def check_directory(
         done = await sign_in(former, endpoints, DISABLED_USER, password)
         if has_session(former):
             raise SmokeError(f"{DISABLED_USER} is disabled but signed in (ended at {done.url})")
+        if DISABLED_MESSAGE not in done.text:
+            raise SmokeError(
+                f"{DISABLED_USER} was refused, but not as a disabled account (ended at {done.url})"
+            )
 
     async with client() as kc:
         username, secret = admin
@@ -487,8 +495,6 @@ async def check_directory(
         )
         if actual != str(wanted)
     ]
-    if found[DISABLED_USER].get("enabled") is not False:
-        problems.append(f"{DISABLED_USER} isn't disabled in Keycloak")
     if problems:
         raise SmokeError("; ".join(problems))
     return (

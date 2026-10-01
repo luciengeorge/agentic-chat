@@ -93,25 +93,37 @@ def closed_url() -> str:
 
 
 class FakeStack:
-    """The Compose stack, recording each recreate and remove."""
+    """The Compose stack, recording each recreate and remove. A recreate makes a new
+    container, with a new id."""
 
     def __init__(self) -> None:
         self.states = {"keycloak": "running", "envoy": "running", "api": "running"}
+        self.containers = 0
+        self.ids = {name: self.container() for name in self.states}
         self.calls: list[str] = []
         self.fail: str | None = None
         self.status_error: ExError | None = None
+
+    def container(self) -> str:
+        self.containers += 1
+        return f"c{self.containers}"
 
     def stack(self) -> fixtures.Stack:
         def status(root: Path) -> list[services.ServiceStatus]:
             if self.status_error is not None:
                 raise self.status_error
-            return [services.ServiceStatus(n, s, "healthy") for n, s in self.states.items()]
+            return [
+                services.ServiceStatus(n, s, "healthy", self.ids.get(n, ""))
+                for n, s in self.states.items()
+            ]
 
         def act(verb: str) -> Callable[[Path, str], None]:
             def call(root: Path, name: str) -> None:
                 self.calls.append(f"{verb} {name}")
                 if self.fail == name:
                     raise ExError(f"docker compose up {name} failed", detail="unhealthy\n")
+                if verb == "recreate":
+                    self.ids[name] = self.container()
 
             return call
 
@@ -164,7 +176,7 @@ def test_it_builds_everything_and_resets_fake_workspace(
             "fixtures/directory/harbour-realm.json",
         ],
         "recreated": ["keycloak", "envoy"],
-        "detail": "recreated keycloak and envoy to load the new realm exports",
+        "detail": "recreated keycloak and envoy to load the realm exports",
     }
     assert stack.calls == ["recreate keycloak", "recreate envoy"]
     corpus = out["corpus"]
@@ -208,8 +220,11 @@ def test_nothing_to_reload_without_keycloak(
     assert stack.calls == []
     assert out["workspace"]["reset"] is False
     assert "isn't running" in out["workspace"]["detail"]
-    # The Keycloak that `ex up` creates next imports these exports, so nothing is left pending.
+    # Nothing records which exports the Keycloak that `ex up` creates next imported (it might
+    # be another branch's), so the first run that sees it reloads it, once.
     stack.states = {"keycloak": "running"}
+    assert ex()["directory"]["recreated"] == ["keycloak"]
+    stack.calls.clear()
     assert ex()["directory"]["recreated"] == []
     assert stack.calls == []
 
@@ -231,7 +246,7 @@ def test_a_failed_status_fails_and_leaves_the_reload_pending(
     out = ex(ok=False)
     assert out["directory"]["recreated"] == []
     assert out["directory"]["detail"] == (
-        "couldn't read the stack's status, so the realms weren't reloaded: "
+        "couldn't read the stack's status, so the realms weren't checked: "
         "docker compose ps --all --format json failed: " + daemon.strip()
     )
     assert out["workspace"]["reset"] is True
@@ -273,22 +288,64 @@ def test_a_failed_recreate_fails_but_still_resets_fake_workspace(
     assert out["workspace"]["reset"] is True
 
 
-@pytest.mark.parametrize("failing", ["keycloak", "envoy"])
+@pytest.mark.parametrize(
+    ("failing", "retried"),
+    [
+        ("keycloak", ["keycloak", "envoy"]),
+        # Keycloak loaded the exports; recreating it again would only rotate its keys.
+        ("envoy", ["envoy"]),
+    ],
+)
 def test_a_failed_reload_is_retried_on_the_next_run(
-    repo: Path, stack: FakeStack, failing: str
+    repo: Path, stack: FakeStack, failing: str, retried: list[str]
 ) -> None:
     stack.fail = failing
     ex(ok=False)
     stack.fail = None
     stack.calls.clear()
     retry = ex()
-    # The exports didn't change this time, but Keycloak never loaded them.
+    # The exports didn't change this time, but the reload never finished.
     assert retry["directory"]["changed"] == []
-    assert retry["directory"]["recreated"] == ["keycloak", "envoy"]
-    assert stack.calls == ["recreate keycloak", "recreate envoy"]
+    assert retry["directory"]["recreated"] == retried
+    assert stack.calls == [f"recreate {name}" for name in retried]
     stack.calls.clear()
     assert ex()["directory"] == {"changed": [], "recreated": [], "detail": None}
     assert stack.calls == []
+
+
+def test_a_keycloak_created_elsewhere_is_reloaded(repo: Path, stack: FakeStack) -> None:
+    """The record names the container that loaded the exports, not just their digest. Another
+    branch's `ex down && ex up` makes a Keycloak from other exports; back on this branch, the
+    exports match the record but the container doesn't."""
+    ex()
+    stack.calls.clear()
+    stack.ids["keycloak"] = stack.container()
+    stack.ids["envoy"] = stack.container()
+    out = ex()
+    assert out["directory"]["changed"] == []
+    assert out["directory"]["recreated"] == ["keycloak", "envoy"]
+    assert stack.calls == ["recreate keycloak", "recreate envoy"]
+
+
+def test_only_realm_exports_count(repo: Path, stack: FakeStack) -> None:
+    ex()
+    stack.calls.clear()
+    (repo / "fixtures" / "directory" / ".DS_Store").write_bytes(b"\0\0\0\1Bud1")
+    assert ex()["directory"]["recreated"] == []
+    assert stack.calls == []
+
+
+def test_removing_a_stopped_keycloak_records_the_exports_for_no_container(
+    repo: Path, stack: FakeStack
+) -> None:
+    ex()
+    stack.states["keycloak"] = "exited"
+    record = repo / fixtures.REALMS_APPLIED
+    applied = json.loads(record.read_text())
+    assert applied["keycloak"] is not None
+    ex()
+    after = json.loads(record.read_text())
+    assert after == {"digest": applied["digest"], "keycloak": None, "envoy_pending": False}
 
 
 def test_fake_workspace_refusing_the_reset_fails(repo: Path, server: Server) -> None:

@@ -182,6 +182,9 @@ def upgrade() -> None:
             created_at timestamptz NOT NULL DEFAULT now(),
             UNIQUE (conversation_id, seq),
             UNIQUE (conversation_id, idempotency_key),
+            -- NOT NULL lets JSON null through, and the ORM writes None as JSON null.
+            CONSTRAINT messages_content_check
+                CHECK (jsonb_typeof(content) IN ('object', 'array')),
             FOREIGN KEY (tenant_id, conversation_id)
                 REFERENCES conversations (tenant_id, id) ON DELETE CASCADE
         )
