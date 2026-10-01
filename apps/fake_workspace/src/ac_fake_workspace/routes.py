@@ -55,7 +55,10 @@ def not_ready() -> GraphError:
     return GraphError(503, "serviceNotReady", "No corpus is loaded yet.")
 
 
-async def authorize(rt: RuntimeDep, authorization: Annotated[str | None, Header()] = None) -> str:
+AuthorizationHeader = Annotated[str | None, Header()]
+
+
+def token_site(rt: Runtime, authorization: str | None) -> str:
     """The site the bearer token opens."""
     if not rt.workspace.loaded:
         raise not_ready()
@@ -67,24 +70,36 @@ async def authorize(rt: RuntimeDep, authorization: Annotated[str | None, Header(
     return site
 
 
-async def site_access(
-    site: str, request: Request, rt: RuntimeDep, token_site: Annotated[str, Depends(authorize)]
-) -> Site:
-    if token_site != site:
-        raise GraphError(403, "accessDenied", "The token can't open this site.")
+async def authorize(rt: RuntimeDep, authorization: AuthorizationHeader = None) -> str:
+    return token_site(rt, authorization)
+
+
+async def _after_faults(request: Request, rt: Runtime, site: str, authorization: str | None) -> str:
+    """Applies the site's faults, then authorises again: an injected wait can outlast a reset,
+    and the request then answers as one arriving after it would."""
     await rt.faults.apply(site, request.url.path)
-    # An injected wait can outlast a reset, and a failed reset leaves no corpus.
-    drive = rt.workspace.sites.get(site)
-    if drive is None:
-        raise not_ready()
-    return drive
+    return token_site(rt, authorization)
+
+
+async def site_access(
+    site: str,
+    request: Request,
+    rt: RuntimeDep,
+    opened: Annotated[str, Depends(authorize)],
+    authorization: AuthorizationHeader = None,
+) -> Site:
+    if opened != site:
+        raise GraphError(403, "accessDenied", "The token can't open this site.")
+    return rt.workspace.sites[await _after_faults(request, rt, site, authorization)]
 
 
 async def subscriber(
-    request: Request, rt: RuntimeDep, site: Annotated[str, Depends(authorize)]
+    request: Request,
+    rt: RuntimeDep,
+    site: Annotated[str, Depends(authorize)],
+    authorization: AuthorizationHeader = None,
 ) -> str:
-    await rt.faults.apply(site, request.url.path)
-    return site
+    return await _after_faults(request, rt, site, authorization)
 
 
 async def item_ref(request: Request) -> str:
@@ -237,7 +252,7 @@ async def list_permissions(drive: SiteDep, ref: RefDep) -> JSON:
     return {"value": [permission(drive, item, e) for e in drive.effective(item)]}
 
 
-DELTA_TOKEN = re.compile(r"([0-9a-f]*-\d+)\.([01])\.(\d+)\.(-1|\d+)\.(\d+)")
+DELTA_TOKEN = re.compile(r"([0-9a-f]*-\d+)\.([01])\.(\d+)\.(-1|\d+)\.(\d+)\.([0-9a-f]*)")
 
 
 @dataclass(frozen=True)
@@ -250,9 +265,17 @@ class Round:
     end: int
     offset: int = 0
 
-    def link(self, request: Request, site: str, generation: str) -> str:
-        token = _encode(site, generation, int(self.full), self.start, self.end, self.offset)
-        return _link(request, token=token)
+    @property
+    def position(self) -> int:
+        """The last change the token has accounted for."""
+        return self.start if self.end == -1 else self.end
+
+    def link(self, request: Request, drive: Site, generation: str) -> str:
+        """The token also carries the change log's digest at its position, so after a restart
+        it's refused unless the new log got there by the same changes."""
+        history = drive.history[self.position]
+        parts = (drive.name, generation, int(self.full), self.start, self.end, self.offset, history)
+        return _link(request, token=_encode(*parts))
 
 
 def _round(request: Request, drive: Site, generation: str, token: str | None) -> Round:
@@ -262,8 +285,9 @@ def _round(request: Request, drive: Site, generation: str, token: str | None) ->
     match = DELTA_TOKEN.fullmatch(rest)
     if site != drive.name or match is None:
         raise bad_request("Invalid delta token.")
-    full, start, end, offset = (int(g) for g in match.groups()[1:])
-    if match[1] != generation or max(start, end) > drive.seq:
+    full, start, end, offset = (int(g) for g in match.groups()[1:5])
+    at = Round(bool(full), start, end, offset)
+    if match[1] != generation or at.position > drive.seq or drive.history[at.position] != match[6]:
         raise GraphError(
             410,
             "resyncRequired",
@@ -271,7 +295,7 @@ def _round(request: Request, drive: Site, generation: str, token: str | None) ->
             {"Location": _link(request, token=None)},
             inner_code="resyncChangesApplyDifferences",
         )
-    return Round(bool(full), start, drive.seq if end == -1 else end, offset)
+    return Round(at.full, start, drive.seq if end == -1 else end, offset)
 
 
 def _delta_entry(drive: Site, item: Item, shared: bool) -> JSON:
@@ -298,7 +322,7 @@ async def delta(
     if token == "latest":
         return {
             "value": [],
-            "@odata.deltaLink": Round(False, drive.seq, -1).link(request, drive.name, generation),
+            "@odata.deltaLink": Round(False, drive.seq, -1).link(request, drive, generation),
         }
     at = _round(request, drive, generation, token)
     prefer = ",".join(request.headers.getlist("prefer")).lower().split(",")
@@ -312,9 +336,9 @@ async def delta(
     body: JSON = {"value": [_delta_entry(drive, item, shared and sharing) for item, shared in page]}
     if at.offset + top < len(entries):
         next_round = Round(at.full, at.start, at.end, at.offset + top)
-        body["@odata.nextLink"] = next_round.link(request, drive.name, generation)
+        body["@odata.nextLink"] = next_round.link(request, drive, generation)
     else:
-        body["@odata.deltaLink"] = Round(False, at.end, -1).link(request, drive.name, generation)
+        body["@odata.deltaLink"] = Round(False, at.end, -1).link(request, drive, generation)
     return body
 
 

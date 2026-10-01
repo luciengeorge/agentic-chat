@@ -11,21 +11,21 @@ from ac_core.slots import find_repo_root
 DOCKERFILES = sorted((find_repo_root() / "apps").glob("*/Dockerfile"))
 
 
-def stages(dockerfile: str) -> dict[str, list[str]]:
-    """Each named stage's instructions, continuation lines joined and comments dropped."""
+def stages(dockerfile: str) -> list[tuple[str | None, list[str]]]:
+    """Every stage, in order, as (its name or None, its instructions), continuation lines
+    joined and comments dropped."""
     joined = dockerfile.replace("\\\n", " ")
-    found: dict[str, list[str]] = {}
-    current: list[str] = []
+    found: list[tuple[str | None, list[str]]] = []
     for line in joined.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
         words = line.split()
         if words[0].upper() == "FROM":
-            current = []
-            if len(words) >= 4 and words[-2].upper() == "AS":
-                found[words[-1]] = current
-        current.append(line)
+            named = len(words) >= 4 and words[-2].upper() == "AS"
+            found.append((words[-1] if named else None, []))
+        if found:
+            found[-1][1].append(line)
     return found
 
 
@@ -50,10 +50,12 @@ def test_every_app_has_a_dockerfile() -> None:
 
 @pytest.mark.parametrize("dockerfile", DOCKERFILES, ids=lambda p: p.parent.name)
 def test_the_prod_stage_sets_ac_env_prod(dockerfile: Path) -> None:
-    named = stages(dockerfile.read_text(encoding="utf-8"))
-    assert env(named["prod"]).get("AC_ENV") == "prod"
-    # The last stage is what a build without --target makes, so that's prod too.
-    assert list(named)[-1] == "prod"
+    found = stages(dockerfile.read_text(encoding="utf-8"))
+    prod = [instructions for name, instructions in found if name == "prod"]
+    assert len(prod) == 1
+    assert env(prod[0]).get("AC_ENV") == "prod"
+    # The last stage is what a build without --target makes, so it must be prod itself.
+    assert found[-1][0] == "prod"
 
 
 def test_the_parser_reads_both_env_forms() -> None:
@@ -62,6 +64,12 @@ def test_the_parser_reads_both_env_forms() -> None:
         "FROM b AS prod\n# ENV AC_ENV=dev\n"
         "ENV PATH=/x:$PATH \\\n    AC_ENV=prod\nENV MODE fast lane\n"
     )
-    parsed = stages(dockerfile)
+    parsed = dict(stages(dockerfile))
     assert env(parsed["dev"]) == {"AC_ENV": "dev"}
     assert env(parsed["prod"]) == {"PATH": "/x:$PATH", "AC_ENV": "prod", "MODE": "fast lane"}
+
+
+def test_the_parser_keeps_unnamed_stages() -> None:
+    found = stages("FROM a AS prod\nENV AC_ENV=prod\nFROM prod\nENV AC_ENV=dev\n")
+    assert [name for name, _ in found] == ["prod", None]
+    assert env(found[-1][1]) == {"AC_ENV": "dev"}

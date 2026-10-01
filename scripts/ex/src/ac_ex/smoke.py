@@ -499,7 +499,7 @@ async def check_directory(
         raise SmokeError("; ".join(problems))
     return (
         f"{DIRECTORY_USER} signed in, {DISABLED_USER} (disabled) was refused; "
-        f"{DIRECTORY_USER} and {NESTED_GROUP} carry the world's ids"
+        f"{DIRECTORY_USER}, {DISABLED_USER} and {NESTED_GROUP} carry the world's ids"
     )
 
 

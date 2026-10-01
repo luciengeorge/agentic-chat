@@ -2,6 +2,7 @@ import base64
 from typing import Any
 
 import httpx
+import pytest
 
 from ac_fake_workspace.testing import Corpus, MakeClient
 
@@ -373,6 +374,48 @@ async def test_a_restart_keeps_tokens_only_for_the_same_corpus(
     assert [item["id"] for item in items] == [
         corpus.id("kestrel", p) for p in corpus.paths("kestrel")
     ]
+
+
+async def history(client: httpx.AsyncClient, corpus: Corpus, *renames: tuple[str, str]) -> str:
+    """Pins the clock, makes the renames, and returns the deltaLink that follows them."""
+    await client.post("/_control/clock", json={"now": "2026-10-01T12:00:00Z"})
+    link = await latest(client)
+    for path, name in renames:
+        await control(client, "POST", f"/{corpus.id('kestrel', path)}/rename", {"name": name})
+    _, after = await sync(client, link)
+    return after
+
+
+@pytest.mark.parametrize(
+    "restarted_renames",
+    [
+        [("/Company/Bravo.md", "Bravo 2.md"), ("/Company/charlie.md", "charlie 2.md")],
+        [("/Company/alpha.md", "alpha 3.md")],  # the same item, renamed differently
+    ],
+    ids=["other items", "other names"],
+)
+async def test_a_token_from_another_history_is_410(
+    make_client: MakeClient, corpus: Corpus, restarted_renames: list[tuple[str, str]]
+) -> None:
+    """A restart starts the change log again. A token for a position the new log reaches by
+    other changes would skip them, so it's refused."""
+    after = await history(make_client(), corpus, ("/Company/alpha.md", "alpha 2.md"))
+    restarted = make_client()
+    await history(restarted, corpus, *restarted_renames)
+    stale = await restarted.get(after)
+    assert stale.status_code == 410, stale.text
+    assert stale.json()["error"]["code"] == "resyncRequired"
+
+
+async def test_a_restart_that_repeats_the_history_keeps_its_tokens(
+    make_client: MakeClient, corpus: Corpus
+) -> None:
+    renames = [("/Company/alpha.md", "alpha 2.md"), ("/Company/Bravo.md", "Bravo 2.md")]
+    after = await history(make_client(), corpus, *renames)
+    restarted = make_client()
+    assert await history(restarted, corpus, *renames) == after
+    items, again = await sync(restarted, after)
+    assert (items, again) == ([], after)
 
 
 async def test_malformed_token_is_400(client: httpx.AsyncClient) -> None:

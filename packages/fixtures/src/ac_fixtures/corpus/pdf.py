@@ -229,6 +229,21 @@ def _paged_canvas(footer_title: str | None, look: Look) -> type[Canvas]:
     return PagedCanvas
 
 
+class _Code(Preformatted):
+    """A code block. Its lines never wrap, so one wider than the room it gets would run off the
+    page, out of sight but still in the text layer: that fails the build instead."""
+
+    def wrap(self, aW: float, aH: float) -> tuple[float, float]:  # noqa: N803 (reportlab's names)
+        for number, line in enumerate(self.lines, 1):
+            width = pdfmetrics.stringWidth(line, self.style.fontName, self.style.fontSize)
+            if width > aW:
+                raise b.RenderError(
+                    f"code line {number} is {width / mm:.0f}mm wide, wider than the "
+                    f"{aW / mm:.0f}mm the page leaves it: {line[:40]!r}: break or shorten it"
+                )
+        return super().wrap(aW, aH)
+
+
 class _Builder:
     def __init__(self, look: Look) -> None:
         self.look = look
@@ -298,7 +313,7 @@ class _Builder:
             case b.Table():
                 return [self.table(block), Spacer(1, self.look.size * 0.8)]
             case b.Code(text):
-                return [Preformatted(self.text(text), self.code)]
+                return [_Code(self.text(text), self.code)]
             case b.Quote(inner):
                 return [Indenter(left=14), *self.blocks(inner), Indenter(left=-14)]
             case b.Rule():

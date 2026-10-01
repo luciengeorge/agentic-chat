@@ -457,7 +457,7 @@ async def test_directory() -> None:
     detail = await smoke.check_directory(clients(stack()), E, WORLD_YAML, ADMIN)
     assert detail == (
         "leo.martin signed in, peter.hall (disabled) was refused; "
-        "leo.martin and /Kestrel/Finance/AP carry the world's ids"
+        "leo.martin, peter.hall and /Kestrel/Finance/AP carry the world's ids"
     )
 
 

@@ -101,6 +101,7 @@ class Notifier:
         self.deliveries: list[Delivery] = []
         self.generation = 0  # bumped by every reset
         self._requests = 0  # never reset, so a subscription id is never handed out twice
+        self._nonce = uuid.uuid4().hex  # and a new process doesn't hand out its predecessor's
         self._tails: dict[str, asyncio.Task[None]] = {}
         self._tasks: set[asyncio.Task[None]] = set()
         self._client: httpx.AsyncClient | None = None
@@ -119,7 +120,7 @@ class Notifier:
         self._check_expiration(request.expiration)
         self._requests += 1
         n = self._requests  # other requests move the counter on while this one validates
-        request_id = uuid.uuid5(NAMESPACE, f"{site}:validation:{n}")
+        request_id = uuid.uuid5(NAMESPACE, f"{site}:validation:{self._nonce}:{n}")
         generation = self.generation
         await self._validate(
             request.notification_url,
@@ -130,7 +131,7 @@ class Notifier:
             message = "fake-workspace was reset while the subscription was being validated."
             raise GraphError(503, "serviceNotAvailable", message)
         subscription = Subscription(
-            id=str(uuid.uuid5(NAMESPACE, f"{site}:subscription:{n}")),
+            id=str(uuid.uuid5(NAMESPACE, f"{site}:subscription:{self._nonce}:{n}")),
             site=site,
             resource=request.resource,
             notification_url=request.notification_url,
