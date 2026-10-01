@@ -20,11 +20,22 @@
     ]
   },
   "sortTailwindcss": {
-    "stylesheet": "./apps/web/src/styles.css",
+    "stylesheet": "./src/styles.css",
     "attributes": ["class", "className"],
-    "functions": ["clsx", "cn", "cva"],
+    "functions": ["clsx", "cn"],
     "preserveWhitespace": true
   },
   "sortPackageJson": true,
-  "ignorePatterns": ["**/.tanstack", "**/.output", "**/.nitro", "**/dist", "**/node_modules", "**/routeTree.gen.ts"]
+  "ignorePatterns": [
+    ".tanstack",
+    ".output",
+    ".vercel",
+    "dist",
+    "node_modules",
+    "src/routeTree.gen.ts",
+    "PLAN.md",
+    "HANDOFF.md",
+    "docs",
+    "fixtures"
+  ]
 }
