@@ -155,6 +155,8 @@ Write like real internal documents at the company: specific, dated, with concret
 }
 ```
 
+Each site also carries `"users": {"<user id>": {"username": "...", "display_name": "..."}}` for every user in the tenant, so fake-workspace can fill in Graph identities (`displayName`). Groups use their path as `principal_name` and `displayName`.
+
 The keys are sorted and the JSON is written in a stable form. Folders take `created`/`modified` from world.today and their author from the first write grant. A file's times are its frontmatter dates at a fixed time of day derived from its id.
 
 **`ex fixtures [--json] [--clean] [--verify]`**:

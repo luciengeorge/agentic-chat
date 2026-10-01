@@ -1,19 +1,22 @@
 import importlib
 import sys
+from pathlib import Path
 
-import httpx
 import pytest
 
 from ac_core import logging, tracing
 from ac_core.settings import Settings
-from ac_fake_workspace.app import create_app
+from ac_fake_workspace.testing import MakeClient
 
 
-async def test_health() -> None:
-    transport = httpx.ASGITransport(create_app())
-    async with httpx.AsyncClient(transport=transport, base_url="http://fw") as client:
-        response = await client.get("/health")
-    assert response.json() == {"status": "ok", "service": "fake-workspace"}
+async def test_health_says_whether_the_corpus_loaded(
+    make_client: MakeClient, tmp_path: Path
+) -> None:
+    loaded = await make_client().get("/health")
+    assert loaded.json() == {"status": "ok", "service": "fake-workspace", "corpus_loaded": True}
+    missing = await make_client(corpus_dir=tmp_path / "missing").get("/health")
+    assert missing.status_code == 200
+    assert missing.json() == {"status": "ok", "service": "fake-workspace", "corpus_loaded": False}
 
 
 def test_entry_point_configures_tracing(monkeypatch: pytest.MonkeyPatch) -> None:

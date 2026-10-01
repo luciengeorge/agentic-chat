@@ -1,71 +1,292 @@
 {
-  "realm": "harbour",
-  "displayName": "Harbour Health",
-  "enabled": true,
-  "roles": {
-    "realm": [
-      { "name": "admin", "description": "Workspace administrator" },
-      { "name": "employee", "description": "Every staff member" }
-    ]
-  },
   "clients": [
     {
-      "clientId": "web-bff",
-      "name": "Web BFF",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "dev-web-bff-secret",
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:3000/auth/callback"],
-      "webOrigins": ["http://localhost:3000"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:3000/"
       },
+      "clientAuthenticatorType": "client-secret",
+      "clientId": "web-bff",
+      "directAccessGrantsEnabled": false,
+      "enabled": true,
+      "implicitFlowEnabled": false,
+      "name": "Web BFF",
+      "protocol": "openid-connect",
       "protocolMappers": [
         {
-          "name": "audience-agentic-api",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.custom.audience": "agentic-api",
             "access.token.claim": "true",
             "id.token.claim": "false",
+            "included.custom.audience": "agentic-api",
             "introspection.token.claim": "true"
-          }
+          },
+          "name": "audience-agentic-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper"
         },
         {
-          "name": "tenant",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
+            "access.token.claim": "true",
             "claim.name": "tenant",
             "claim.value": "harbour",
-            "jsonType.label": "String",
-            "access.token.claim": "true",
             "id.token.claim": "true",
-            "userinfo.token.claim": "true",
-            "introspection.token.claim": "true"
-          }
+            "introspection.token.claim": "true",
+            "jsonType.label": "String",
+            "userinfo.token.claim": "true"
+          },
+          "name": "tenant",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper"
+        }
+      ],
+      "publicClient": false,
+      "redirectUris": [
+        "http://localhost:3000/auth/callback"
+      ],
+      "secret": "dev-web-bff-secret",
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": true,
+      "webOrigins": [
+        "http://localhost:3000"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"displayName\": \"${username}\", \"multivalued\": false, \"name\": \"username\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255, \"min\": 3}, \"up-username-not-idn-homograph\": {}, \"username-prohibited-characters\": {}}}, {\"displayName\": \"${email}\", \"multivalued\": false, \"name\": \"email\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"required\": {\"roles\": [\"user\"]}, \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}}, {\"displayName\": \"${firstName}\", \"multivalued\": false, \"name\": \"firstName\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"required\": {\"roles\": [\"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"displayName\": \"${lastName}\", \"multivalued\": false, \"name\": \"lastName\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"required\": {\"roles\": [\"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"displayName\": \"Job title\", \"multivalued\": false, \"name\": \"title\", \"permissions\": {\"edit\": [\"admin\"], \"view\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}}}], \"groups\": [{\"displayDescription\": \"Attributes, which refer to user metadata\", \"displayHeader\": \"User metadata\", \"name\": \"user-metadata\"}]}"
+          ]
+        },
+        "providerId": "declarative-user-profile",
+        "subComponents": {}
+      }
+    ]
+  },
+  "displayName": "Harbour Health",
+  "enabled": true,
+  "groups": [
+    {
+      "id": "2defbc62-7861-5411-b3ea-2ea7b0ad7a57",
+      "name": "Harbour",
+      "path": "/Harbour",
+      "subGroups": [
+        {
+          "id": "3091866c-8a40-5bf5-9923-0105b4ca3c32",
+          "name": "Operations",
+          "path": "/Harbour/Operations",
+          "subGroups": []
+        },
+        {
+          "id": "6192ffe6-2352-5c14-b51c-612013d254c9",
+          "name": "IT",
+          "path": "/Harbour/IT",
+          "subGroups": []
+        },
+        {
+          "id": "887be899-315d-54b5-81c8-7a20febc4a3d",
+          "name": "Finance",
+          "path": "/Harbour/Finance",
+          "subGroups": []
         }
       ]
     }
   ],
+  "realm": "harbour",
+  "roles": {
+    "realm": [
+      {
+        "description": "Workspace administrator",
+        "name": "admin"
+      },
+      {
+        "description": "Every staff member",
+        "name": "employee"
+      }
+    ]
+  },
   "users": [
     {
-      "username": "smoke.harbour",
-      "enabled": true,
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "smoke-password"
+        }
+      ],
       "email": "smoke.harbour@harbour.example",
       "emailVerified": true,
+      "enabled": true,
       "firstName": "Smoke",
       "lastName": "Harbour",
-      "credentials": [{ "type": "password", "value": "smoke-password", "temporary": false }],
-      "realmRoles": ["employee"]
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "smoke.harbour"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Operations Director"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "nina.osei@harbourhealth.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Nina",
+      "groups": [
+        "/Harbour/Operations"
+      ],
+      "id": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+      "lastName": "Osei",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "nina.osei"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Procurement Lead"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "george.evans@harbourhealth.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "George",
+      "groups": [
+        "/Harbour/Operations"
+      ],
+      "id": "26d3b515-7c13-5a45-9b94-a70c00d8b103",
+      "lastName": "Evans",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "george.evans"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Rota Coordinator"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "isla.mcgregor@harbourhealth.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Isla",
+      "groups": [
+        "/Harbour/Operations"
+      ],
+      "id": "dc1cf8ea-e7ce-512d-87d2-797e91545709",
+      "lastName": "McGregor",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "isla.mcgregor"
+    },
+    {
+      "attributes": {
+        "title": [
+          "IT Manager"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "david.cho@harbourhealth.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "David",
+      "groups": [
+        "/Harbour/IT"
+      ],
+      "id": "a91d76d8-e62c-57b4-a934-1789b00b2394",
+      "lastName": "Cho",
+      "realmRoles": [
+        "employee",
+        "admin"
+      ],
+      "username": "david.cho"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Systems Analyst"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "sam.patel@harbourhealth.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Sam",
+      "groups": [
+        "/Harbour/IT"
+      ],
+      "id": "84464701-15c9-5f62-8a79-ae2375aa9473",
+      "lastName": "Patel",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "sam.patel"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Finance Officer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "fatima.ali@harbourhealth.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Fatima",
+      "groups": [
+        "/Harbour/Finance"
+      ],
+      "id": "e47572fa-cabf-588d-9133-b1aad60ae635",
+      "lastName": "Ali",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "fatima.ali"
     }
   ]
 }

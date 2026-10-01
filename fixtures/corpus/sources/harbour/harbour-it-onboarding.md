@@ -1,0 +1,99 @@
+---
+id: harbour-it-onboarding
+title: IT Onboarding Guide
+folder: /IT
+filename: it-onboarding-guide.md
+format: md
+author: david.cho
+created: 2025-06-09
+modified: 2026-07-21
+---
+
+# IT Onboarding Guide
+
+Owner: David Cho, IT Manager. Onboarding sessions run by Sam Patel, Systems Analyst. Last updated 21 July 2026.
+
+This guide is for the IT team and for managers of new starters. It lists what IT sets up, when, and what the new starter must do in their first week.
+
+## 1. Before the start date
+
+The manager emails it@harbourhealth.example at least **5 working days** before the start date with:
+
+- full name, role, base clinic and start date;
+- whether they need a laptop or will use the shared clinic PCs only;
+- which shared mailboxes and folders they need (for example the Operations folder for duty managers);
+- whether they will be a rota'd member of staff.
+
+IT then:
+
+1. creates the Microsoft 365 account (format firstname.lastname@harbourhealth.example);
+2. adds the account to the right groups: everyone joins Harbour, and duty managers join Operations;
+3. prepares a laptop if one is needed, enrolled in device management and encrypted;
+4. books the new starter on the next onboarding session.
+
+## 2. Onboarding session
+
+Sam Patel runs the onboarding session every **Tuesday at 09:30** at Harbourside, in the training room on the first floor. It takes about 1 hour. New starters bring their phone.
+
+In the session they:
+
+- sign in for the first time and set a password;
+- set up multi-factor authentication with the Microsoft Authenticator app;
+- learn how to log on and off the shared clinic PCs;
+- learn where the policies are (the Policies folder) and how to find the rota;
+- learn how to report a suspicious email.
+
+Anyone who cannot attend in their first week must have the session within 10 working days of starting. Until then, they can use a shared clinic PC only with a duty manager signed in alongside them.
+
+## 3. Passwords and sign-in
+
+| Rule | Requirement |
+|---|---|
+| Password length | At least 14 characters. A passphrase of 3 or 4 random words is fine. |
+| Password changes | Only when IT asks, or if you think someone knows it |
+| Multi-factor authentication | Required on every account, from day one |
+| Shared accounts | Not allowed. Every person signs in as themselves. |
+| Screen lock | Lock the screen (Windows key + L) whenever you leave a PC, even for a minute |
+
+Shared clinic PCs log out automatically after 10 minutes without use and restart every night at 23:00.
+
+## 4. Devices
+
+- Laptops are Harbour property. Do not lend them to anyone, including family.
+- Do not install software. Ask IT, who will install approved software remotely.
+- USB memory sticks are blocked. Use OneDrive or the shared folders.
+- Report a lost or stolen laptop or phone with Harbour email on it to IT within **2 hours**, using the helpdesk number. Out of hours, call the IT on-call phone.
+
+## 5. Email and phishing
+
+Use the "Report" button in Outlook for anything suspicious. Do not forward it to colleagues. IT reviews every report within 1 working day. Harbour IT will never ask for your password or an Authenticator code by email, phone or text.
+
+## 6. Printers and Wi-Fi
+
+| Item | Details |
+|---|---|
+| Staff Wi-Fi | "Harbour-Staff", connects automatically on Harbour laptops |
+| Guest Wi-Fi | "Harbour-Guest", for visitors; password on the reception desk card, changed monthly |
+| Printers | Follow-me printing at every clinic: print, then tap your badge on any printer |
+
+## 7. Helpdesk
+
+| Channel | Details |
+|---|---|
+| Email | it@harbourhealth.example |
+| Phone | Extension 2200, or 0117 496 0122 |
+| Hours | 08:00 to 18:00, Monday to Friday |
+| Out of hours (urgent only) | IT on-call phone, number on the staff room noticeboard |
+
+Targets: urgent problems that stop a clinic working are picked up within 30 minutes during helpdesk hours. Everything else within 1 working day.
+
+## 8. Leavers
+
+The manager tells IT the leaving date at least 5 working days ahead. IT disables the account at 17:00 on the last day and collects the laptop. Mailboxes are kept for 90 days, then deleted.
+
+## 9. IT team
+
+| Name | Role |
+|---|---|
+| David Cho | IT Manager |
+| Sam Patel | Systems Analyst, onboarding sessions and shared clinic PCs |
