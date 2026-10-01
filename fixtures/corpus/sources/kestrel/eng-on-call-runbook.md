@@ -83,7 +83,7 @@ When in doubt, declare the higher severity. Downgrading later costs nothing.
 
 ### Kestrel Shield alerts
 
-- A block rate over 2.0% or an FR-110 card-testing page goes to payments-primary. The rules are in "Kestrel Shield Fraud Rules", which only Payments Engineering and Security can open.
+- Kestrel Shield fraud alerts and card-testing pages go to payments-primary. The rules and their thresholds are in "Kestrel Shield Fraud Rules", which only Payments Engineering and Security can open.
 
 ## 7. After the incident
 

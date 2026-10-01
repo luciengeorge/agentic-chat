@@ -1,5 +1,6 @@
 """manifest.json: every folder and file on each tenant's site, with the item's own sharing,
-and the tenant's users so fake-workspace can name them as Graph does.
+the tenant's users so fake-workspace can name them as Graph does, and its groups so it can
+check that a grant names a group of that site.
 
 fake-workspace reads it and works out inheritance itself, so grants here are never resolved
 through parents. Ids come from the world, so they agree with Keycloak without a lookup table.
@@ -58,7 +59,8 @@ def build_manifest(world: World, sources: list[Source], blobs: dict[str, Blob]) 
             }
             for user in spec.users
         }
-        sites[tenant] = {"items": items, "users": users}
+        groups = {str(world.group_id(tenant, path)): {"path": path} for path in spec.groups}
+        sites[tenant] = {"items": items, "users": users, "groups": groups}
     return {"version": VERSION, "sites": sites}
 
 

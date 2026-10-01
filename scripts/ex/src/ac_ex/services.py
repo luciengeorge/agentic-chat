@@ -26,6 +26,10 @@ class TemporalUnreachableError(TerminateSkippedError):
     pass
 
 
+class DockerMissingError(ExError):
+    """`docker` isn't on PATH, so no Compose command can run."""
+
+
 @dataclass(frozen=True)
 class ServiceStatus:
     name: str
@@ -42,7 +46,7 @@ class ServiceStatus:
 
 def compose_command(root: Path, *args: str, profiles: tuple[str, ...] = PROFILES) -> list[str]:
     if shutil.which("docker") is None:
-        raise ExError("docker is not on PATH")
+        raise DockerMissingError("docker is not on PATH")
     if not (root / COMPOSE_FILE).is_file():
         raise ExError(f"{COMPOSE_FILE} is missing")
     flags = [flag for profile in profiles for flag in ("--profile", profile)]

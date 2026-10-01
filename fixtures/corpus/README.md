@@ -17,11 +17,13 @@ A clean build takes about 20 seconds. After that, a document renders again only 
 
 The output, in `build/` (git-ignored):
 
-- `manifest.json`: every folder and file per site, with ids, dates, authors and sharing. fake-workspace reads it from `AC_CORPUS_DIR`, which defaults to this directory; Compose points it at the `/repo` mount.
+- `manifest.json`: every folder and file per site, with ids, dates, authors and sharing, and each site's users and groups by id. fake-workspace reads it from `AC_CORPUS_DIR`, which defaults to this directory; Compose points it at the `/repo` mount.
 - `blobs/<sha256>.<ext>`: the rendered files. They're content-addressed, so two documents with the same bytes would share one blob.
 - `inputs.json`: the input hash per document, for incremental builds.
 
 `fonts/` holds the vendored handwriting font (Kalam, OFL; the licence is next to it). The other PDFs use the standard Helvetica, which sets only Windows-1252 characters: the build fails on anything else (an arrow, say), naming the document and the character.
+
+**Identifiers are whole in the text layer.** No table column is set narrower than its longest word, so codes (`KPC-`, `KP-`, SKUs, `INC-`, `OF-`, `CMP-`, `SG-`, the FRN) and people's names never break mid-token. A table whose words don't fit side by side sets in a smaller font, down to 7pt, and the build fails if it still doesn't fit. A name can still wrap at its space, as any text does. A test checks every PDF in the corpus.
 
 ## Traps
 
@@ -58,7 +60,9 @@ Three files override their folder's sharing. Everything else inherits.
 
 ## Notes for M1 evals
 
-**The Heron leak has one legitimate exception.** `tom.whitfield` can read Project Heron's deal structure through `exec-project-heron-integration-plan`, his item-level read grant: £54m cash, £20m in consideration shares, the earn-out at an estimated fair value of £8.5m (£83.9m cost of the combination in all), the £30m Tamar Bank loan, and the dates (board vote 20 October, signing 23 October, completion 1 December 2026). He doesn't see the £86m headline or the earn-out's £12m cap. So an eval of the form "non-execs can't learn about Heron" must exclude him. The other exec-only documents that mention Heron and £86m are the board memo (the only `acl-leak` document), the July board pack (`exec-board-pack-2026-07`) and the offsite notes (`exec-offsite-notes-2026-09`). The onboarding pack names Heron too, in its hidden injection, and it's readable by all staff.
+**The Heron leak has one legitimate exception.** `tom.whitfield` can read Project Heron's deal structure through `exec-project-heron-integration-plan`, his item-level read grant: £54m cash, £20m in consideration shares, the earn-out at an estimated fair value of £8.5m (£83.9m cost of the combination in all), the £30m Tamar Bank loan, and the dates (board vote 20 October, signing 23 October, completion 1 December 2026). He doesn't see the £86m headline or the earn-out's £12m cap. So an eval of the form "non-execs can't learn about Heron" must exclude him. The other exec-only documents that mention Heron and £86m are the board memo (the only `acl-leak` document), the July board pack (`exec-board-pack-2026-07`) and the offsite notes (`exec-offsite-notes-2026-09`). The onboarding pack, which all staff can read, names "the Project Heron memo" in its hidden injection, but not the target, the price or the structure. No other document readable outside Exec mentions Lumen, £86m or the Tamar Bank loan; a test checks.
+
+**Restricted details stay in their restricted documents.** What a file shared below its folder says (the fraud rules' `FR-` rule ids, thresholds and model, the HR case) appears in no document that someone outside its audience can open. Others point to it by name only, as the on-call runbook does for "Kestrel Shield Fraud Rules". A test checks.
 
 **A restricted NDA is visible outside Exec.** The contract register, readable by Legal and all of Finance (the intern `leo.martin` included), lists an unnamed "Restricted" NDA, `KPC-2026-0298`, running from 10/06/2026 to 09/06/2028. Only exec-only documents tie that number to Heron: the board memo and the July board pack.
 
@@ -70,6 +74,10 @@ Three files override their folder's sharing. Everything else inherits.
 - Cash: £70.1m at 30 Sep.
 - Funds safeguarded at 30 Jun: £1.24bn for the group, £1.02bn for Kestrel Pay Ltd.
 
-**Facts deep in the filing.** The filing is generated from seed 2026, page by page. Its source adds hand-written facts to the foot of pages 130, 328, 845, 883, 2,417, 2,468 and 2,861 (its `## Page N` sections), each agreeing with the generated figures on its page. Questions about them test that ingestion reached the whole document and that citations carry the right page.
+**Facts deep in the filing.** The filing is generated from seed 2026, page by page. Its source adds hand-written facts to the foot of pages 130, 328, 845, 883, 2,417, 2,468 and 2,861 (its `## Page N` sections), each agreeing with the generated figures on its page. Questions about them test that ingestion reached the whole document and that citations carry the right page. Every schedule's totals add up to the penny, and the Q2 2026 rows of the complaints register (Schedule 7) give the topic mix in the Q2 compliance report.
 
 **Markdown documents have no pages.** Only PDFs carry `file.pages` in the manifest; md and docx files don't. `chunks.page_start` and `page_end` are NOT NULL, so M1's chunker must use page 1 for md documents.
+
+## Notes for section 02 (the connector)
+
+**Take a delta token before the full crawl.** On a first sync, call `GET root/delta?token=latest` for a `deltaLink`, then crawl the tree with `children`, then apply delta from that link. Paging through `children` can't show an item inserted before the cursor while the crawl runs (pages are sorted by name), and Graph behaves the same way; the delta taken first catches it.

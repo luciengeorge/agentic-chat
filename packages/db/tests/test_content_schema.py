@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
+from typing import Any
 
 import psycopg
 import pytest
@@ -16,9 +17,12 @@ from ac_db.models import (
     Conversation,
     Document,
     DocumentAcl,
+    GroupClosure,
     Message,
     Principal,
+    SyncState,
     Tenant,
+    acl_version_seq,
 )
 from ac_db.testing import temporary_database
 
@@ -105,27 +109,40 @@ def new_document(tenant_id: uuid.UUID, status: str = "ready") -> Document:
     )
 
 
-def new_chunk(document: Document, ordinal: int, embedding: list[float] | None = None) -> Chunk:
+def new_chunk(
+    document: Document,
+    ordinal: int,
+    embedding: list[float] | None = None,
+    pages: tuple[int | None, int | None] = (1, 1),
+) -> Chunk:
     return Chunk(
         tenant_id=document.tenant_id,
         document_id=document.id,
         document_version=document.version,
         ordinal=ordinal,
         text="Revenue grew 12% quarter on quarter.",
-        page_start=1,
-        page_end=1,
+        page_start=pages[0],
+        page_end=pages[1],
         token_count=8,
         embedding=embedding,
     )
 
 
-def new_acl(document: Document, principal: Principal, effect: str = "allow") -> DocumentAcl:
+def new_acl(
+    document: Document, principal: Principal, effect: str = "allow", acl_version: int = 1
+) -> DocumentAcl:
     return DocumentAcl(
         tenant_id=document.tenant_id,
         document_id=document.id,
         principal_id=principal.id,
         effect=effect,
-        acl_version=1,
+        acl_version=acl_version,
+    )
+
+
+def new_closure(group: Principal, member: Principal, depth: int = 1) -> GroupClosure:
+    return GroupClosure(
+        tenant_id=group.tenant_id, group_id=group.id, member_id=member.id, depth=depth
     )
 
 
@@ -221,6 +238,102 @@ def test_chunk_embeddings_round_trip_at_1536_dimensions(
     assert stored == embedding
     with pytest.raises(DataError), session.begin_nested():
         session.add(new_chunk(document, 1, embedding=[1.0, 2.0]))
+
+
+@pytest.mark.parametrize("pages", [(None, None), (1, 1), (2, 5)])
+def test_a_chunk_has_both_pages_or_neither(
+    session: Session, kestrel: uuid.UUID, pages: tuple[int | None, int | None]
+) -> None:
+    document = add(session, new_document(kestrel))
+    chunk = add(session, new_chunk(document, 0, pages=pages))
+
+    stored = session.execute(
+        select(Chunk.page_start, Chunk.page_end).where(Chunk.id == chunk.id)
+    ).one()
+    assert tuple(stored) == pages
+
+
+@pytest.mark.parametrize("pages", [(1, None), (None, 1), (3, 2)])
+def test_chunk_pages_are_paired_and_in_order(
+    session: Session, kestrel: uuid.UUID, pages: tuple[int | None, int | None]
+) -> None:
+    document = add(session, new_document(kestrel))
+    with pytest.raises(IntegrityError) as exc, session.begin_nested():
+        session.add(new_chunk(document, 0, pages=pages))
+    assert violation(exc) == ("CheckViolation", "chunks_pages_check")
+
+
+def test_acl_versions_come_from_one_sequence_across_documents(
+    session: Session, kestrel: uuid.UUID
+) -> None:
+    group = add(session, new_principal(kestrel, kind="group"))
+    first = add(session, new_document(kestrel))
+    second = add(session, new_document(kestrel))
+    assert (first.acl_version, second.acl_version) == (0, 0)
+
+    for document in (first, second):
+        document.acl_version = session.scalars(select(acl_version_seq.next_value())).one()
+        add(session, new_acl(document, group, acl_version=document.acl_version))
+
+    assert 0 < first.acl_version < second.acl_version
+    rows = session.execute(
+        select(DocumentAcl.document_id, DocumentAcl.acl_version).where(
+            DocumentAcl.principal_id == group.id
+        )
+    ).all()
+    assert dict(rows) == {first.id: first.acl_version, second.id: second.acl_version}
+
+
+@pytest.mark.parametrize(
+    ("self_row", "depth", "constraint"),
+    [(True, 1, "group_closure_no_self_check"), (False, 0, "group_closure_depth_check")],
+    ids=["self-row", "depth-0"],
+)
+def test_group_closure_refuses_self_rows_and_depth_0(
+    session: Session, kestrel: uuid.UUID, self_row: bool, depth: int, constraint: str
+) -> None:
+    group = add(session, new_principal(kestrel, kind="group"))
+    member = group if self_row else add(session, new_principal(kestrel))
+    with pytest.raises(IntegrityError) as exc, session.begin_nested():
+        session.add(new_closure(group, member, depth))
+    assert violation(exc) == ("CheckViolation", constraint)
+
+
+def test_group_closure_member_index_carries_the_tenant(session: Session) -> None:
+    """The RLS policy reads tenant_id, so lookups by member stay index-only once it's forced."""
+    indexdef = session.scalars(
+        text("SELECT indexdef FROM pg_indexes WHERE indexname = 'group_closure_member_idx'")
+    ).one()
+    assert indexdef.endswith("(member_id, group_id) INCLUDE (tenant_id)")
+
+
+def test_message_content_can_be_a_list(session: Session, kestrel: uuid.UUID) -> None:
+    conversation = add(session, new_conversation(add(session, new_principal(kestrel))))
+    blocks: list[Any] = [{"type": "text", "text": "hello"}, {"type": "tool_use", "name": "search"}]
+    message = new_message(conversation, 1)
+    message.content = blocks
+    add(session, message)
+
+    stored = session.scalars(select(Message.content).where(Message.id == message.id)).one()
+    assert stored == blocks
+
+
+def test_updates_bump_updated_at(session: Session, kestrel: uuid.UUID) -> None:
+    long_ago = datetime(2020, 1, 1, tzinfo=UTC)
+    document = add(session, new_document(kestrel))
+    conversation = add(session, new_conversation(add(session, new_principal(kestrel))))
+    sync = add(session, SyncState(tenant_id=kestrel, connector="fake-workspace", scope="kestrel"))
+    rows = [document, conversation, sync]
+    for row in rows:
+        row.updated_at = long_ago
+    session.flush()
+
+    document.title = "Q3 2026 Quarterly Report (final)"
+    conversation.title = "Revenue questions"
+    sync.cursor = "page-2"
+    session.flush()
+
+    assert [row.updated_at > long_ago for row in rows] == [True, True, True]
 
 
 def test_an_unknown_tenant_is_rejected(session: Session) -> None:

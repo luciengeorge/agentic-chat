@@ -46,7 +46,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package "$PACKAGE"
 
 FROM python:3.13.15-slim-trixie AS prod
-ENV PATH=/opt/venv/bin:$PATH \
+# Settings default to dev, which turns on dev-only surfaces such as fake-workspace's control API.
+ENV AC_ENV=prod \
+    PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1
 RUN groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --no-create-home app

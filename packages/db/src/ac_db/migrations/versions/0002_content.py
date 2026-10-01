@@ -64,14 +64,22 @@ def upgrade() -> None:
             tenant_id uuid NOT NULL REFERENCES tenants (id),
             group_id uuid NOT NULL,
             member_id uuid NOT NULL,
-            depth integer NOT NULL,
+            depth integer NOT NULL CHECK (depth >= 1),
             PRIMARY KEY (group_id, member_id),
+            CONSTRAINT group_closure_no_self_check CHECK (group_id <> member_id),
             FOREIGN KEY (tenant_id, group_id) REFERENCES principals (tenant_id, id),
             FOREIGN KEY (tenant_id, member_id) REFERENCES principals (tenant_id, id)
         )
     """)
     # "Which groups is this user in?" runs on every authorised query; this answers it index-only.
-    op.execute("CREATE INDEX group_closure_member_idx ON group_closure (member_id, group_id)")
+    # tenant_id rides along for the RLS policy, which would otherwise visit the heap once forced.
+    op.execute(
+        "CREATE INDEX group_closure_member_idx ON group_closure (member_id, group_id)"
+        " INCLUDE (tenant_id)"
+    )
+    # Every ACL change sets documents.acl_version (and its document_acl rows) to nextval, so the
+    # value orders changes across all documents; see ac_db.models.acl_version_seq.
+    op.execute("CREATE SEQUENCE acl_version_seq")
     op.execute("""
         CREATE TABLE documents (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -119,14 +127,19 @@ def upgrade() -> None:
             document_version integer NOT NULL,
             ordinal integer NOT NULL,
             text text NOT NULL,
-            page_start integer NOT NULL,
-            page_end integer NOT NULL,
+            page_start integer,
+            page_end integer,
             section text,
             token_count integer NOT NULL,
             embedding vector(1536),
             embedding_model_version text,
             created_at timestamptz NOT NULL DEFAULT now(),
             UNIQUE (document_id, document_version, ordinal),
+            -- Both pages or neither: md and docx have no pages.
+            CONSTRAINT chunks_pages_check CHECK (
+                (page_start IS NULL) = (page_end IS NULL)
+                AND (page_end IS NULL OR page_end >= page_start)
+            ),
             FOREIGN KEY (tenant_id, document_id)
                 REFERENCES documents (tenant_id, id) ON DELETE CASCADE
         )
@@ -200,5 +213,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     for table in reversed(TABLES):
         op.execute(f"DROP TABLE {table}")
+    op.execute("DROP SEQUENCE acl_version_seq")
     # The vector extension stays. In dev it predates this migration and only a superuser can
     # create it, so dropping it would leave the app role unable to upgrade again.

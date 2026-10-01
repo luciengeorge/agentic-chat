@@ -333,12 +333,12 @@ Published ports bind to 127.0.0.1 only. The api publishes none: it trusts Envoy'
 
 **Schema (initial entities)**
 - Tenancy: `tenants`; `tenant_id` on every table from the first migration, with row-level security policies (enforced from section 09)
-- Identity: `principals` (users and groups mirrored from Keycloak), `group_members` (direct), `group_closure` (computed)
-- Content: `documents` (source, external_id, version, content_hash, status, valid_from/valid_to), `document_acl` (principal, allow/deny, acl_version), `chunks` (document, ordinal, text, page range, section, token count, embedding, embedding_model_version)
+- Identity: `principals` (users and groups mirrored from Keycloak), `group_members` (direct), `group_closure` (computed; no self rows, so depth starts at 1)
+- Content: `documents` (source, external_id, version, content_hash, status, valid_from/valid_to, acl_version), `document_acl` (principal, allow/deny, acl_version), `chunks` (document, ordinal, text, page range (null for md and docx), section, token count, embedding, embedding_model_version). Every ACL change takes its `acl_version` from one global sequence, `acl_version_seq`, so the values order ACL changes across all documents
 - Sync and ingest: `sync_state` (connector cursor or delta token), `outbox` (id, kind, payload, partition_key, created_at, published_at, attempts, last_error, failed_at)
 - Conversation: `conversations`, `messages` (unique idempotency key)
 - Runs: `runs` (status, version, workflow_id, budget), `run_events` (run_id, seq unique, type, payload), `approvals`
-- Audit: `retrieval_audit` (user, query hash, returned ids, denied ids, acl_version, timestamp)
+- Audit: `retrieval_audit` (user, query hash, returned ids, denied ids, acl_version, timestamp). Its `acl_version` is the sequence's high-water mark at query time, so any document above it changed after the query
 
 **Corpus spec.** About 40 documents across Finance, HR, Legal, Engineering, Sales and Exec. The generators and seeds are committed; the documents themselves are built by `ex fixtures`.
 - Native PDFs are rendered from markdown.
@@ -365,7 +365,7 @@ class Reranker(Protocol):
 ```
 Implementations: OpenAI, `FakeChatModel(turns=[...])`, cassette-backed, and local (section 21).
 
-**`ex smoke`** checks that every service is healthy; that a seeded user logs in through the BFF and the resulting JWT is accepted by Envoy; that the api `/health` answers through Envoy; that an outbox row makes the relay start a hello workflow, which completes; that the fake model answers; and that the workshop app lists the sections.
+**`ex smoke`** checks that every service is healthy; that a seeded user logs in through the BFF and the resulting JWT is accepted by Envoy; that the api `/health` answers through Envoy; that an outbox row makes the relay start a hello workflow, which completes; that the fake model answers; that the workshop app lists the sections; that fake-workspace pages a folder, shares the M&A memo with `/Kestrel/Exec` alone and refuses Harbour's token on Kestrel's site; and that a seeded user signs in, a disabled one can't, and Keycloak holds the ids `fixtures/world.yaml` implies.
 
 ## Unresolved questions
 

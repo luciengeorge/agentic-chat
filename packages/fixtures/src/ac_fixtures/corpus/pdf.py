@@ -1,7 +1,9 @@
 """Blocks to PDF with reportlab: a text layer, real (ruled) tables, and a fixed page order."""
 
 import io
+import math
 import os
+import re
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
@@ -44,6 +46,10 @@ PAGE_W, PAGE_H = A4
 MARGIN = 20 * mm
 FOOTER_Y = 11 * mm
 CELL_PAD = 4
+# A table's font shrinks to no less than this share of the body size to fit its words.
+MIN_TABLE_SCALE = 0.7
+# Room past a cell's longest word, so rounding can't push it over the line and split it.
+_SLACK = 0.01
 HAND_FONT = "Kalam-Regular"
 HEADER_FILL = colors.Color(0.9, 0.9, 0.9)
 # reportlab's TA_LEFT, TA_CENTER and TA_RIGHT; its paragraphs mis-draw the string forms.
@@ -244,19 +250,7 @@ class _Builder:
             )
             for level, scale in {1: 1.8, 2: 1.4, 3: 1.2, 4: 1.05, 5: 1.0, 6: 1.0}.items()
         }
-        cell = ParagraphStyle(
-            "cell", parent=base, fontSize=size * 0.9, leading=size * 0.9 * 1.25, spaceAfter=0
-        )
-        self.cell = {
-            (align, bold): ParagraphStyle(
-                f"cell-{align}-{bold}",
-                parent=cell,
-                alignment=_ALIGNMENT[align],
-                fontName=look.bold if bold else look.regular,
-            )
-            for align in _ALIGNMENT
-            for bold in (False, True)
-        }
+        self.cell: dict[tuple[b.Align, bool, float], ParagraphStyle] = {}
         self.code = ParagraphStyle(
             "code", parent=base, fontName=look.mono, fontSize=size * 0.85, leading=size * 1.15
         )
@@ -355,10 +349,10 @@ class _Builder:
         align: list[b.Align] = [*block.align, *padding]
         rows = [block.header, *block.rows]
         cells = [[row[c] if c < len(row) else () for row in rows] for c in range(columns)]
-        widths = self.column_widths(cells, width)
+        size, widths = self.column_widths(cells, width)
         data = [
             [
-                self.cell_value(row[c] if c < len(row) else (), align[c], r == 0, widths[c])
+                self.cell_value(row[c] if c < len(row) else (), align[c], r == 0, widths[c], size)
                 for c in range(columns)
             ]
             for r, row in enumerate(rows)
@@ -368,8 +362,8 @@ class _Builder:
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.Color(0.45, 0.45, 0.45)),
                 *([] if self.look.hand else [("BACKGROUND", (0, 0), (-1, 0), HEADER_FILL)]),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("FONT", (0, 0), (-1, -1), self.look.regular, self.look.size * 0.9),
-                ("FONT", (0, 0), (-1, 0), self.look.bold, self.look.size * 0.9),
+                ("FONT", (0, 0), (-1, -1), self.look.regular, size),
+                ("FONT", (0, 0), (-1, 0), self.look.bold, size),
                 ("TOPPADDING", (0, 0), (-1, -1), 2.5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
                 ("LEFTPADDING", (0, 0), (-1, -1), CELL_PAD),
@@ -383,51 +377,91 @@ class _Builder:
         )
         return Table(data, colWidths=widths, repeatRows=1, style=style, hAlign="LEFT")
 
-    def column_widths(self, columns: list[list[b.Inline]], width: float) -> list[float]:
-        """Widths as a browser lays out an auto table: each column wants its text on one line,
-        and when they can't all have that, only the columns with spaces to wrap at give way."""
+    def column_widths(
+        self, columns: list[list[b.Inline]], width: float
+    ) -> tuple[float, list[float]]:
+        """The table's font size and column widths, laid out as a browser lays out an auto
+        table: each column wants its text on one line, and when they can't all have that, only
+        the columns with spaces to wrap at give way. No column is narrower than its longest
+        word, so a word (a contract number, say) never breaks; when the longest words don't fit
+        side by side, the table's font shrinks until they do."""
+        pad = 2 * CELL_PAD + _SLACK
+        measured = [[self.measure(cell, r == 0) for r, cell in enumerate(c)] for c in columns]
+        natural_pt = [max(line for line, _ in column) for column in measured]
+        least_pt = [max(word for _, word in column) for column in measured]
         size = self.look.size * 0.9
-        pad = 2 * CELL_PAD
-
-        def measure(text: str, header: bool) -> float:
-            return pdfmetrics.stringWidth(
-                text, self.look.bold if header else self.look.regular, size
-            )
-
-        natural = [
-            max(measure(b.plain(cell), r == 0) for r, cell in enumerate(column)) + pad
-            for column in columns
-        ]
+        if sum(least_pt) * size + pad * len(columns) > width:
+            fits = (width - pad * len(columns)) / sum(least_pt)
+            smallest = self.look.size * MIN_TABLE_SCALE
+            if fits < smallest:
+                words = (sum(least_pt) * smallest + pad * len(columns)) / mm
+                raise b.RenderError(
+                    f"a table's longest words need {words:.0f}mm side by side even at "
+                    f"{smallest:g}pt, wider than the {width / mm:.0f}mm page: split the table"
+                )
+            size = math.floor(fits * 10) / 10
+        natural = [n * size + pad for n in natural_pt]
         if sum(natural) <= width:
-            return [w * width / sum(natural) for w in natural]
-        least = [
-            max(
-                (
-                    measure(word, r == 0)
-                    for r, cell in enumerate(column)
-                    for word in b.plain(cell).split()
-                ),
-                default=0.0,
-            )
-            + pad
-            for column in columns
-        ]
-        if sum(least) >= width:
-            return [w * width / sum(least) for w in least]
+            return size, [w * width / sum(natural) for w in natural]
+        least = [m * size + pad for m in least_pt]
         give = [n - m for n, m in zip(natural, least, strict=True)]
         spare = (width - sum(least)) / sum(give)
-        return [m + g * spare for m, g in zip(least, give, strict=True)]
+        return size, [m + g * spare for m, g in zip(least, give, strict=True)]
 
-    def cell_value(self, content: b.Inline, align: b.Align, header: bool, width: float) -> Any:
+    def measure(self, content: b.Inline, header: bool) -> tuple[float, float]:
+        """The widest line and the widest word of a cell, per point of font size."""
+        widest_line = widest_word = line = word = 0.0
+        for span in content:
+            font = self.font(span, header)
+            for piece in re.split(r"(\s)", span.text):
+                if not piece:
+                    continue
+                if piece.isspace():
+                    widest_word, word = max(widest_word, word), 0.0
+                    if piece == "\n":
+                        widest_line, line = max(widest_line, line), 0.0
+                    else:
+                        line += pdfmetrics.stringWidth(" ", font, 1)
+                else:
+                    piece_width = pdfmetrics.stringWidth(piece, font, 1)
+                    line += piece_width
+                    word += piece_width
+        return max(widest_line, line), max(widest_word, word)
+
+    def font(self, span: b.Span, header: bool) -> str:
+        if span.code:
+            return self.look.mono
+        bold = header or span.bold
+        if bold:
+            return self.look.bold_italic if span.italic else self.look.bold
+        return self.look.italic if span.italic else self.look.regular
+
+    def cell_value(
+        self, content: b.Inline, align: b.Align, header: bool, width: float, size: float
+    ) -> Any:
         # Plain short cells skip Paragraph layout, which keeps the long filing fast.
         if len(content) <= 1 and all(not (s.bold or s.italic or s.code) for s in content):
             text = self.text("".join(s.text for s in content))
             font = self.look.bold if header else self.look.regular
             if "\n" not in text and (
-                pdfmetrics.stringWidth(text, font, self.look.size * 0.9) <= width - 2 * CELL_PAD
+                pdfmetrics.stringWidth(text, font, size) <= width - 2 * CELL_PAD
             ):
                 return text
-        return Paragraph(self.markup(content), self.cell[(align, header)])
+        return Paragraph(self.markup(content), self.cell_style(align, header, size))
+
+    def cell_style(self, align: b.Align, header: bool, size: float) -> ParagraphStyle:
+        key = (align, header, size)
+        if key not in self.cell:
+            self.cell[key] = ParagraphStyle(
+                f"cell-{align}-{header}-{size:g}",
+                parent=self.body,
+                fontName=self.look.bold if header else self.look.regular,
+                fontSize=size,
+                leading=size * 1.25,
+                spaceAfter=0,
+                alignment=_ALIGNMENT[align],
+            )
+        return self.cell[key]
 
     def markup(self, content: b.Inline) -> str:
         parts: list[str] = []

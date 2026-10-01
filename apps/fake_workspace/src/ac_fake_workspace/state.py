@@ -1,7 +1,9 @@
 """The drives, in memory: items from the manifest, their sharing, and a change log per site."""
 
+import asyncio
 import hashlib
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,13 +27,17 @@ def iso(moment: datetime) -> str:
 
 
 class Clock:
-    """Real UTC time, unless the control API pinned it."""
+    """Real UTC time, unless the control API pinned it. Waits (retry backoff, injected latency)
+    go through `sleep`, so tests can see and control them."""
 
     def __init__(self) -> None:
         self.pinned: datetime | None = None
 
     def now(self) -> datetime:
         return self.pinned or datetime.now(UTC)
+
+    async def sleep(self, seconds: float) -> None:
+        await asyncio.sleep(seconds)
 
 
 class Grant(BaseModel):
@@ -76,9 +82,14 @@ class ManifestUser(BaseModel):
     display_name: str
 
 
+class ManifestGroup(BaseModel):
+    path: str
+
+
 class ManifestSite(BaseModel):
     items: list[ManifestItem]
     users: dict[str, ManifestUser]
+    groups: dict[str, ManifestGroup]
 
 
 class Manifest(BaseModel):
@@ -99,7 +110,7 @@ class Item:
     sharing: Sharing
     created_seq: int = 0
     deleted_seq: int | None = None
-    version: int = 1  # eTag: any change to the item
+    version: int = 1  # eTag: any change to the item, its effective sharing included
     content_version: int = 1  # cTag: content only
     mime_type: str | None = None
     size: int = 0
@@ -139,12 +150,18 @@ class CorpusError(Exception):
     pass
 
 
+def sort_key(item: Item) -> tuple[str, str]:
+    """How children are listed: by name, case-insensitively, then by id."""
+    return item.name.casefold(), item.id
+
+
 class Site:
     """One tenant's drive. Deleted items stay as tombstones so delta can report them."""
 
-    def __init__(self, name: str, users: dict[str, str]) -> None:
+    def __init__(self, name: str, users: dict[str, str], groups: dict[str, str]) -> None:
         self.name = name
         self.users = users  # user id -> display name
+        self.groups = groups  # group id -> path
         self.items: dict[str, Item] = {}  # in creation order
         self.changes: list[Change] = []  # change n has seq n + 1
         self.root_id = ""
@@ -162,7 +179,7 @@ class Site:
 
     def children(self, item: Item) -> list[Item]:
         live = (i for i in self.items.values() if i.parent_id == item.id and i.deleted_seq is None)
-        return sorted(live, key=lambda i: (i.name.casefold(), i.id))
+        return sorted(live, key=sort_key)
 
     def descendants(self, item: Item) -> list[Item]:
         """Depth first, each folder before its contents."""
@@ -186,6 +203,19 @@ class Site:
         if not item.folder:
             return item.size
         return sum(d.size for d in self.descendants(item) if not d.folder)
+
+    def strangers(self, grants: Iterable[Grant]) -> list[Grant]:
+        """The grants that name no user or group of this site. A group grant's name must be that
+        group's path too, since permissions show it as the group's displayName."""
+        return [
+            g
+            for g in grants
+            if (
+                g.principal_id not in self.users
+                if g.principal_type == "user"
+                else self.groups.get(g.principal_id) != g.principal_name
+            )
+        ]
 
     def effective(self, item: Item) -> list[Effective]:
         """Own grants plus, while `inherit` holds, the parent's effective ones. The stronger role
@@ -290,9 +320,11 @@ class Site:
 
     def set_sharing(self, ref: str, sharing: Sharing) -> Item:
         item = self.get(ref)
-        for grant in sharing.grants:
-            if grant.principal_type == "user" and grant.principal_id not in self.users:
-                raise bad_request(f"Unknown user {grant.principal_id}.")
+        if strangers := self.strangers(sharing.grants):
+            names = ", ".join(
+                f"{g.principal_type} {g.principal_name} ({g.principal_id})" for g in strangers
+            )
+            raise bad_request(f"Not a user or group of this site: {names}.")
         before = self._acls(item)
         del before[item.id]
         item.sharing = sharing
@@ -320,9 +352,12 @@ class Site:
         return {i.id: self._acl(i) for i in (item, *self.descendants(item))}
 
     def _record_acl_changes(self, before: dict[str, Acl]) -> None:
+        """A sharing change for every item whose effective sharing changed, with a new eTag, so a
+        connector that skips unchanged eTags still sees a revoked grant."""
         for item_id, acl in before.items():
             item = self.items[item_id]
             if self._acl(item) != acl:
+                item.version += 1
                 self._record(item, sharing=True)
 
     def _bottom_up(self, item: Item) -> list[Item]:
@@ -397,7 +432,8 @@ def load_corpus(corpus_dir: Path) -> tuple[dict[str, Site], str]:
 
 
 def _load_site(name: str, data: ManifestSite, corpus_dir: Path) -> Site:
-    site = Site(name, {user_id: user.display_name for user_id, user in data.users.items()})
+    users = {user_id: user.display_name for user_id, user in data.users.items()}
+    site = Site(name, users, {group_id: group.path for group_id, group in data.groups.items()})
     for entry in data.items:
         item = _load_item(site, entry, corpus_dir)
         site.items[item.id] = item
@@ -415,9 +451,12 @@ def _load_item(site: Site, entry: ManifestItem, corpus_dir: Path) -> Item:
     if entry.id in site.items:
         raise fail("duplicate id")
     users = [entry.created_by, entry.modified_by]
-    users += [g.principal_id for g in entry.sharing.grants if g.principal_type == "user"]
     if unknown := [u for u in users if u is not None and u not in site.users]:
         raise fail(f"unknown users {unknown}")
+    if strangers := site.strangers(entry.sharing.grants):
+        raise fail(
+            f"grants to principals the site doesn't have: {[g.principal_name for g in strangers]}"
+        )
     item = Item(
         id=entry.id,
         name=entry.name,

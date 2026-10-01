@@ -25,6 +25,8 @@ Present: AO, DR, PN, HM. Marco (MB) joined Fri morning for the people session.
 
 - DD reports due Fri 18/9
 - Price stays at £86m. NO increase.
+- Funding: £24m own cash + £30m Tamar Bank loan. DR to get the term sheet w/c 14/9
+- Legal DD: Carrow Finch (UK), Almeida Reis (Portugal). Hartwell Moss on financial and tax
 - Walk away if AT tax exposure is over €1m
 - Both founders on 3-year contracts, or no deal
 - DR + HM to write board memo by Thu 24/9
@@ -33,12 +35,15 @@ Present: AO, DR, PN, HM. Marco (MB) joined Fri morning for the people session.
 
 ## 3. Headcount
 
+- About 600 now. Lisbon is at 172, so the Lumen team can share the office from 2027
 - Pause non-critical backfills from 1 Oct. Engineering and Compliance exempt
 - Year-end target 625 (budget was 640)
 - MB to send the list of paused roles by Fri 25/9
 
 ## 4. Dublin
 
+- Lease at Harcourt Quay started 1/9 (KPC-2026-0412), rent-free to end of May 2027
+- Furniture: 4 deliveries, last by end Nov (Liffey Office Interiors)
 - Move-in early Dec
 - KPE needs 2 more compliance hires (exempt from the pause)
 
@@ -46,6 +51,10 @@ Present: AO, DR, PN, HM. Marco (MB) joined Fri morning for the people session.
 
 - Review of the Checkout standard plan (KC-STD-01). Jake to bring a proposal to Exec by 15/10
 - AO: no price change before January
+
+## 6. Q3
+
+- Revenue tracking about £41m, gross margin 58%. DR to confirm after the September close
 
 ## Actions
 

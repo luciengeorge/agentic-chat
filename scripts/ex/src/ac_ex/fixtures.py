@@ -4,6 +4,8 @@ The renderers are imported inside the functions: they're heavy, and every other 
 would pay for them at start-up.
 """
 
+import hashlib
+import json
 import tempfile
 import time
 from collections.abc import Callable, Generator
@@ -21,6 +23,8 @@ if TYPE_CHECKING:
     from ac_fixtures.corpus.build import BuildReport
 
 WORKSPACE_URL = "http://localhost:8100"
+# The digest of the realm exports Keycloak last loaded, so a reload that failed is retried.
+REALMS_APPLIED = Path(".ex/realm-applied.json")
 
 
 @dataclass(frozen=True)
@@ -48,7 +52,7 @@ def run(root: Path, *, clean: bool) -> tuple[dict[str, object], str, bool]:
     changed, report = _build(
         root, root / "fixtures" / "directory", root / "fixtures" / "corpus" / "build", clean=clean
     )
-    recreated, keycloak, realms_ok = _load_realms(root, STACK) if changed else ([], None, True)
+    recreated, keycloak, realms_ok = _load_realms(root, STACK)
     reset, detail, reset_ok = _reset_workspace(ENDPOINTS.workspace)
     files = [str(path.relative_to(root)) for path in changed]
     payload: dict[str, object] = {
@@ -146,26 +150,63 @@ def _differences(first: Path, second: Path) -> list[str]:
     return out
 
 
+def exports_digest(directory: Path) -> str:
+    """One sha256 over every realm export: what Keycloak imports when its container is created."""
+    digest = hashlib.sha256()
+    for path in sorted(p for p in directory.iterdir() if p.is_file()):
+        digest.update(f"{path.name}\0{path.stat().st_size}\0".encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _applied(root: Path) -> str | None:
+    try:
+        return json.loads((root / REALMS_APPLIED).read_text(encoding="utf-8"))["digest"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _mark_applied(root: Path, digest: str) -> None:
+    path = root / REALMS_APPLIED
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"digest": digest}) + "\n", encoding="utf-8")
+
+
 def _load_realms(root: Path, stack: Stack) -> tuple[list[str], str | None, bool]:
-    """(recreated services, detail, ok) after the realm exports changed.
+    """(recreated services, detail, ok): make Keycloak serve the realm exports on disk.
 
     Keycloak imports realms only when its container is created, so a running one is recreated and
     a stopped one removed (`ex up` would start it again on the old realms). A new container signs
     with new keys, and Envoy would answer 401 until its JWKS cache expired, so a running Envoy is
     recreated after it: it fetches the keys before it opens its listener.
+
+    The exports are written before this runs, so a run that fails here leaves them unchanged for
+    the next one. Hence the record of what Keycloak last loaded: the reload stays pending until
+    it succeeds, whether or not the exports change again.
     """
+    digest = exports_digest(root / "fixtures" / "directory")
+    if _applied(root) == digest:
+        return [], None, True
     try:
         found = {s.name: s for s in stack.status(root)}
-    except ExError:  # no Docker or no stack: `ex up` creates Keycloak with the new exports
-        return [], None, True
+    except services.DockerMissingError:
+        return [], "docker isn't on PATH, so the realm reload waits for the next run", True
+    except ExError as exc:
+        return (
+            [],
+            f"couldn't read the stack's status, so the realms weren't reloaded{_why(exc)}",
+            False,
+        )
     keycloak = found.get("keycloak")
-    if keycloak is None:
+    if keycloak is None:  # no stack: `ex up` creates Keycloak with these exports
+        _mark_applied(root, digest)
         return [], None, True
     envoy = found.get("envoy")
     recreated: list[str] = []
     try:
         if keycloak.state != "running":
             stack.remove(root, "keycloak")
+            _mark_applied(root, digest)
             return [], "removed the stopped Keycloak, so `ex up` imports the new exports", True
         stack.recreate(root, "keycloak")
         recreated.append("keycloak")
@@ -173,9 +214,14 @@ def _load_realms(root: Path, stack: Stack) -> tuple[list[str], str | None, bool]
             stack.recreate(root, "envoy")
             recreated.append("envoy")
     except ExError as exc:
-        output = f": {str(exc.detail).strip()[-300:]}" if exc.detail else ""
-        return recreated, f"couldn't reload the realms: {exc.message}{output}", False
+        return recreated, f"couldn't reload the realms{_why(exc)}", False
+    _mark_applied(root, digest)
     return recreated, f"recreated {' and '.join(recreated)} to load the new realm exports", True
+
+
+def _why(exc: ExError) -> str:
+    output = f": {str(exc.detail).strip()[-300:]}" if exc.detail else ""
+    return f": {exc.message}{output}"
 
 
 def _reset_workspace(url: str) -> tuple[bool, str, bool]:

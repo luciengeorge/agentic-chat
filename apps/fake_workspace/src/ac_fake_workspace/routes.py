@@ -2,6 +2,8 @@
 
 import base64
 import binascii
+import bisect
+import json
 import re
 import uuid
 from dataclasses import dataclass
@@ -14,7 +16,16 @@ from fastapi.responses import FileResponse
 from ac_fake_workspace.delivery import Notifier, SubscriptionRenewal, SubscriptionRequest
 from ac_fake_workspace.errors import GraphError, bad_request
 from ac_fake_workspace.faults import Faults
-from ac_fake_workspace.state import NAMESPACE, Clock, Effective, Item, Site, Workspace, iso
+from ac_fake_workspace.state import (
+    NAMESPACE,
+    Clock,
+    Effective,
+    Item,
+    Site,
+    Workspace,
+    iso,
+    sort_key,
+)
 
 DEFAULT_PAGE = 20
 MAX_PAGE = 200
@@ -152,6 +163,17 @@ def _decode(token: str) -> str:
         raise bad_request("Invalid token.") from e
 
 
+def _after(skiptoken: str) -> tuple[str, str]:
+    """The sort key a children `$skiptoken` carries: the last child already returned."""
+    try:
+        name, item_id = json.loads(_decode(skiptoken))
+    except (ValueError, TypeError) as e:  # not JSON, or not a pair
+        raise bad_request("Invalid $skiptoken.") from e
+    if not isinstance(name, str) or not isinstance(item_id, str):
+        raise bad_request("Invalid $skiptoken.")
+    return name, item_id
+
+
 router = APIRouter(prefix="/v1.0")
 
 
@@ -170,19 +192,20 @@ async def list_children(
     top: Top = DEFAULT_PAGE,
     skiptoken: Annotated[str | None, Query(alias="$skiptoken")] = None,
 ) -> JSON:
-    """Paged by offset, sorted by name (case-insensitive), then id."""
+    """Sorted by name (case-insensitive), then id, and paged by that key: the `$skiptoken` holds
+    the last child returned, and the next page starts after it. An offset would shift when a
+    child is deleted or added between pages, skipping or repeating one."""
     item = drive.get(ref)
     top = min(top, MAX_PAGE)
-    offset = 0
-    if skiptoken is not None:
-        offset_text = _decode(skiptoken)
-        if not offset_text.isdigit():
-            raise bad_request("Invalid $skiptoken.")
-        offset = int(offset_text)
     children = drive.children(item)
-    body: JSON = {"value": [drive_item(drive, c) for c in children[offset : offset + top]]}
-    if offset + top < len(children):
-        body["@odata.nextLink"] = _link(request, **{"$skiptoken": _encode(offset + top)})
+    start = 0
+    if skiptoken is not None:
+        start = bisect.bisect_right([sort_key(c) for c in children], _after(skiptoken))
+    page = children[start : start + top]
+    body: JSON = {"value": [drive_item(drive, c) for c in page]}
+    if start + top < len(children):
+        last = json.dumps(sort_key(page[-1]), ensure_ascii=False)
+        body["@odata.nextLink"] = _link(request, **{"$skiptoken": _encode(last)})
     return body
 
 

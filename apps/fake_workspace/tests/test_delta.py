@@ -106,6 +106,7 @@ async def test_created_file_appears(client: httpx.AsyncClient, corpus: Corpus) -
 async def test_move_shows_the_new_parent(client: httpx.AsyncClient, corpus: Corpus) -> None:
     report = corpus.id("kestrel", "/Finance/Reports/Q3 report.pdf")
     exec_folder = corpus.id("kestrel", "/Exec")
+    before = (await client.get(f"/v1.0/sites/kestrel/drive/items/{report}")).json()
     link = await latest(client)
     await control(client, "POST", f"/{report}/move", {"parent_id": exec_folder})
     items, _ = await sync(client, link)
@@ -118,6 +119,8 @@ async def test_move_shows_the_new_parent(client: httpx.AsyncClient, corpus: Corp
     assert [(item["id"], item.get(SHARED)) for item in items] == [(report, "True")]
     item = (await client.get(f"/v1.0/sites/kestrel/drive/items/{report}")).json()
     assert item["parentReference"]["path"] == "/drive/root:/Exec"
+    assert item["eTag"] != before["eTag"]
+    assert item["cTag"] == before["cTag"]
 
 
 async def test_moved_folder_descendants_appear_only_as_sharing_changes(
@@ -233,8 +236,10 @@ async def test_sharing_changes_need_the_prefer_header(
     finance = corpus.id("kestrel", "/Finance")
     reports = corpus.id("kestrel", "/Finance/Reports")
     report = corpus.id("kestrel", "/Finance/Reports/Q3 report.pdf")
+    plan = corpus.id("kestrel", "/Finance/FP&A/plan.md")
     url = "/v1.0/sites/kestrel/drive/items/{}"
-    before = {i: (await client.get(url.format(i))).json() for i in (finance, reports)}
+    ids = (finance, reports, report, plan)
+    before = {i: (await client.get(url.format(i))).json() for i in ids}
     link = await latest(client)
     body = {"inherit": True, "grants": [group_grant(corpus, "/Kestrel/Finance", "read")]}
     await control(client, "PUT", f"/{finance}/sharing", body)
@@ -248,8 +253,12 @@ async def test_sharing_changes_need_the_prefer_header(
         (reports, "True"),
         (report, "True"),
     ]
-    assert (await client.get(url.format(finance))).json()["eTag"] != before[finance]["eTag"]
-    assert (await client.get(url.format(reports))).json()["eTag"] == before[reports]["eTag"]
+    # Every item whose effective sharing changed gets a new eTag, so a connector that skips
+    # unchanged eTags can't keep the revoked grant. Content is untouched, so cTags stay.
+    after = {i: (await client.get(url.format(i))).json() for i in ids}
+    changed = [i for i in ids if after[i]["eTag"] != before[i]["eTag"]]
+    assert changed == [finance, reports, report]
+    assert after[report]["cTag"] == before[report]["cTag"]
     permissions = (await client.get(url.format(report) + "/permissions")).json()["value"]
     tom = corpus.user("kestrel", "tom.whitfield")
     assert tom not in [p["grantedToV2"].get("user", {}).get("id") for p in permissions]
@@ -267,6 +276,22 @@ async def test_content_and_sharing_change_together(
     assert [(item["id"], SHARED in item) for item in items] == [(memo, False)]
     items, _ = await sync(client, link, prefer=True)
     assert [(item["id"], item.get(SHARED)) for item in items] == [(memo, "True")]
+
+
+async def test_changes_come_in_order_of_first_change(
+    client: httpx.AsyncClient, corpus: Corpus
+) -> None:
+    memo = corpus.id("kestrel", "/Exec/Project Heron memo.pdf")
+    report = corpus.id("kestrel", "/Finance/Reports/Q3 report.pdf")
+    link = await latest(client)
+    await control(client, "POST", f"/{memo}/rename", {"name": "Heron.pdf"})
+    await control(client, "POST", f"/{report}/rename", {"name": "Q3.pdf"})
+    await control(client, "POST", f"/{memo}/rename", {"name": "Heron v2.pdf"})
+    items, _ = await sync(client, link)
+    assert [(item["id"], item["name"]) for item in items] == [
+        (memo, "Heron v2.pdf"),
+        (report, "Q3.pdf"),
+    ]
 
 
 async def test_changes_during_a_round_wait_for_the_next(
@@ -301,7 +326,17 @@ async def test_a_restart_keeps_tokens_only_for_the_same_corpus(
     assert (await make_client().get(link)).status_code == 200
     manifest = corpus.dir / "manifest.json"
     manifest.write_text(manifest.read_text().replace("Tom Whitfield", "Tom W."))
-    assert (await make_client().get(link)).status_code == 410
+    restarted = make_client()
+    stale = await restarted.get(link)
+    assert stale.status_code == 410
+    assert stale.json()["error"]["innerError"] == {"code": "resyncChangesApplyDifferences"}
+    location = httpx.URL(stale.headers["location"])
+    assert (location.host, location.path) == ("fw", DELTA)
+    assert "token" not in location.params
+    items, _ = await sync(restarted, str(location))
+    assert [item["id"] for item in items] == [
+        corpus.id("kestrel", p) for p in corpus.paths("kestrel")
+    ]
 
 
 async def test_malformed_token_is_400(client: httpx.AsyncClient) -> None:

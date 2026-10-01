@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -235,19 +236,24 @@ def write_source(root: Path, tenant: str, body: str, **meta: Any) -> Path:
     return path
 
 
+def write_inputs(root: Path) -> tuple[Path, Path]:
+    """WORLD and SOURCES under `root`: the world file and the sources directory."""
+    world_path = root / "world.yaml"
+    world_path.parent.mkdir(parents=True, exist_ok=True)
+    world_path.write_text(WORLD, encoding="utf-8")
+    for source in SOURCES:
+        write_source(root / "sources", **source)
+    return world_path, root / "sources"
+
+
 @pytest.fixture
 def world_path(tmp_path: Path) -> Path:
-    path = tmp_path / "world.yaml"
-    path.write_text(WORLD, encoding="utf-8")
-    return path
+    return write_inputs(tmp_path)[0]
 
 
 @pytest.fixture
-def sources_root(tmp_path: Path) -> Path:
-    root = tmp_path / "sources"
-    for source in SOURCES:
-        write_source(root, **source)
-    return root
+def sources_root(world_path: Path) -> Path:
+    return world_path.parent / "sources"
 
 
 @pytest.fixture
@@ -255,3 +261,31 @@ def docs(world_path: Path, sources_root: Path) -> dict[str, Document]:
     """The renderer inputs for SOURCES, by doc id, built as the corpus build builds them."""
     world = load_world(world_path)
     return {s.meta.id: build.document(world, s) for s in load_sources(world, sources_root)}
+
+
+@pytest.fixture(scope="session")
+def small_build(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, build.BuildReport]:
+    """WORLD and SOURCES built once, in this process, and the build's report. Tests only read
+    it: one that builds again copies it first (`out`)."""
+    root = tmp_path_factory.mktemp("small")
+    world_path, sources_root = write_inputs(root)
+    out = root / "build"
+    return out, build.build(out, world_path=world_path, sources_root=sources_root, jobs=1)
+
+
+@pytest.fixture
+def out(tmp_path: Path, small_build: tuple[Path, build.BuildReport]) -> Path:
+    """A build directory already holding the small build. Input hashes don't depend on where
+    the inputs live, so a build from `world_path` and `sources_root` reuses all of it."""
+    path = tmp_path / "build"
+    shutil.copytree(small_build[0], path)
+    return path
+
+
+@pytest.fixture(scope="session")
+def corpus_build(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The real corpus, from the committed world and sources, built once per session in a pool
+    of workers (a few seconds). Tests only read it."""
+    out = tmp_path_factory.mktemp("corpus")
+    build.build(out)
+    return out

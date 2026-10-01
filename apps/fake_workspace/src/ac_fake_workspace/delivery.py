@@ -99,7 +99,8 @@ class Notifier:
         self.policy = policy
         self.subscriptions: dict[str, Subscription] = {}
         self.deliveries: list[Delivery] = []
-        self._requests = 0
+        self.generation = 0  # bumped by every reset
+        self._requests = 0  # never reset, so a subscription id is never handed out twice
         self._tails: dict[str, asyncio.Task[None]] = {}
         self._tasks: set[asyncio.Task[None]] = set()
         self._client: httpx.AsyncClient | None = None
@@ -118,11 +119,15 @@ class Notifier:
         self._check_expiration(request.expiration)
         self._requests += 1
         request_id = uuid.uuid5(NAMESPACE, f"{site}:validation:{self._requests}")
+        generation = self.generation
         await self._validate(
             request.notification_url,
             f"Validation: Testing client application reachability for subscription "
             f"Request-Id: {request_id}",
         )
+        if self.generation != generation:
+            message = "fake-workspace was reset while the subscription was being validated."
+            raise GraphError(503, "serviceNotAvailable", message)
         subscription = Subscription(
             id=str(uuid.uuid5(NAMESPACE, f"{site}:subscription:{self._requests}")),
             site=site,
@@ -160,13 +165,17 @@ class Notifier:
             await asyncio.wait(set(self._tasks))
 
     async def reset(self) -> None:
-        for task in self._tasks:
-            task.cancel()
-        await asyncio.gather(*self._tasks, return_exceptions=True)
+        """Forget every subscription and delivery, and cancel the deliveries in flight. The state
+        is cleared before the first await: a change landing while the cancelled tasks wind down
+        finds nobody to notify, and a subscription still validating sees the new generation."""
+        self.generation += 1
         self.subscriptions.clear()
         self.deliveries.clear()
         self._tails.clear()
-        self._requests = 0
+        doomed = list(self._tasks)
+        for task in doomed:
+            task.cancel()
+        await asyncio.gather(*doomed, return_exceptions=True)
 
     async def close(self) -> None:
         await self.reset()
@@ -251,7 +260,7 @@ class Notifier:
                 delivery.state = "delivered"
                 return
             if attempt < policy.max_attempts:
-                await asyncio.sleep(
+                await self.clock.sleep(
                     min(policy.base_delay_s * 2 ** (attempt - 1), policy.max_delay_s)
                 )
         delivery.state = "failed"

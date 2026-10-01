@@ -98,6 +98,39 @@ async def test_broken_manifest_is_reported(make_client: MakeClient, tmp_path: Pa
     assert response.json()["error"]["code"] == "serviceNotReady"
 
 
+async def test_a_site_groups_grant_is_accepted(client: httpx.AsyncClient, corpus: Corpus) -> None:
+    hr = corpus.id("kestrel", "/HR")
+    body = group(corpus.group("kestrel", "/Kestrel/Exec"), "/Kestrel/Exec")
+    assert (await client.put(f"{CONTROL}/{hr}/sharing", json=body)).status_code == 200
+    permissions = (await client.get(f"{SITE}/items/{hr}/permissions")).json()["value"]
+    assert [p["grantedToV2"]["group"]["displayName"] for p in permissions] == ["/Kestrel/Exec"]
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "problem"),
+    [
+        # A grant to a group the site doesn't list.
+        ('"path": "/Kestrel/HR"', '"path": "/Kestrel/People"', "/Kestrel/HR"),
+        # No groups at all: the manifest's schema requires them.
+        ('"groups": {', '"teams": {', "groups"),
+    ],
+    ids=["unknown group", "no groups"],
+)
+async def test_a_manifest_must_list_the_groups_it_grants_to(
+    make_client: MakeClient, tmp_path: Path, before: str, after: str, problem: str
+) -> None:
+    corpus = build_corpus(tmp_path / "corpus")
+    manifest = corpus.dir / "manifest.json"
+    text = manifest.read_text()
+    assert before in text
+    manifest.write_text(text.replace(before, after))
+    client = make_client(corpus_dir=corpus.dir)
+    assert (await client.get("/health")).json()["corpus_loaded"] is False
+    response = await client.post("/_control/reset")
+    assert response.status_code == 503
+    assert problem in response.json()["error"]["message"]
+
+
 async def test_clock_pins_timestamps(client: httpx.AsyncClient) -> None:
     pinned = await client.post("/_control/clock", json={"now": "2026-10-01T12:00:00+01:00"})
     assert pinned.json() == {"now": "2026-10-01T11:00:00Z", "pinned": True}
@@ -135,6 +168,11 @@ NEW_FILE = {"parent_id": "root", "name": "x", "content_base64": "", "mime_type":
 STRANGER = {"principal_type": "user", "principal_id": "x", "principal_name": "x", "role": "read"}
 
 
+def group(group_id: str, name: str) -> dict[str, object]:
+    sharing = {"principal_type": "group", "principal_id": group_id, "principal_name": name}
+    return {"inherit": True, "grants": [{**sharing, "role": "read"}]}
+
+
 @pytest.mark.parametrize(
     ("method", "path", "body", "status", "code"),
     [
@@ -152,6 +190,11 @@ STRANGER = {"principal_type": "user", "principal_id": "x", "principal_name": "x"
         ("POST", "", {**NEW_FILE, "parent_id": "{note}"}, 400, "invalidRequest"),
         ("POST", "", {**NEW_FILE, "name": "hr"}, 409, "nameAlreadyExists"),
         ("PUT", "/{hr}/sharing", {"inherit": True, "grants": [STRANGER]}, 400, "invalidRequest"),
+        ("PUT", "/{hr}/sharing", group("nope", "/Kestrel/HR"), 400, "invalidRequest"),
+        # Harbour's group, id and name both right, on a Kestrel item.
+        ("PUT", "/{hr}/sharing", group("{harbour}", "/Harbour"), 400, "invalidRequest"),
+        # A Kestrel group's id under another group's name.
+        ("PUT", "/{hr}/sharing", group("{exec}", "/Kestrel/HR"), 400, "invalidRequest"),
     ],
 )
 async def test_invalid_mutations(
@@ -167,6 +210,8 @@ async def test_invalid_mutations(
         "hr": corpus.id("kestrel", "/HR"),
         "casework": corpus.id("kestrel", "/HR/Casework"),
         "note": corpus.id("kestrel", "/HR/Casework/case note.pdf"),
+        "exec": corpus.group("kestrel", "/Kestrel/Exec"),
+        "harbour": corpus.group("harbour", "/Harbour"),
     }
 
     def fill(value: Any) -> Any:

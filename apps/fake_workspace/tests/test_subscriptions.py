@@ -1,19 +1,45 @@
 import asyncio
 import time
 import uuid
+from collections.abc import Callable
+from datetime import datetime
 from typing import Any, Literal
 
 import httpx
 import pytest
 
-from ac_fake_workspace.delivery import DeliveryPolicy
-from ac_fake_workspace.testing import Corpus, MakeClient, Receiver, serve_receiver
+from ac_fake_workspace.delivery import DeliveryPolicy, Notifier, SubscriptionRequest
+from ac_fake_workspace.state import Clock
+from ac_fake_workspace.testing import (
+    FAST,
+    Corpus,
+    MakeClient,
+    ManualClock,
+    Receiver,
+    serve_receiver,
+)
 
 NOW = "2026-10-01T12:00:00Z"
 EXPIRES = "2026-10-03T12:00:00Z"
 RESOURCE = "sites/kestrel/drive/root"
 HARBOUR = {"Authorization": "Bearer dev-workspace-harbour"}
-SLOW = DeliveryPolicy(max_attempts=5, base_delay_s=0.3, max_delay_s=0.3, validation_timeout_s=0.5)
+PATIENT = DeliveryPolicy(validation_timeout_s=30.0)  # a held handshake waits for the test
+
+
+async def eventually(condition: Callable[[], object], what: str) -> None:
+    """Waits for something another task or thread does. The deadline only bounds a failure."""
+    deadline = time.monotonic() + 10
+    while not condition():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"timed out waiting for {what}")
+        await asyncio.sleep(0.01)
+
+
+def gated() -> ManualClock:
+    """A clock on which every retry waits until the test opens the gate."""
+    clock = ManualClock()
+    clock.gate = asyncio.Event()
+    return clock
 
 
 def request(receiver: Receiver, **overrides: Any) -> dict[str, Any]:
@@ -50,14 +76,21 @@ async def deliveries(client: httpx.AsyncClient) -> list[dict[str, Any]]:
     return log
 
 
-async def attempted(client: httpx.AsyncClient, count: int = 1) -> list[dict[str, Any]]:
-    """The delivery log, once `count` deliveries have made their first attempt."""
-    for _ in range(200):
-        log: list[dict[str, Any]] = (await client.get("/_control/deliveries")).json()["value"]
-        if sum(1 for d in log if d["attempts"]) >= count:
-            return log
+async def settled(client: httpx.AsyncClient, count: int) -> list[dict[str, Any]]:
+    """The delivery log, once `count` deliveries are delivered or waiting to retry."""
+    log: list[dict[str, Any]] = []
+
+    async def ready() -> bool:
+        nonlocal log
+        log = (await client.get("/_control/deliveries")).json()["value"]
+        return len([d for d in log if d["attempts"]]) >= count
+
+    deadline = time.monotonic() + 10
+    while not await ready():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"waiting for {count} deliveries; the log is {log}")
         await asyncio.sleep(0.01)
-    raise AssertionError("no delivery attempt yet")
+    return log
 
 
 async def test_handshake_echoes_the_decoded_token(
@@ -77,20 +110,29 @@ async def test_handshake_echoes_the_decoded_token(
     assert token.startswith("Validation: ")
 
 
-@pytest.mark.parametrize("validation", ["wrong", "empty", "slow"])
+@pytest.mark.parametrize(
+    ("validation", "problem"),
+    [
+        ("wrong", "must exactly match"),
+        ("empty", "must exactly match"),
+        ("html", "must be text/plain"),
+        # Never answered while the subscription waits, so only the timeout (0.5s here) ends it.
+        ("held", "timed out"),
+    ],
+)
 async def test_failed_handshake_creates_nothing(
     client: httpx.AsyncClient,
     receiver: Receiver,
     corpus: Corpus,
-    validation: Literal["wrong", "empty", "slow"],
+    validation: Literal["wrong", "empty", "html", "held"],
+    problem: str,
 ) -> None:
     receiver.validation = validation
-    start = time.monotonic()
     response = await client.post("/v1.0/subscriptions", json=request(receiver))
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "InvalidRequest"
     assert "validation" in response.json()["error"]["message"]
-    assert time.monotonic() - start < 1.0  # a slow endpoint times out (0.5s in these tests)
+    assert problem in response.json()["error"]["message"]
     assert len(receiver.tokens) == 1
     await rename(client, corpus, "Heron.pdf")
     assert await deliveries(client) == []
@@ -163,6 +205,20 @@ async def test_notifications_arrive_in_order_with_retries(
     assert {n["value"][0]["tenantId"] for n in receiver.notifications} == {tenant}
 
 
+async def test_retries_back_off_doubling_up_to_the_cap(
+    make_client: MakeClient, receiver: Receiver, corpus: Corpus
+) -> None:
+    clock = ManualClock()
+    policy = DeliveryPolicy(max_attempts=5, base_delay_s=0.5, max_delay_s=1.5)
+    client = make_client(policy=policy, clock=clock)
+    await subscribe(client, receiver)
+    receiver.statuses = [500, 500, 500, 500]
+    await rename(client, corpus, "one.pdf")
+    [delivery] = await deliveries(client)
+    assert [a["status"] for a in delivery["attempts"]] == [500, 500, 500, 500, 202]
+    assert clock.waits == [0.5, 1.0, 1.5, 1.5]
+
+
 async def test_delivery_gives_up_after_its_attempts(
     client: httpx.AsyncClient, receiver: Receiver, corpus: Corpus
 ) -> None:
@@ -197,28 +253,51 @@ async def test_only_the_changed_sites_subscriptions_are_notified(
 async def test_reset_cancels_retries_in_flight(
     make_client: MakeClient, receiver: Receiver, corpus: Corpus
 ) -> None:
-    client = make_client(policy=SLOW)
+    clock = gated()
+    client = make_client(clock=clock)
     await subscribe(client, receiver)
     receiver.statuses = [500] * 5
     await rename(client, corpus, "one.pdf")
-    await attempted(client)
-    start = time.monotonic()
-    assert (await client.post("/_control/reset")).status_code == 200
-    assert time.monotonic() - start < 0.3
+    await eventually(lambda: clock.waits, "the first retry")
+    # The retry waits until the gate opens, so a reset that waited for it would never return.
+    async with asyncio.timeout(10):
+        assert (await client.post("/_control/reset")).status_code == 200
     assert (await client.get("/_control/deliveries")).json()["value"] == []
-    await asyncio.sleep(0.4)
+    assert clock.gate is not None
+    clock.gate.set()
+    await client.post("/_control/flush")
     assert len(receiver.notifications) == 1
 
 
 async def test_deleting_a_subscription_drops_its_retries(
     make_client: MakeClient, receiver: Receiver, corpus: Corpus
 ) -> None:
-    client = make_client(policy=SLOW)
+    clock = gated()
+    client = make_client(clock=clock)
     subscription = await subscribe(client, receiver)
     receiver.statuses = [500]
     await rename(client, corpus, "one.pdf")
-    await attempted(client)
+    await eventually(lambda: clock.waits, "the first retry")
     assert (await client.delete(f"/v1.0/subscriptions/{subscription['id']}")).status_code == 204
+    assert clock.gate is not None
+    clock.gate.set()
+    [delivery] = await deliveries(client)
+    assert (delivery["state"], len(delivery["attempts"])) == ("dropped", 1)
+    assert len(receiver.notifications) == 1
+
+
+async def test_a_subscription_that_expires_mid_retry_drops_its_delivery(
+    make_client: MakeClient, receiver: Receiver, corpus: Corpus
+) -> None:
+    clock = gated()
+    client = make_client(clock=clock)
+    await subscribe(client, receiver)
+    receiver.statuses = [500]
+    await rename(client, corpus, "one.pdf")
+    await eventually(lambda: clock.waits, "the first retry")
+    await client.post("/_control/clock", json={"now": "2026-10-04T00:00:00Z"})  # after EXPIRES
+    assert clock.gate is not None
+    clock.gate.set()
     [delivery] = await deliveries(client)
     assert (delivery["state"], len(delivery["attempts"])) == ("dropped", 1)
     assert len(receiver.notifications) == 1
@@ -227,15 +306,75 @@ async def test_deleting_a_subscription_drops_its_retries(
 async def test_a_failing_endpoint_doesnt_hold_up_other_subscriptions(
     make_client: MakeClient, receiver: Receiver, corpus: Corpus
 ) -> None:
-    client = make_client(policy=SLOW)
+    clock = gated()
+    client = make_client(clock=clock)
     receiver.statuses = [500] * 5
     failing = await subscribe(client, receiver)
     with serve_receiver() as other:
         healthy = await subscribe(client, other)
         await rename(client, corpus, "one.pdf")
-        log = {d["subscription_id"]: d for d in await attempted(client, 2)}
+        log = {d["subscription_id"]: d for d in await settled(client, 2)}
     assert log[healthy["id"]]["state"] == "delivered"
     assert log[failing["id"]]["state"] == "pending"
+
+
+async def test_a_subscription_validated_across_a_reset_is_refused(
+    make_client: MakeClient, receiver: Receiver, corpus: Corpus
+) -> None:
+    client = make_client(policy=PATIENT)
+    await client.post("/_control/clock", json={"now": NOW})
+    receiver.validation = "held"
+    pending = asyncio.create_task(client.post("/v1.0/subscriptions", json=request(receiver)))
+    await eventually(lambda: receiver.tokens, "the validation request")
+    assert (await client.post("/_control/reset")).status_code == 200
+    receiver.release.set()
+    response = await pending
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["code"] == "serviceNotAvailable"
+    await client.post("/_control/clock", json={"now": NOW})
+    await rename(client, corpus, "one.pdf")
+    assert await deliveries(client) == []
+
+
+async def test_subscription_ids_stay_unique_across_resets(
+    client: httpx.AsyncClient, receiver: Receiver
+) -> None:
+    before = await subscribe(client, receiver)
+    assert (await client.post("/_control/reset")).status_code == 200
+    after = await subscribe(client, receiver)
+    assert after["id"] != before["id"]
+    url = f"/v1.0/subscriptions/{before['id']}"
+    assert (await client.patch(url, json={"expirationDateTime": EXPIRES})).status_code == 404
+
+
+async def test_a_change_during_a_reset_notifies_nobody(receiver: Receiver) -> None:
+    """The reset waits for the deliveries it cancels; a change landing then is dropped too."""
+    clock = Clock()
+    clock.pinned = datetime.fromisoformat(NOW)
+    notifier = Notifier(clock, FAST)
+    try:
+        with serve_receiver() as held:
+            held.hold_notifications = True
+            for target in (held, receiver):
+                body = SubscriptionRequest.model_validate(request(target))
+                await notifier.subscribe("kestrel", body)
+            notifier.changed("kestrel", 1)
+            await eventually(
+                lambda: (
+                    held.notifications
+                    and [d.state for d in notifier.deliveries][1:] == ["delivered"]
+                ),
+                "one delivery in flight and the other done",
+            )
+            resetting = asyncio.create_task(notifier.reset())
+            await asyncio.sleep(0)  # the reset now waits for the delivery it cancelled
+            notifier.changed("kestrel", 2)
+            await resetting
+            await notifier.flush()
+        assert len(receiver.notifications) == 1
+        assert notifier.deliveries == []
+    finally:
+        await notifier.close()
 
 
 async def test_renew_and_delete(

@@ -99,11 +99,12 @@ class FakeStack:
         self.states = {"keycloak": "running", "envoy": "running", "api": "running"}
         self.calls: list[str] = []
         self.fail: str | None = None
+        self.status_error: ExError | None = None
 
     def stack(self) -> fixtures.Stack:
         def status(root: Path) -> list[services.ServiceStatus]:
-            if not self.states:
-                raise ExError("docker is not on PATH")
+            if self.status_error is not None:
+                raise self.status_error
             return [services.ServiceStatus(n, s, "healthy") for n, s in self.states.items()]
 
         def act(verb: str) -> Callable[[Path, str], None]:
@@ -195,9 +196,7 @@ def test_clean_renders_everything_again(repo: Path) -> None:
     assert ex("--clean")["corpus"]["rendered"] == 2
 
 
-@pytest.mark.parametrize(
-    "states", [{}, {"api": "running"}], ids=["no docker", "no keycloak container"]
-)
+@pytest.mark.parametrize("states", [{}, {"api": "running"}], ids=["no stack", "no keycloak"])
 def test_nothing_to_reload_without_keycloak(
     repo: Path, monkeypatch: pytest.MonkeyPatch, stack: FakeStack, states: dict[str, str]
 ) -> None:
@@ -209,6 +208,40 @@ def test_nothing_to_reload_without_keycloak(
     assert stack.calls == []
     assert out["workspace"]["reset"] is False
     assert "isn't running" in out["workspace"]["detail"]
+    # The Keycloak that `ex up` creates next imports these exports, so nothing is left pending.
+    stack.states = {"keycloak": "running"}
+    assert ex()["directory"]["recreated"] == []
+    assert stack.calls == []
+
+
+def test_without_docker_the_reload_waits_for_a_later_run(repo: Path, stack: FakeStack) -> None:
+    stack.status_error = services.DockerMissingError("docker is not on PATH")
+    out = ex()
+    assert out["directory"]["recreated"] == []
+    assert "docker isn't on PATH" in out["directory"]["detail"]
+    stack.status_error = None
+    assert ex()["directory"]["recreated"] == ["keycloak", "envoy"]
+
+
+def test_a_failed_status_fails_and_leaves_the_reload_pending(
+    repo: Path, server: Server, stack: FakeStack
+) -> None:
+    daemon = "Cannot connect to the Docker daemon at unix:///var/run/docker.sock.\n"
+    stack.status_error = ExError("docker compose ps --all --format json failed", detail=daemon)
+    out = ex(ok=False)
+    assert out["directory"]["recreated"] == []
+    assert out["directory"]["detail"] == (
+        "couldn't read the stack's status, so the realms weren't reloaded: "
+        "docker compose ps --all --format json failed: " + daemon.strip()
+    )
+    assert out["workspace"]["reset"] is True
+    assert stack.calls == []
+    stack.status_error = None
+    retry = ex()
+    assert (retry["directory"]["changed"], retry["directory"]["recreated"]) == (
+        [],
+        ["keycloak", "envoy"],
+    )
 
 
 def test_envoy_is_left_alone_when_it_isnt_running(repo: Path, stack: FakeStack) -> None:
@@ -238,6 +271,24 @@ def test_a_failed_recreate_fails_but_still_resets_fake_workspace(
         f"couldn't reload the realms: docker compose up {failing} failed: unhealthy"
     )
     assert out["workspace"]["reset"] is True
+
+
+@pytest.mark.parametrize("failing", ["keycloak", "envoy"])
+def test_a_failed_reload_is_retried_on_the_next_run(
+    repo: Path, stack: FakeStack, failing: str
+) -> None:
+    stack.fail = failing
+    ex(ok=False)
+    stack.fail = None
+    stack.calls.clear()
+    retry = ex()
+    # The exports didn't change this time, but Keycloak never loaded them.
+    assert retry["directory"]["changed"] == []
+    assert retry["directory"]["recreated"] == ["keycloak", "envoy"]
+    assert stack.calls == ["recreate keycloak", "recreate envoy"]
+    stack.calls.clear()
+    assert ex()["directory"] == {"changed": [], "recreated": [], "detail": None}
+    assert stack.calls == []
 
 
 def test_fake_workspace_refusing_the_reset_fails(repo: Path, server: Server) -> None:
@@ -275,6 +326,45 @@ def test_verify_builds_twice_elsewhere(repo: Path, server: Server, stack: FakeSt
     assert list((repo / "fixtures" / "directory").iterdir()) == []
     assert server.requests == []
     assert stack.calls == []
+
+
+def test_differences_name_every_kind(tmp_path: Path) -> None:
+    first, second = tmp_path / "first", tmp_path / "second"
+    files = {
+        first / "same.json": b"{}",
+        second / "same.json": b"{}",
+        first / "blobs" / "a.pdf": b"a",
+        second / "blobs" / "a.pdf": b"b",
+        first / "extra.txt": b"x",
+        second / "nested" / "missing.txt": b"y",
+    }
+    for path, content in files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    assert fixtures._differences(first, second) == [  # pyright: ignore[reportPrivateUsage]
+        "blobs/a.pdf: bytes differ",
+        "extra.txt: only in the first build",
+        "nested/missing.txt: only in the second build",
+    ]
+    assert fixtures._differences(first, first) == []  # pyright: ignore[reportPrivateUsage]
+
+
+def test_verify_fails_when_the_builds_differ(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    build = fixtures._build  # pyright: ignore[reportPrivateUsage]
+    builds: list[Path] = []
+
+    def unstable(root: Path, directory: Path, corpus: Path, *, clean: bool = False) -> Any:
+        result = build(root, directory, corpus, clean=clean)
+        builds.append(corpus)
+        if len(builds) == 2:  # as if the second build stamped the time into the manifest
+            manifest = corpus / "manifest.json"
+            manifest.write_bytes(manifest.read_bytes() + b" ")
+        return result
+
+    monkeypatch.setattr(fixtures, "_build", unstable)
+    out = ex("--verify", ok=False)
+    assert out["verify"]["identical"] is False
+    assert out["verify"]["differences"] == ["corpus/manifest.json: bytes differ"]
 
 
 def test_verify_and_clean_together_are_refused(repo: Path) -> None:

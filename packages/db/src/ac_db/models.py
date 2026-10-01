@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Sequence,
     Text,
     UniqueConstraint,
     Uuid,
@@ -26,6 +27,11 @@ class Base(DeclarativeBase):
         dict[str, Any]: JSONB,
         datetime: DateTime(timezone=True),
     }
+
+
+acl_version_seq = Sequence("acl_version_seq", metadata=Base.metadata)
+"""One counter for every tenant's ACL changes: each change sets its document's `acl_version` to
+`nextval`, so a document whose `acl_version` is above an earlier reading changed since then."""
 
 
 def tenant_fk(column: str, target: str, ondelete: str | None = None) -> ForeignKeyConstraint:
@@ -111,13 +117,23 @@ class GroupMember(Base):
 
 
 class GroupClosure(Base):
-    """Computed from `group_members`: every ancestor group with every descendant user and group."""
+    """Computed from `group_members`: every ancestor group with every descendant user and group.
+
+    There are no self rows, so `depth` is at least 1.
+    """
 
     __tablename__ = "group_closure"
     __table_args__ = (
+        CheckConstraint("depth >= 1"),
+        CheckConstraint("group_id <> member_id", name="group_closure_no_self_check"),
         tenant_fk("group_id", "principals"),
         tenant_fk("member_id", "principals"),
-        Index("group_closure_member_idx", "member_id", "group_id"),
+        Index(
+            "group_closure_member_idx",
+            "member_id",
+            "group_id",
+            postgresql_include=["tenant_id"],
+        ),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id"))
@@ -149,10 +165,11 @@ class Document(Base):
     storage_key: Mapped[str | None]
     status: Mapped[str]
     acl_version: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
+    """From `acl_version_seq` at the last ACL change; 0 until the document has an ACL."""
     valid_from: Mapped[date | None]
     valid_to: Mapped[date | None]
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
-    updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"), onupdate=func.now())
     deleted_at: Mapped[datetime | None]
 
 
@@ -172,11 +189,17 @@ class DocumentAcl(Base):
     principal_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     effect: Mapped[str]
     acl_version: Mapped[int] = mapped_column(BigInteger)
+    """Its document's `acl_version` when the row was written."""
 
 
 class Chunk(Base):
     __tablename__ = "chunks"
     __table_args__ = (
+        CheckConstraint(
+            "(page_start IS NULL) = (page_end IS NULL)"
+            " AND (page_end IS NULL OR page_end >= page_start)",
+            name="chunks_pages_check",
+        ),
         UniqueConstraint("document_id", "document_version", "ordinal"),
         tenant_fk("document_id", "documents", ondelete="CASCADE"),
     )
@@ -189,8 +212,9 @@ class Chunk(Base):
     document_version: Mapped[int]
     ordinal: Mapped[int]
     text: Mapped[str]
-    page_start: Mapped[int]
-    page_end: Mapped[int]
+    page_start: Mapped[int | None]
+    """Both pages or neither: md and docx have no pages."""
+    page_end: Mapped[int | None]
     section: Mapped[str | None]
     token_count: Mapped[int]
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1536))
@@ -208,7 +232,7 @@ class SyncState(Base):
     delta_token: Mapped[str | None]
     last_full_crawl_at: Mapped[datetime | None]
     last_delta_at: Mapped[datetime | None]
-    updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"), onupdate=func.now())
 
 
 class Conversation(Base):
@@ -226,7 +250,7 @@ class Conversation(Base):
     user_id: Mapped[uuid.UUID]
     title: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
-    updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"), onupdate=func.now())
 
 
 class Message(Base):
@@ -245,7 +269,7 @@ class Message(Base):
     conversation_id: Mapped[uuid.UUID]
     seq: Mapped[int]
     role: Mapped[str]
-    content: Mapped[dict[str, Any]]
+    content: Mapped[dict[str, Any] | list[Any]] = mapped_column(JSONB)
     idempotency_key: Mapped[str | None]
     """Client-supplied, so a retried send can't add the message twice. NULLs never collide."""
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
@@ -267,4 +291,5 @@ class RetrievalAudit(Base):
     returned_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid()))
     denied_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid()))
     acl_version: Mapped[int] = mapped_column(BigInteger)
+    """`acl_version_seq`'s high-water mark at query time: a document above it changed after."""
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

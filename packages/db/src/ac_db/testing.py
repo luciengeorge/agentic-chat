@@ -20,15 +20,16 @@ def postgres_reachable(url: str) -> bool:
 
 
 @contextmanager
-def temporary_database(url: str) -> Generator[str]:
-    """Create a fresh database next to `url`'s, migrate it to head, and drop it afterwards."""
+def temporary_database(url: str, *, migrate: bool = True) -> Generator[str]:
+    """A fresh database next to `url`'s, migrated to head if `migrate`, dropped afterwards."""
     base = make_url(url)
     name = f"ac_test_{uuid.uuid4().hex[:12]}"
     with psycopg.connect(_conninfo(url), autocommit=True) as admin:
         admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
     test_url = base.set(database=name).render_as_string(hide_password=False)
     try:
-        upgrade(test_url)
+        if migrate:
+            upgrade(test_url)
         yield test_url
     finally:
         with psycopg.connect(_conninfo(url), autocommit=True) as admin:
