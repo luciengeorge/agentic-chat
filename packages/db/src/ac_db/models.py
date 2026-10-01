@@ -170,6 +170,8 @@ class Document(Base):
     valid_to: Mapped[date | None]
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
     updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"), onupdate=func.now())
+    """`onupdate` is ORM-only, here as on every `updated_at`: raw UPDATEs and
+    `on_conflict_do_update` upserts must set it themselves."""
     deleted_at: Mapped[datetime | None]
 
 
@@ -257,6 +259,9 @@ class Message(Base):
     __tablename__ = "messages"
     __table_args__ = (
         CheckConstraint("role IN ('user', 'assistant', 'system', 'tool')"),
+        CheckConstraint(
+            "jsonb_typeof(content) IN ('object', 'array')", name="messages_content_check"
+        ),
         UniqueConstraint("conversation_id", "seq"),
         UniqueConstraint("conversation_id", "idempotency_key"),
         tenant_fk("conversation_id", "conversations", ondelete="CASCADE"),
@@ -291,5 +296,11 @@ class RetrievalAudit(Base):
     returned_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid()))
     denied_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid()))
     acl_version: Mapped[int] = mapped_column(BigInteger)
-    """`acl_version_seq`'s high-water mark at query time: a document above it changed after."""
+    """`acl_version_seq`'s high-water mark at query time: a document above it changed after.
+
+    Read it after the retrieval query or in its REPEATABLE READ snapshot: under READ COMMITTED, a
+    mark read first misses a change that commits in between. Read it with `SELECT CASE WHEN
+    is_called THEN last_value ELSE 0 END FROM acl_version_seq`, which raises without privilege on
+    the sequence (`pg_sequence_last_value` returns NULL instead).
+    """
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

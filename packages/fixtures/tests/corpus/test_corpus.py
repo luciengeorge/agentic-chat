@@ -21,6 +21,7 @@ from ac_fixtures.world import World, load_world
 # and SG-2025-02: capitals, then hyphenated parts, at least one of them with a digit.
 CODE = re.compile(r"\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\b")
 FRN = re.compile(r"\bFRN \d{6}\b")
+LETTERS = re.compile(r"[^\W\d_]+")
 TEXT_LAYER = ("pdf", "pdf_mixed", "generated")
 
 
@@ -97,6 +98,11 @@ def source_blocks(source: Source) -> tuple[blocks.Block, ...]:
     return blocks.parse(source.body)
 
 
+def long_words(text: str) -> list[str]:
+    """Runs of 6 letters or more: a word split by a line break comes out as two shorter runs."""
+    return [word for word in LETTERS.findall(text) if len(word) >= 6]
+
+
 def flat(text: str) -> str:
     return " ".join(text.split())
 
@@ -129,10 +135,12 @@ def readers(world: World, source: Source) -> frozenset[str]:
     return frozenset(found)
 
 
-def test_identifiers_and_names_are_whole_in_the_text_layer(corpus: Corpus) -> None:
-    """Every code, FRN and person's name a source puts in a PDF's text layer comes out of it
-    whole, as often as the source has it: no table column is narrower than its longest word,
-    so nothing breaks mid-token. A name may wrap at its space like any other text."""
+def test_words_identifiers_and_names_are_whole_in_the_text_layer(corpus: Corpus) -> None:
+    """Every code, FRN, person's name and word of 6 letters or more that a source puts in a
+    PDF's text layer comes out of it whole, as often as the source has it: no table column is
+    narrower than its longest word, so nothing breaks mid-token. Text wraps only at spaces and
+    hyphens (reportlab doesn't hyphenate), so a name may wrap at its space and "cash-free" at
+    its hyphen; letter runs stay whole either way."""
     broken: list[str] = []
     for source in corpus.sources:
         if source.meta.format not in TEXT_LAYER:
@@ -145,8 +153,9 @@ def test_identifiers_and_names_are_whole_in_the_text_layer(corpus: Corpus) -> No
             [m for m in CODE.findall(expected) if any(c.isdigit() for c in m)]
             + FRN.findall(expected)
             + [name for name in names for _ in range(expected.count(name))]
+            + long_words(expected)
         )
-        got = Counter(CODE.findall(found) + FRN.findall(found))
+        got = Counter(CODE.findall(found) + FRN.findall(found) + long_words(found))
         got.update({name: found.count(name) for name in names})
         broken += [
             f"{source.meta.id}: {token} {got[token]} of {n}"
@@ -159,7 +168,9 @@ def test_identifiers_and_names_are_whole_in_the_text_layer(corpus: Corpus) -> No
 # What Heron is: the target, the price and the funding. Only exec-only documents say it.
 HERON = ("Lumen", "86m", "Tamar")
 # The README's one documented exception: Tom Whitfield's read grant on the integration plan.
+# He learns the deal's structure there, but not the £86m headline or the earn-out's £12m cap.
 HERON_EXCEPTIONS = {"exec-project-heron-integration-plan": "tom.whitfield"}
+HERON_HEADLINE = re.compile(r"86m|12m|\bcap(?:ped)?\b", flags=re.I)
 
 
 def test_heron_stays_with_its_readers(corpus: Corpus, readable: dict[tuple[str, str], str]) -> None:
@@ -172,6 +183,8 @@ def test_heron_stays_with_its_readers(corpus: Corpus, readable: dict[tuple[str, 
             continue
         if source.meta.id in HERON_EXCEPTIONS:
             assert outsiders == {HERON_EXCEPTIONS[source.meta.id]}, source.meta.id
+            headline = HERON_HEADLINE.search(readable[source.tenant, source.meta.id])
+            assert headline is None, f"{source.meta.id}: {headline[0] if headline else ''}"
             continue
         text = readable[source.tenant, source.meta.id]
         leaks += [f"{source.meta.id}: {word}" for word in HERON if word in text]
@@ -181,10 +194,16 @@ def test_heron_stays_with_its_readers(corpus: Corpus, readable: dict[tuple[str, 
 # What each document shared below its folder must keep to itself, as patterns.
 RESTRICTED = {
     ("kestrel", "eng-fraud-rules"): (
-        r"\bFR-\d{3}\b",
-        r"\bshield-gbm-",
-        r"\bbin_block_",
-        r"block rate[^.\n]*\d\.\d%",
+        r"\bFR-\d{3}\b",  # rule ids
+        r"\bshield-gbm-",  # the model
+        r"\bbin_block_",  # the BIN blocklist
+        r"\bshield_overrides\b",  # the override log
+        r"\b(?:60|85) to (?:84|100)\b",  # score bands
+        r"\b(?:5|five) card attempts\b",  # FR-101
+        r"\b(?:8|eight) attempts on one card\b",  # FR-102
+        r"\b(?:3|three) (?:failed CVC checks|failures)\b[^.\n|]*\bin a row\b",  # FR-104
+        r"\bunder £2 on one merchant\b",  # FR-110
+        r"block rate[^.\n]*\d\.\d%",  # the block-rate alert
     ),
     ("kestrel", "hr-case-note-2026-014"): (r"\bHR-CASE-2026-014\b",),
 }

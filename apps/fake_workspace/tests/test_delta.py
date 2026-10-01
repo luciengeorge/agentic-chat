@@ -264,6 +264,42 @@ async def test_sharing_changes_need_the_prefer_header(
     assert tom not in [p["grantedToV2"].get("user", {}).get("id") for p in permissions]
 
 
+async def test_a_grant_moving_to_another_ancestor_is_a_sharing_change(
+    client: httpx.AsyncClient, corpus: Corpus
+) -> None:
+    """The same role from a nearer ancestor changes the permission's `inheritedFrom` and id."""
+    finance = corpus.id("kestrel", "/Finance")
+    reports = corpus.id("kestrel", "/Finance/Reports")
+    report = corpus.id("kestrel", "/Finance/Reports/Q3 report.pdf")
+    tom = {
+        "principal_type": "user",
+        "principal_id": corpus.user("kestrel", "tom.whitfield"),
+        "principal_name": "tom.whitfield",
+        "role": "write",
+    }
+    finance_read = group_grant(corpus, "/Kestrel/Finance", "read")
+    both = [group_grant(corpus, "/Kestrel/Exec", "read"), finance_read]
+    await control(client, "PUT", f"/{reports}/sharing", {"inherit": True, "grants": both})
+    url = f"/v1.0/sites/kestrel/drive/items/{report}"
+    before = (await client.get(url)).json()
+    link = await latest(client)
+    await control(client, "PUT", f"/{finance}/sharing", {"inherit": True, "grants": [tom]})
+    items, _ = await sync(client, link, prefer=True)
+    assert [(item["id"], item.get(SHARED)) for item in items] == [
+        (finance, "True"),
+        (reports, "True"),
+        (report, "True"),
+    ]
+    assert (await client.get(url)).json()["eTag"] != before["eTag"]
+    permissions = (await client.get(f"{url}/permissions")).json()["value"]
+    sources = {
+        p["grantedToV2"]["group"]["displayName"]: p["inheritedFrom"]["id"]
+        for p in permissions
+        if "group" in p["grantedToV2"]
+    }
+    assert sources["/Kestrel/Finance"] == reports
+
+
 async def test_content_and_sharing_change_together(
     client: httpx.AsyncClient, corpus: Corpus
 ) -> None:

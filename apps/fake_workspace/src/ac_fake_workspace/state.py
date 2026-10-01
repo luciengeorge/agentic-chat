@@ -19,7 +19,7 @@ NAMESPACE = uuid.UUID("8f1d3a52-6c7e-4b1a-9d2f-3e5c7a9b0d14")
 TOKEN_PREFIX = "dev-workspace-"
 INVALID_NAME_CHARS = set('"*:<>?/\\|')
 
-type Acl = frozenset[tuple[str, str, str]]
+type Acl = frozenset[tuple[str, str, str, str | None]]  # type, principal, role, inherited from
 
 
 def iso(moment: datetime) -> str:
@@ -343,8 +343,15 @@ class Site:
         self._record(item)
 
     def _acl(self, item: Item) -> Acl:
+        """What the item's permissions show, so a grant that moves to another ancestor (its
+        `inheritedFrom`) counts as a sharing change too."""
         return frozenset(
-            (e.grant.principal_type, e.grant.principal_id, e.grant.role)
+            (
+                e.grant.principal_type,
+                e.grant.principal_id,
+                e.grant.role,
+                None if e.source is None else e.source.id,
+            )
             for e in self.effective(item)
         )
 

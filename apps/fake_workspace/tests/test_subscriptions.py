@@ -336,6 +336,33 @@ async def test_a_subscription_validated_across_a_reset_is_refused(
     assert await deliveries(client) == []
 
 
+@pytest.mark.parametrize("count", [2, 5])
+async def test_concurrent_subscriptions_get_their_own_ids(
+    make_client: MakeClient, receiver: Receiver, corpus: Corpus, count: int
+) -> None:
+    client = make_client(policy=PATIENT)
+    await client.post("/_control/clock", json={"now": NOW})
+    receiver.validation = "held"  # every request is mid-validation before any finishes
+    pending = [
+        asyncio.create_task(client.post("/v1.0/subscriptions", json=request(receiver)))
+        for _ in range(count)
+    ]
+    await eventually(lambda: len(receiver.tokens) == count, "every validation request")
+    receiver.release.set()
+    responses = await asyncio.gather(*pending)
+    assert [r.status_code for r in responses] == [201] * count
+    ids = [r.json()["id"] for r in responses]
+    assert len(set(ids)) == count
+    assert len(set(receiver.tokens)) == count
+    for subscription_id in ids:  # each one was stored
+        url = f"/v1.0/subscriptions/{subscription_id}"
+        assert (await client.patch(url, json={"expirationDateTime": EXPIRES})).status_code == 200
+    await rename(client, corpus, "one.pdf")
+    log = await deliveries(client)
+    assert sorted(d["subscription_id"] for d in log) == sorted(ids)
+    assert len(receiver.notifications) == count
+
+
 async def test_subscription_ids_stay_unique_across_resets(
     client: httpx.AsyncClient, receiver: Receiver
 ) -> None:

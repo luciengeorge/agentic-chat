@@ -50,6 +50,8 @@ class Drive:
     loaded: bool = True
     honour_top: bool = True
     child_count: int | None = None  # what the root claims; by default, len(children)
+    endless: bool = False  # every page links to the same next page, for 50 pages
+    pages_served: int = 0
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         if not self.loaded:
@@ -63,15 +65,19 @@ class Drive:
             case "/root":
                 count = len(self.children) if self.child_count is None else self.child_count
                 return httpx.Response(200, json={"folder": {"childCount": count}})
+            case "/items/root/children" if self.endless and self.pages_served == 50:
+                return httpx.Response(500)  # a client that never stops paging fails here
             case "/items/root/children":
+                self.pages_served += 1
                 top = int(params["$top"]) if self.honour_top else 20
                 start = int(params.get("$skiptoken", "0"))
                 body: dict[str, object] = {
                     "value": [{"name": n} for n in self.children[start : start + top]]
                 }
-                if start + top < len(self.children):
+                if start + top < len(self.children) or self.endless:
+                    after = start if self.endless else start + top
                     body["@odata.nextLink"] = (
-                        f"{DRIVE}/items/root/children?$top={top}&$skiptoken={start + top}"
+                        f"{DRIVE}/items/root/children?$top={top}&$skiptoken={after}"
                     )
                 return httpx.Response(200, json=body)
             case path if path == f"/items/{MEMO_ID}/permissions":
@@ -88,7 +94,7 @@ class Directory:
         default_factory=lambda: {
             "smoke.kestrel": "smoke-password",
             "leo.martin": "dev-password",
-            "peter.hall": "",  # disabled: no password gets in
+            "peter.hall": "dev-password",
         }
     )
     ids: dict[str, str] = field(
@@ -101,10 +107,17 @@ class Directory:
     enabled: dict[str, bool] = field(default_factory=lambda: {"peter.hall": False})
 
     def sign_in(self, username: str, password: str) -> httpx.Response:
-        if password and self.accounts.get(username) == password:
+        """Keycloak re-renders its form with an error, as it does for a bad password or a
+        disabled account."""
+        if self.accounts.get(username) != password:
+            error = "Invalid username or password."
+        elif not self.enabled.get(username, True):
+            error = "Account is disabled, contact your administrator."
+        else:
             location = f"{E.web}/auth/callback?code={username}"
             return httpx.Response(302, headers={"location": location})
-        return httpx.Response(200, text=FORM.replace("</form>", "</form>Invalid login"))
+        error_html = f'<span id="input-error">{error}</span>'
+        return httpx.Response(200, text=FORM.replace("</form>", f"</form>{error_html}"))
 
     def admin(self, request: httpx.Request) -> httpx.Response:
         if request.url.path == "/realms/master/protocol/openid-connect/token":
@@ -362,6 +375,13 @@ async def test_workspace_failures(tmp_path: Path, drive: Drive, error: str) -> N
             await smoke.check_workspace(c, E, manifest, WORLD_YAML)
 
 
+async def test_workspace_stops_paging_a_nextlink_that_never_ends(tmp_path: Path) -> None:
+    manifest = write_manifest(tmp_path / "manifest.json")
+    async with client(stack(drive=Drive(endless=True))) as c:
+        with pytest.raises(SmokeError, match=r"still had a nextLink after 3 pages"):
+            await smoke.check_workspace(c, E, manifest, WORLD_YAML)
+
+
 async def test_workspace_needs_the_manifest_and_its_memo(tmp_path: Path) -> None:
     async with client(stack()) as c:
         with pytest.raises(SmokeError, match=r"manifest\.json is missing; run `ex fixtures`"):
@@ -444,11 +464,13 @@ async def test_directory() -> None:
 @pytest.mark.parametrize(
     ("directory", "admin", "error"),
     [
-        (Directory(accounts={"peter.hall": ""}), ADMIN, "no ac_session cookie after login"),
+        (Directory(accounts={"peter.hall": "dev-password"}), ADMIN, "no ac_session cookie"),
+        (Directory(enabled={}), ADMIN, "peter.hall is disabled but signed in"),
+        # Refused, but for a bad password: the account might not be disabled at all.
         (
-            Directory(accounts={"leo.martin": "dev-password", "peter.hall": "dev-password"}),
+            Directory(accounts={"leo.martin": "dev-password", "peter.hall": "other"}),
             ADMIN,
-            "peter.hall is disabled but signed in",
+            "peter.hall was refused, but not as a disabled account",
         ),
         (Directory(), ("admin", "nope"), "admin login returned HTTP 401"),
         (
@@ -467,17 +489,41 @@ async def test_directory() -> None:
             ADMIN,
             r"leo.martin has id u1, the world says .*; /Kestrel/Finance/AP has id g1",
         ),
-        (Directory(enabled={}), ADMIN, "peter.hall isn't disabled in Keycloak"),
+        (
+            Directory(
+                ids={
+                    "leo.martin": str(WORLD.user_id("kestrel", "leo.martin")),
+                    "peter.hall": "u2",
+                    "/Kestrel/Finance/AP": str(WORLD.group_id("kestrel", "/Kestrel/Finance/AP")),
+                }
+            ),
+            ADMIN,
+            r"^peter.hall has id u2, the world says ",
+        ),
     ],
-    ids=["user refused", "disabled user let in", "bad admin", "no user", "wrong ids", "enabled"],
+    ids=[
+        "user refused",
+        "disabled user let in",
+        "refused as a bad password",
+        "bad admin",
+        "no user",
+        "wrong ids",
+        "wrong disabled user id",
+    ],
 )
 async def test_directory_failures(directory: Directory, admin: tuple[str, str], error: str) -> None:
     with pytest.raises(SmokeError, match=error):
         await smoke.check_directory(clients(stack(directory=directory)), E, WORLD_YAML, admin)
 
 
-def test_keycloak_admin_comes_from_compose() -> None:
+def test_keycloak_admin_comes_from_compose(tmp_path: Path) -> None:
     assert smoke.keycloak_admin(REPO / services.COMPOSE_FILE) == ADMIN
+    compose = tmp_path / "compose.yaml"
+    compose.write_text(
+        "services:\n  keycloak:\n    environment:\n"
+        "      KC_BOOTSTRAP_ADMIN_USERNAME: root\n      KC_BOOTSTRAP_ADMIN_PASSWORD: s3cret\n"
+    )
+    assert smoke.keycloak_admin(compose) == ("root", "s3cret")
 
 
 def fake_repo(root: Path) -> Path:

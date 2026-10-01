@@ -12,8 +12,8 @@ from ac_db.testing import temporary_database
 
 pytestmark = pytest.mark.postgres
 
-# compare_metadata skips CHECK constraints, index predicates and sequences, so `drift` also
-# compares these catalog rows against a database built from the models.
+# compare_metadata skips CHECK constraints, index predicates, sequences and triggers, so `drift`
+# also compares these catalog rows against a database built from the models.
 CATALOG = (
     """
     SELECT 'column', c.relname, a.attname, format_type(a.atttypid, a.atttypmod), a.attnotnull,
@@ -35,8 +35,14 @@ CATALOG = (
     """,
     """
     SELECT 'sequence', sequencename, data_type::text, start_value, increment_by, min_value,
-           max_value, cycle
+           max_value, cycle, cache_size
     FROM pg_sequences WHERE schemaname = 'public'
+    """,
+    """
+    SELECT 'trigger', c.relname, t.tgname, pg_get_triggerdef(t.oid)
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    WHERE c.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal
     """,
 )
 
@@ -168,6 +174,19 @@ def test_models_match_the_migrations(database_url: str, models_url: str) -> None
             id="changed-index-predicate",
         ),
         pytest.param(["DROP SEQUENCE acl_version_seq"], "acl_version_seq", id="dropped-sequence"),
+        pytest.param(
+            ["ALTER SEQUENCE acl_version_seq CACHE 20"], "acl_version_seq", id="sequence-cache"
+        ),
+        pytest.param(
+            [
+                "CREATE FUNCTION keep_row() RETURNS trigger LANGUAGE plpgsql"
+                " AS $$ BEGIN RETURN NEW; END $$",
+                "CREATE TRIGGER documents_keep_row BEFORE UPDATE ON documents"
+                " FOR EACH ROW EXECUTE FUNCTION keep_row()",
+            ],
+            "documents_keep_row",
+            id="added-trigger",
+        ),
     ],
 )
 def test_drift_check_catches(

@@ -338,7 +338,7 @@ Published ports bind to 127.0.0.1 only. The api publishes none: it trusts Envoy'
 - Sync and ingest: `sync_state` (connector cursor or delta token), `outbox` (id, kind, payload, partition_key, created_at, published_at, attempts, last_error, failed_at)
 - Conversation: `conversations`, `messages` (unique idempotency key)
 - Runs: `runs` (status, version, workflow_id, budget), `run_events` (run_id, seq unique, type, payload), `approvals`
-- Audit: `retrieval_audit` (user, query hash, returned ids, denied ids, acl_version, timestamp). Its `acl_version` is the sequence's high-water mark at query time, so any document above it changed after the query
+- Audit: `retrieval_audit` (user, query hash, returned ids, denied ids, acl_version, timestamp). Its `acl_version` is the sequence's high-water mark, read after the retrieval query (or in its REPEATABLE READ snapshot), so any document above it changed after the query. It dates document ACL changes only: group-membership and `enabled` changes don't advance the sequence
 
 **Corpus spec.** About 40 documents across Finance, HR, Legal, Engineering, Sales and Exec. The generators and seeds are committed; the documents themselves are built by `ex fixtures`.
 - Native PDFs are rendered from markdown.

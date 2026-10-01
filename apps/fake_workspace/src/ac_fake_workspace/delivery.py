@@ -118,7 +118,8 @@ class Notifier:
             raise bad_request("The notificationUrl must be an http or https URL.")
         self._check_expiration(request.expiration)
         self._requests += 1
-        request_id = uuid.uuid5(NAMESPACE, f"{site}:validation:{self._requests}")
+        n = self._requests  # other requests move the counter on while this one validates
+        request_id = uuid.uuid5(NAMESPACE, f"{site}:validation:{n}")
         generation = self.generation
         await self._validate(
             request.notification_url,
@@ -129,7 +130,7 @@ class Notifier:
             message = "fake-workspace was reset while the subscription was being validated."
             raise GraphError(503, "serviceNotAvailable", message)
         subscription = Subscription(
-            id=str(uuid.uuid5(NAMESPACE, f"{site}:subscription:{self._requests}")),
+            id=str(uuid.uuid5(NAMESPACE, f"{site}:subscription:{n}")),
             site=site,
             resource=request.resource,
             notification_url=request.notification_url,

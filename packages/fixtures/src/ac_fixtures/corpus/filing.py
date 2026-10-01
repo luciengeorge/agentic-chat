@@ -814,7 +814,8 @@ def _complaints(seed: int) -> list[Page]:
             )
             for _ in range(n)
         ]
-        rng.shuffle(topics)  # draws nothing from an empty list, so other months don't change
+        # Shuffled on a stream of its own, so the register's stream draws what it always has.
+        random.Random(f"{seed}:complaints:{month}").shuffle(topics)
         for sheet in range(6):
             rows: list[list[str]] = []
             for _ in range(24):
@@ -825,7 +826,8 @@ def _complaints(seed: int) -> list[Page]:
                 outcome = rng.choice(("Upheld", "Not upheld", "Partly upheld"))
                 redress = pence(rng.uniform(25, 950)) if outcome != "Not upheld" else Decimal(0)
                 product = rng.choice(PRODUCTS).removeprefix("Kestrel ")
-                topic = topics.pop() if mix else rng.choice(_COMPLAINT_TOPICS)
+                drawn = rng.choice(_COMPLAINT_TOPICS)  # drawn even when the mix decides
+                topic = topics.pop() if mix else drawn
                 if number in _FIXED_COMPLAINTS:
                     received, product, topic, outcome, redress, days = _FIXED_COMPLAINTS[number]
                 rows.append(

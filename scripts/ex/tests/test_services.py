@@ -10,7 +10,7 @@ from ac_ex import services
 from ac_ex.errors import ExError
 
 ROWS = [
-    {"Service": "api", "State": "running", "Health": "healthy"},
+    {"Service": "api", "State": "running", "Health": "healthy", "ID": "4f1c0a9e2b7d"},
     {"Service": "relay", "State": "running", "Health": ""},
     {"Service": "keycloak", "State": "running", "Health": "starting"},
     {"Service": "redis", "State": "exited", "Health": ""},
@@ -34,6 +34,7 @@ def test_parse_ps(output: str) -> None:
         ("redis", False),
     ]
     assert parsed[1].to_json() == {"name": "relay", "state": "running", "health": None}
+    assert [s.id for s in parsed[:2]] == ["4f1c0a9e2b7d", ""]
 
 
 def test_only_running_slot_services_are_stopped_and_started(
