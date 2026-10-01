@@ -164,6 +164,7 @@ class Site:
         self.groups = groups  # group id -> path
         self.items: dict[str, Item] = {}  # in creation order
         self.changes: list[Change] = []  # change n has seq n + 1
+        self.history = [""]  # history[n]: a digest of the first n changes and what they left
         self.root_id = ""
         self._created = 0
 
@@ -335,6 +336,19 @@ class Site:
 
     def _record(self, item: Item, *, sharing: bool = False) -> None:
         self.changes.append(Change(item.id, sharing))
+        state = (
+            item.id,
+            sharing,
+            item.name,
+            item.parent_id,
+            item.deleted_seq is not None,
+            item.version,
+            item.sha256,
+            iso(item.modified),
+            item.sharing.model_dump_json(),
+        )
+        digest = hashlib.sha256(f"{self.history[-1]}{state!r}".encode()).hexdigest()
+        self.history.append(digest[:16])
 
     def _touch(self, item: Item, now: datetime) -> None:
         item.version += 1
@@ -407,7 +421,8 @@ class Workspace:
     @property
     def generation(self) -> str:
         """Which corpus and which reset delta tokens belong to; tokens from another are refused.
-        It's deterministic, so a restart on the same corpus still accepts tokens from before."""
+        It's deterministic, so a restart on the same corpus accepts tokens from before as long as
+        its change log repeats theirs (each token carries the log's digest)."""
         return f"{self.digest[:12]}-{self.resets}"
 
     def load(self) -> None:

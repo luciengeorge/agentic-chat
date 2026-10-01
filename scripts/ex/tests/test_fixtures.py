@@ -159,6 +159,10 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, server: Server, stack:
     return root
 
 
+def record(repo: Path) -> Any:
+    return json.loads((repo / fixtures.REALMS_APPLIED).read_text())
+
+
 def ex(*args: str, ok: bool = True) -> Any:
     result = runner.invoke(cli.app, ["fixtures", *args, "--json"])
     assert (result.exit_code == 0) is ok, result.output
@@ -212,7 +216,11 @@ def test_clean_renders_everything_again(repo: Path) -> None:
 def test_nothing_to_reload_without_keycloak(
     repo: Path, monkeypatch: pytest.MonkeyPatch, stack: FakeStack, states: dict[str, str]
 ) -> None:
-    stack.states = states
+    ex()  # Keycloak loads the exports, and the record names its container
+    loaded = record(repo)
+    assert loaded["keycloak"] == stack.ids["keycloak"]
+    stack.states = states  # then the stack goes, or never had a Keycloak
+    stack.calls.clear()
     monkeypatch.setattr(fixtures, "ENDPOINTS", fixtures.Endpoints(closed_url()))
     out = ex()
     assert out["directory"]["recreated"] == []
@@ -222,7 +230,9 @@ def test_nothing_to_reload_without_keycloak(
     assert "isn't running" in out["workspace"]["detail"]
     # Nothing records which exports the Keycloak that `ex up` creates next imported (it might
     # be another branch's), so the first run that sees it reloads it, once.
+    assert record(repo) == {"digest": loaded["digest"], "keycloak": None, "envoy_pending": False}
     stack.states = {"keycloak": "running"}
+    stack.ids["keycloak"] = stack.container()
     assert ex()["directory"]["recreated"] == ["keycloak"]
     stack.calls.clear()
     assert ex()["directory"]["recreated"] == []
@@ -263,6 +273,8 @@ def test_envoy_is_left_alone_when_it_isnt_running(repo: Path, stack: FakeStack) 
     stack.states["envoy"] = "exited"
     assert ex()["directory"]["recreated"] == ["keycloak"]
     assert stack.calls == ["recreate keycloak"]
+    # It fetches the new keys when it starts, so nothing is left pending for it.
+    assert record(repo)["envoy_pending"] is False
 
 
 def test_a_stopped_keycloak_is_removed_so_up_imports_the_exports(
@@ -335,17 +347,31 @@ def test_only_realm_exports_count(repo: Path, stack: FakeStack) -> None:
     assert stack.calls == []
 
 
+def test_a_stopped_keycloak_that_loaded_the_exports_is_left_alone(
+    repo: Path, stack: FakeStack
+) -> None:
+    """A reboot stops the stack; `ex up` starts the same container, with these exports."""
+    ex()
+    loaded = record(repo)
+    stack.calls.clear()
+    stack.states["keycloak"] = "exited"
+    assert ex()["directory"] == {"changed": [], "recreated": [], "detail": None}
+    assert stack.calls == []
+    assert record(repo) == loaded
+
+
 def test_removing_a_stopped_keycloak_records_the_exports_for_no_container(
     repo: Path, stack: FakeStack
 ) -> None:
     ex()
+    loaded = record(repo)
+    assert loaded["keycloak"] is not None
     stack.states["keycloak"] = "exited"
-    record = repo / fixtures.REALMS_APPLIED
-    applied = json.loads(record.read_text())
-    assert applied["keycloak"] is not None
-    ex()
-    after = json.loads(record.read_text())
-    assert after == {"digest": applied["digest"], "keycloak": None, "envoy_pending": False}
+    stack.ids["keycloak"] = stack.container()  # one made elsewhere, from other exports
+    stack.calls.clear()
+    assert ex()["directory"]["detail"].startswith("removed the stopped Keycloak")
+    assert stack.calls == ["remove keycloak"]
+    assert record(repo) == {"digest": loaded["digest"], "keycloak": None, "envoy_pending": False}
 
 
 def test_fake_workspace_refusing_the_reset_fails(repo: Path, server: Server) -> None:

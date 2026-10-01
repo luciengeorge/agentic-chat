@@ -111,8 +111,10 @@ def up(
         root = _root()
         profiles = tuple(profile or services.PROFILES)
         services.preflight(root, profiles)
+        before = services.status(root)
         services.compose(root, "up", "--detach", "--wait", profiles=profiles, capture=as_json)
         statuses = services.status(root)
+        fixtures.note_up(root, before, statuses)
         text = "\n".join(
             ["stack is up. The web apps run on the host:", *(f"  {h}" for h in WEB_HINT)]
         )

@@ -363,6 +363,15 @@ async def test_concurrent_subscriptions_get_their_own_ids(
     assert len(receiver.notifications) == count
 
 
+async def test_subscription_ids_differ_between_processes(
+    make_client: MakeClient, receiver: Receiver
+) -> None:
+    """Subscriptions live in memory, so a restart starts its counter again; ids mustn't."""
+    first = await subscribe(make_client(), receiver)
+    restarted = await subscribe(make_client(), receiver)
+    assert first["id"] != restarted["id"]
+
+
 async def test_subscription_ids_stay_unique_across_resets(
     client: httpx.AsyncClient, receiver: Receiver
 ) -> None:

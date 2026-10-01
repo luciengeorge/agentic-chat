@@ -299,8 +299,9 @@ class RetrievalAudit(Base):
     """`acl_version_seq`'s high-water mark at query time: a document above it changed after.
 
     Read it after the retrieval query or in its REPEATABLE READ snapshot: under READ COMMITTED, a
-    mark read first misses a change that commits in between. Read it with `SELECT CASE WHEN
-    is_called THEN last_value ELSE 0 END FROM acl_version_seq`, which raises without privilege on
-    the sequence (`pg_sequence_last_value` returns NULL instead).
+    mark read first is too low, and a change that commits in between, which the query saw, looks
+    newer than the query. Read it with `SELECT CASE WHEN is_called THEN last_value ELSE 0 END FROM
+    acl_version_seq`, which needs SELECT on the sequence and raises without it
+    (`pg_sequence_last_value` returns NULL instead). docs/m0b-contract.md has the details.
     """
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

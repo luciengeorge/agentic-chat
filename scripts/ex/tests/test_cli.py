@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from ac_ex import cli, services, state
+from ac_ex import cli, fixtures, services, state
 from ac_ex.errors import ExError
 
 runner = CliRunner()
@@ -344,6 +344,51 @@ def test_up_stops_before_compose_when_a_port_is_taken(monkeypatch: pytest.Monkey
         "detail": [{"port": 6379, "process": "redis-server"}],
     }
     assert composed == []
+
+
+@pytest.mark.parametrize(
+    ("before", "recorded"),
+    [
+        ([], "k2"),  # `up` created Keycloak, which imported the exports on disk as it started
+        ([services.ServiceStatus("keycloak", "exited", "", "k1")], "k2"),  # or replaced it
+        ([services.ServiceStatus("keycloak", "exited", "", "k2")], None),  # or only started it
+    ],
+    ids=["created", "recreated", "started"],
+)
+def test_up_records_the_exports_a_new_keycloak_imported(
+    repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    before: list[services.ServiceStatus],
+    recorded: str | None,
+) -> None:
+    exports = repo / "fixtures" / "directory"
+    exports.mkdir(parents=True)
+    (exports / "kestrel-realm.json").write_text('{"realm": "kestrel"}\n')
+    after = [services.ServiceStatus("keycloak", "running", "healthy", "k2")]
+    statuses = iter([before, after])
+
+    def preflight(root: Path, profiles: tuple[str, ...]) -> None:
+        pass
+
+    def compose(root: Path, *args: str, **kwargs: object) -> str:
+        return ""
+
+    def status(root: Path) -> list[services.ServiceStatus]:
+        return next(statuses)
+
+    monkeypatch.setattr(services, "preflight", preflight)
+    monkeypatch.setattr(services, "compose", compose)
+    monkeypatch.setattr(services, "status", status)
+    ex("up")
+    path = repo / fixtures.REALMS_APPLIED
+    if recorded is None:
+        assert not path.exists()
+        return
+    assert json.loads(path.read_text()) == {
+        "digest": fixtures.exports_digest(exports),
+        "keycloak": recorded,
+        "envoy_pending": False,
+    }
 
 
 def test_unknown_step_is_a_json_error() -> None:

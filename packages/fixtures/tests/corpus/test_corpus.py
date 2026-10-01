@@ -14,6 +14,8 @@ import pypdfium2  # pyright: ignore[reportMissingTypeStubs]
 import pytest
 
 from ac_fixtures.corpus import blocks, build, filing
+from ac_fixtures.corpus.pdf import FOOTER_Y, MARGIN
+from ac_fixtures.corpus.pdf import render as render_pdf
 from ac_fixtures.sources import Source, load_sources
 from ac_fixtures.world import World, load_world
 
@@ -23,6 +25,8 @@ CODE = re.compile(r"\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\b")
 FRN = re.compile(r"\bFRN \d{6}\b")
 LETTERS = re.compile(r"[^\W\d_]+")
 TEXT_LAYER = ("pdf", "pdf_mixed", "generated")
+# Between the footer (the title and "Page n of N", on every page) and the body frame above it.
+BELOW_THE_BODY = (FOOTER_Y + MARGIN) / 2
 
 
 @dataclass(frozen=True)
@@ -135,42 +139,124 @@ def readers(world: World, source: Source) -> frozenset[str]:
     return frozenset(found)
 
 
+def page_text(page: pypdfium2.PdfPage, *, bottom: float = 0.0, anywhere: bool = False) -> str:
+    """The text on the page above `bottom`, or, with `anywhere`, all of it, on the page or off."""
+    width, height = page.get_size()
+    edge = 1e4 if anywhere else 0.0
+    bounded = page.get_textpage().get_text_bounded  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    low = -edge if anywhere else bottom
+    return bounded(left=-edge, bottom=low, right=width + edge, top=height + edge)
+
+
+def body_text(data: bytes) -> str:
+    """A PDF's text layer without its footers."""
+    pdf = pypdfium2.PdfDocument(data)
+    try:
+        return "\n".join(page_text(page, bottom=BELOW_THE_BODY) for page in pdf)
+    finally:
+        pdf.close()
+
+
+def tokens(text: str, names: list[str]) -> Counter[str]:
+    """The codes, FRNs, people's names and words of 6 letters or more in `text`."""
+    text = flat(text)
+    found = Counter(
+        [m for m in CODE.findall(text) if any(c.isdigit() for c in m)]
+        + FRN.findall(text)
+        + long_words(text)
+    )
+    found.update({name: n for name in names if (n := text.count(name))})
+    return found
+
+
+def text_layer_problems(shown: list[blocks.Block], data: bytes, names: list[str]) -> list[str]:
+    """Where the tokens of a PDF's body text, footers aside, differ in number from the blocks
+    it was rendered from. A token broken across lines comes out as two shorter ones, so the
+    whole token is short and its pieces are extra."""
+    wanted = tokens("\n".join(blocks.lines(shown)), names)
+    got = tokens(body_text(data), names)
+    return [
+        f"{token}: {got[token]} in the text layer, {wanted[token]} in the source"
+        for token in sorted(wanted.keys() | got.keys())
+        if got[token] != wanted[token]
+    ]
+
+
 def test_words_identifiers_and_names_are_whole_in_the_text_layer(corpus: Corpus) -> None:
-    """Every code, FRN, person's name and word of 6 letters or more that a source puts in a
-    PDF's text layer comes out of it whole, as often as the source has it: no table column is
-    narrower than its longest word, so nothing breaks mid-token. Text wraps only at spaces and
-    hyphens (reportlab doesn't hyphenate), so a name may wrap at its space and "cash-free" at
-    its hyphen; letter runs stay whole either way."""
-    broken: list[str] = []
-    for source in corpus.sources:
-        if source.meta.format not in TEXT_LAYER:
-            continue
-        shown = [b for b in source_blocks(source) if not isinstance(b, blocks.Scan)]
-        expected = flat("\n".join(blocks.lines(shown)))
-        found = flat(text_layer(corpus.blob(source)))
-        names = [user.name for user in corpus.world.tenants[source.tenant].users]
-        wanted = Counter(
-            [m for m in CODE.findall(expected) if any(c.isdigit() for c in m)]
-            + FRN.findall(expected)
-            + [name for name in names for _ in range(expected.count(name))]
-            + long_words(expected)
+    """Every code, FRN, person's name and word of 6 letters or more in a PDF's body text comes
+    out whole, exactly as often as the source has it: no table column is narrower than its
+    longest word, so nothing breaks mid-token. Text wraps only at spaces and hyphens (reportlab
+    doesn't hyphenate), so a name may wrap at its space and "cash-free" at its hyphen; letter
+    runs stay whole either way. The footer repeats the title on every page, so it's left out.
+    A table that ran onto another page would repeat its header row there and fail this test on
+    the header's words; none does."""
+    broken = [
+        f"{source.meta.id}: {problem}"
+        for source in corpus.sources
+        if source.meta.format in TEXT_LAYER
+        for problem in text_layer_problems(
+            [b for b in source_blocks(source) if not isinstance(b, blocks.Scan)],
+            corpus.blob(source),
+            [user.name for user in corpus.world.tenants[source.tenant].users],
         )
-        got = Counter(CODE.findall(found) + FRN.findall(found) + long_words(found))
-        got.update({name: found.count(name) for name in names})
-        broken += [
-            f"{source.meta.id}: {token} {got[token]} of {n}"
-            for token, n in sorted(wanted.items())
-            if got[token] < n
-        ]
+    ]
     assert not broken, "\n".join(broken)
 
 
-# What Heron is: the target, the price and the funding. Only exec-only documents say it.
-HERON = ("Lumen", "86m", "Tamar")
+def test_no_text_leaves_the_page(corpus: Corpus) -> None:
+    """Every glyph of every PDF's text layer lies inside its page, so a reader sees all the
+    text that search finds."""
+    off: list[str] = []
+    for source in corpus.sources:
+        if source.meta.format not in TEXT_LAYER:
+            continue
+        pdf = pypdfium2.PdfDocument(corpus.blob(source))
+        try:
+            off += [
+                f"{source.meta.id}, page {number}"
+                for number, page in enumerate(pdf, 1)
+                if flat(page_text(page)) != flat(page_text(page, anywhere=True))
+            ]
+        finally:
+            pdf.close()
+    assert not off, off
+
+
+def test_a_word_broken_in_the_body_is_caught_though_the_footer_has_it() -> None:
+    """The title, in the footer of all three pages, holds the word the body breaks."""
+    shown = list(blocks.parse("Counterparty terms.\n"))
+    pages = "\n\n<!-- pagebreak -->\n\nMore.\n" * 2
+    data = render_pdf(
+        blocks.parse(f"Counterpar ty terms.\n{pages}"),
+        title="Counterparty Register",
+        author="Maya Levi",
+        epoch=1_700_000_000,
+    ).data
+    assert text_layer(data).count("Counterparty") == 3
+    assert text_layer_problems(shown, data, []) == [
+        "Counterpar: 1 in the text layer, 0 in the source",
+        "Counterparty: 0 in the text layer, 1 in the source",
+    ]
+    whole = render_pdf(
+        blocks.parse(f"Counterparty terms.\n{pages}"),
+        title="Counterparty Register",
+        author="Maya Levi",
+        epoch=1_700_000_000,
+    ).data
+    assert text_layer_problems(shown, whole, []) == []
+
+
+# Heron's headline price and the earn-out's cap, however the amount is written: £86m, £86.0m,
+# £86 million, £86,000,000.
+PRICE = r"(?<![\d.,])86(?:\.0+)?\s?(?:m|million)\b|(?<![\d.,])86,000,000\b"
+CAP = r"(?<![\d.,])12(?:\.0+)?\s?(?:m|million)\b|(?<![\d.,])12,000,000\b"
+# What Heron is: the target, the funding, the price and the cap. Only exec-only documents say
+# it. ("capped" alone is no sign: the Sales documents cap early-exit fees.)
+HERON = re.compile(rf"\bLumen\b|\bTamar\b|{PRICE}|{CAP}", flags=re.I)
 # The README's one documented exception: Tom Whitfield's read grant on the integration plan.
 # He learns the deal's structure there, but not the £86m headline or the earn-out's £12m cap.
 HERON_EXCEPTIONS = {"exec-project-heron-integration-plan": "tom.whitfield"}
-HERON_HEADLINE = re.compile(r"86m|12m|\bcap(?:ped)?\b", flags=re.I)
+HERON_HEADLINE = re.compile(rf"{PRICE}|{CAP}|\bcap(?:ped)?\b", flags=re.I)
 
 
 def test_heron_stays_with_its_readers(corpus: Corpus, readable: dict[tuple[str, str], str]) -> None:
@@ -187,7 +273,7 @@ def test_heron_stays_with_its_readers(corpus: Corpus, readable: dict[tuple[str, 
             assert headline is None, f"{source.meta.id}: {headline[0] if headline else ''}"
             continue
         text = readable[source.tenant, source.meta.id]
-        leaks += [f"{source.meta.id}: {word}" for word in HERON if word in text]
+        leaks += [f"{source.meta.id}: {match[0]}" for match in HERON.finditer(text)]
     assert not leaks, leaks
 
 

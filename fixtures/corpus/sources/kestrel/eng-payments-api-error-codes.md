@@ -25,7 +25,14 @@ traps: [lexical]
 Every failed request returns an HTTP status and a JSON body with a `KP-` code:
 
 ```
-{"error": {"code": "KP-4031", "message": "Strong Customer Authentication required", "decline_code": "sca_required", "request_id": "req_8Qm2..."}}
+{
+  "error": {
+    "code": "KP-4031",
+    "message": "Strong Customer Authentication required",
+    "decline_code": "sca_required",
+    "request_id": "req_8Qm2Tx4Lw9"
+  }
+}
 ```
 
 Codes are four digits after `KP-`. The first digit is the family:

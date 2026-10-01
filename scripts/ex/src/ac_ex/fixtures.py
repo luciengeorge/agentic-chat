@@ -224,13 +224,16 @@ def _load_realms(root: Path, stack: Stack) -> tuple[list[str], str | None, bool]
         _mark_applied(root, Applied(digest))
         return [], None, True
     envoy = found.get("envoy")
+    loaded = (applied.digest, applied.keycloak) == (digest, keycloak.id)
     recreated: list[str] = []
     try:
         if keycloak.state != "running":
+            if loaded:  # stopped by a reboot, say: `ex up` starts it again with these exports
+                return [], None, True
             stack.remove(root, "keycloak")
             _mark_applied(root, Applied(digest))
             return [], "removed the stopped Keycloak, so `ex up` imports the new exports", True
-        if (applied.digest, applied.keycloak) != (digest, keycloak.id):
+        if not loaded:
             stack.recreate(root, "keycloak")
             recreated.append("keycloak")
             new = next((s.id for s in stack.status(root) if s.name == "keycloak"), None)
@@ -249,6 +252,21 @@ def _load_realms(root: Path, stack: Stack) -> tuple[list[str], str | None, bool]
     if recreated == ["envoy"]:
         return recreated, "recreated envoy, which still had the old Keycloak's keys", True
     return recreated, f"recreated {' and '.join(recreated)} to load the realm exports", True
+
+
+def note_up(
+    root: Path, before: list[services.ServiceStatus], after: list[services.ServiceStatus]
+) -> None:
+    """After `ex up`: a Keycloak container that wasn't there before imported the exports on disk
+    as it started, so record it, and the next `ex fixtures` doesn't reload it again. A Keycloak
+    that was only started keeps whatever it imported, and the record stays as it was."""
+
+    def keycloak(statuses: list[services.ServiceStatus]) -> str | None:
+        return next((s.id for s in statuses if s.name == "keycloak" and s.id), None)
+
+    created = keycloak(after)
+    if created is not None and created != keycloak(before):
+        _mark_applied(root, Applied(exports_digest(root / "fixtures" / "directory"), created))
 
 
 def _why(exc: ExError) -> str:

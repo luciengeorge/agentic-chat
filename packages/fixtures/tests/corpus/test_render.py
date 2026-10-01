@@ -109,6 +109,26 @@ def test_a_table_too_wide_even_when_shrunk_fails(docs: dict[str, Document]) -> N
         render(replace(docs["exec-report"], body=body))
 
 
+# Courier at 8.5pt fits 92 characters across the frame; a list item's indent leaves room for 89.
+FITS_THE_FRAME = '{"request_id": "' + "x" * 74 + '"}'
+
+
+def test_a_code_line_wider_than_the_page_fails(docs: dict[str, Document]) -> None:
+    line = '{"error": {"code": "KP-4031", "message": "' + "x" * 80 + '"}}'
+    body = f"Intro.\n\n```\nshort\n{line}\n```\n"
+    with pytest.raises(RenderError, match=r"code line 2 is \d+mm wide, wider than .*'\{\"error\""):
+        render(replace(docs["exec-report"], body=body))
+
+
+def test_a_code_line_must_fit_where_it_sits(docs: dict[str, Document]) -> None:
+    assert len(FITS_THE_FRAME) == 92
+    (page,) = read(render(replace(docs["exec-report"], body=f"```\n{FITS_THE_FRAME}\n```\n")).data)
+    assert FITS_THE_FRAME in page.text
+    nested = f"- An item:\n\n  ```\n  {FITS_THE_FRAME}\n  ```\n"
+    with pytest.raises(RenderError, match="code line 1"):
+        render(replace(docs["exec-report"], body=nested))
+
+
 def test_hidden_text_is_in_the_text_layer_but_white_and_1pt(docs: dict[str, Document]) -> None:
     page = read(render(docs["exec-report"]).data)[1]
     hidden = [c for c in page.chars if c["size"] < 2]

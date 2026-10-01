@@ -1,10 +1,12 @@
 import asyncio
+import json
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
 
-from ac_fake_workspace.testing import Corpus, MakeClient, ManualClock
+from ac_fake_workspace.testing import Corpus, MakeClient, ManualClock, Receiver
 
 ITEMS = "/v1.0/sites/kestrel/drive/items"
 HARBOUR = {"Authorization": "Bearer dev-workspace-harbour"}
@@ -111,6 +113,51 @@ async def test_a_reset_that_fails_during_a_latency_wait_is_503(
     response = await waiting
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "serviceNotReady"
+
+
+async def test_a_subscribe_held_across_a_failed_reset_is_503(
+    make_client: MakeClient, corpus: Corpus, receiver: Receiver
+) -> None:
+    clock = ManualClock()
+    clock.gate = asyncio.Event()
+    client = make_client(clock=clock)
+    await add_fault(client, kind="latency", latency_ms=100, path_prefix="/v1.0/subscriptions")
+    body = {
+        "changeType": "updated",
+        "notificationUrl": receiver.url,
+        "resource": "sites/kestrel/drive/root",
+        "expirationDateTime": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        "clientState": "s",
+    }
+    waiting = asyncio.create_task(client.post("/v1.0/subscriptions", json=body))
+    await eventually(lambda: clock.waits)
+    (corpus.dir / "manifest.json").write_text("{}")
+    assert (await client.post("/_control/reset")).status_code == 503
+    clock.gate.set()
+    response = await waiting
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "serviceNotReady"
+
+
+async def test_a_request_held_across_a_reset_answers_as_a_fresh_one(
+    make_client: MakeClient, corpus: Corpus
+) -> None:
+    """The reset loads a corpus without Kestrel's site, so Kestrel's token opens nothing."""
+    clock = ManualClock()
+    clock.gate = asyncio.Event()
+    client = make_client(clock=clock)
+    await add_fault(client, kind="latency", latency_ms=100, path_prefix=ITEMS, count=1)
+    waiting = asyncio.create_task(client.get(f"{ITEMS}/root"))
+    await eventually(lambda: clock.waits)
+    manifest = corpus.dir / "manifest.json"
+    data = json.loads(manifest.read_text())
+    del data["sites"]["kestrel"]
+    manifest.write_text(json.dumps(data))
+    assert (await client.post("/_control/reset")).status_code == 200
+    clock.gate.set()
+    held, fresh = await waiting, await client.get(f"{ITEMS}/root")
+    assert (held.status_code, held.json()) == (fresh.status_code, fresh.json())
+    assert fresh.json()["error"]["code"] == "InvalidAuthenticationToken"
 
 
 async def test_faults_apply_to_subscriptions(client: httpx.AsyncClient) -> None:
