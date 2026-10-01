@@ -217,7 +217,10 @@ services:
   fake-workspace:
     <<: *app
     build: { context: .., dockerfile: apps/fake_workspace/Dockerfile, target: dev }
-    environment: *app-env
+    environment:
+      <<: *app-env
+      # `ex fixtures` builds it on the host, then has the service reload it.
+      AC_CORPUS_DIR: /repo/fixtures/corpus/build
     ports: ["127.0.0.1:8100:8100"]
     depends_on: *infra-ready
     healthcheck:

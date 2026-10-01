@@ -5,6 +5,8 @@ description = "workshop step CLI"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "ac-core",
+    "ac-fixtures",
+    "ac-models",
     "httpx>=0.28.1",
     "psycopg[binary]>=3.3.6",
     "pytest>=9.1.1",

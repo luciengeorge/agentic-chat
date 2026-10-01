@@ -2,7 +2,7 @@ import json
 import shutil
 import socket
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -11,7 +11,8 @@ import pytest
 from typer.testing import CliRunner
 
 from ac_core.slots import find_repo_root
-from ac_ex import cli, fixtures
+from ac_ex import cli, fixtures, services
+from ac_ex.errors import ExError
 
 runner = CliRunner()
 
@@ -91,6 +92,31 @@ def closed_url() -> str:
         return f"http://127.0.0.1:{sock.getsockname()[1]}"
 
 
+class FakeStack:
+    """The Compose stack, recording each recreate and remove."""
+
+    def __init__(self) -> None:
+        self.states = {"keycloak": "running", "envoy": "running", "api": "running"}
+        self.calls: list[str] = []
+        self.fail: str | None = None
+
+    def stack(self) -> fixtures.Stack:
+        def status(root: Path) -> list[services.ServiceStatus]:
+            if not self.states:
+                raise ExError("docker is not on PATH")
+            return [services.ServiceStatus(n, s, "healthy") for n, s in self.states.items()]
+
+        def act(verb: str) -> Callable[[Path, str], None]:
+            def call(root: Path, name: str) -> None:
+                self.calls.append(f"{verb} {name}")
+                if self.fail == name:
+                    raise ExError(f"docker compose up {name} failed", detail="unhealthy\n")
+
+            return call
+
+        return fixtures.Stack(status=status, recreate=act("recreate"), remove=act("remove"))
+
+
 @pytest.fixture
 def server() -> Iterator[Server]:
     running = Server()
@@ -99,8 +125,15 @@ def server() -> Iterator[Server]:
 
 
 @pytest.fixture
-def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, server: Server) -> Path:
-    """A repo with the real world, two sources, and fake-workspace and Keycloak both up."""
+def stack(monkeypatch: pytest.MonkeyPatch) -> FakeStack:
+    fake = FakeStack()
+    monkeypatch.setattr(fixtures, "STACK", fake.stack())
+    return fake
+
+
+@pytest.fixture
+def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, server: Server, stack: FakeStack) -> Path:
+    """A repo with the real world, two sources, and fake-workspace, Keycloak and Envoy up."""
     root = tmp_path / "repo"
     (root / "fixtures" / "directory").mkdir(parents=True)
     shutil.copy(find_repo_root() / "fixtures" / "world.yaml", root / "fixtures" / "world.yaml")
@@ -109,7 +142,7 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, server: Server) -> Pat
     (sources / "exec-report.md").write_text(REPORT, encoding="utf-8")
     (sources / "hr-leave-policy.md").write_text(POLICY, encoding="utf-8")
     monkeypatch.setattr(cli, "_root", lambda: root)
-    monkeypatch.setattr(fixtures, "ENDPOINTS", fixtures.Endpoints(server.url, server.url))
+    monkeypatch.setattr(fixtures, "ENDPOINTS", fixtures.Endpoints(server.url))
     return root
 
 
@@ -119,7 +152,9 @@ def ex(*args: str, ok: bool = True) -> Any:
     return json.loads(result.stdout)
 
 
-def test_it_builds_everything_and_resets_fake_workspace(repo: Path, server: Server) -> None:
+def test_it_builds_everything_and_resets_fake_workspace(
+    repo: Path, server: Server, stack: FakeStack
+) -> None:
     out = ex()
     assert set(out) == {"directory", "corpus", "workspace", "duration_s"}
     assert out["directory"] == {
@@ -127,8 +162,10 @@ def test_it_builds_everything_and_resets_fake_workspace(repo: Path, server: Serv
             "fixtures/directory/kestrel-realm.json",
             "fixtures/directory/harbour-realm.json",
         ],
-        "detail": fixtures.KEYCLOAK_RECREATE,
+        "recreated": ["keycloak", "envoy"],
+        "detail": "recreated keycloak and envoy to load the new realm exports",
     }
+    assert stack.calls == ["recreate keycloak", "recreate envoy"]
     corpus = out["corpus"]
     assert {k: corpus[k] for k in ("documents", "rendered", "reused")} == {
         "documents": 2,
@@ -143,10 +180,12 @@ def test_it_builds_everything_and_resets_fake_workspace(repo: Path, server: Serv
     assert isinstance(out["duration_s"], float)
 
 
-def test_a_second_run_reuses_the_build_and_leaves_the_realms(repo: Path) -> None:
+def test_a_second_run_reuses_the_build_and_leaves_the_realms(repo: Path, stack: FakeStack) -> None:
     first = ex()
+    stack.calls.clear()
     second = ex()
-    assert second["directory"] == {"changed": [], "detail": None}
+    assert second["directory"] == {"changed": [], "recreated": [], "detail": None}
+    assert stack.calls == []
     assert (second["corpus"]["rendered"], second["corpus"]["reused"]) == (0, 2)
     assert second["corpus"]["manifest_sha256"] == first["corpus"]["manifest_sha256"]
 
@@ -156,12 +195,49 @@ def test_clean_renders_everything_again(repo: Path) -> None:
     assert ex("--clean")["corpus"]["rendered"] == 2
 
 
-def test_no_keycloak_means_no_recreate_note(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(fixtures, "ENDPOINTS", fixtures.Endpoints(closed_url(), closed_url()))
+@pytest.mark.parametrize(
+    "states", [{}, {"api": "running"}], ids=["no docker", "no keycloak container"]
+)
+def test_nothing_to_reload_without_keycloak(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, stack: FakeStack, states: dict[str, str]
+) -> None:
+    stack.states = states
+    monkeypatch.setattr(fixtures, "ENDPOINTS", fixtures.Endpoints(closed_url()))
     out = ex()
+    assert out["directory"]["recreated"] == []
     assert out["directory"]["detail"] is None
+    assert stack.calls == []
     assert out["workspace"]["reset"] is False
     assert "isn't running" in out["workspace"]["detail"]
+
+
+def test_envoy_is_left_alone_when_it_isnt_running(repo: Path, stack: FakeStack) -> None:
+    stack.states["envoy"] = "exited"
+    assert ex()["directory"]["recreated"] == ["keycloak"]
+    assert stack.calls == ["recreate keycloak"]
+
+
+def test_a_stopped_keycloak_is_removed_so_up_imports_the_exports(
+    repo: Path, stack: FakeStack
+) -> None:
+    stack.states["keycloak"] = "exited"
+    out = ex()
+    assert out["directory"]["recreated"] == []
+    assert out["directory"]["detail"].startswith("removed the stopped Keycloak")
+    assert stack.calls == ["remove keycloak"]
+
+
+@pytest.mark.parametrize(("failing", "recreated"), [("keycloak", []), ("envoy", ["keycloak"])])
+def test_a_failed_recreate_fails_but_still_resets_fake_workspace(
+    repo: Path, server: Server, stack: FakeStack, failing: str, recreated: list[str]
+) -> None:
+    stack.fail = failing
+    out = ex(ok=False)
+    assert out["directory"]["recreated"] == recreated
+    assert out["directory"]["detail"] == (
+        f"couldn't reload the realms: docker compose up {failing} failed: unhealthy"
+    )
+    assert out["workspace"]["reset"] is True
 
 
 def test_fake_workspace_refusing_the_reset_fails(repo: Path, server: Server) -> None:
@@ -189,7 +265,7 @@ def test_realm_exports_wait_for_the_corpus(repo: Path) -> None:
     assert len(ex()["directory"]["changed"]) == 2
 
 
-def test_verify_builds_twice_elsewhere(repo: Path, server: Server) -> None:
+def test_verify_builds_twice_elsewhere(repo: Path, server: Server, stack: FakeStack) -> None:
     out = ex("--verify")
     assert set(out) == {"verify", "corpus", "duration_s"}
     # two realm exports, the manifest, the inputs record and two blobs
@@ -198,6 +274,7 @@ def test_verify_builds_twice_elsewhere(repo: Path, server: Server) -> None:
     assert not (repo / "fixtures" / "corpus" / "build").exists()
     assert list((repo / "fixtures" / "directory").iterdir()) == []
     assert server.requests == []
+    assert stack.calls == []
 
 
 def test_verify_and_clean_together_are_refused(repo: Path) -> None:

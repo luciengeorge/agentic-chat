@@ -265,8 +265,9 @@ def _render_in_a_fresh_process(tmp_path: Path, name: str, env: dict[str, str]) -
         env={**os.environ, **env},
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
+    assert result.returncode == 0, f"{name}: {result.stderr[-600:]}"
     return result.stdout.strip(), out.read_bytes()
 
 
