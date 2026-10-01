@@ -33,15 +33,17 @@ async def get_health(rt: RuntimeDep) -> WorkspaceHealth:
 
 
 def create_app(
-    settings: WorkspaceSettings | None = None, policy: DeliveryPolicy | None = None
+    settings: WorkspaceSettings | None = None,
+    policy: DeliveryPolicy | None = None,
+    clock: Clock | None = None,
 ) -> FastAPI:
     settings = settings or get_workspace_settings()
-    clock = Clock()
+    clock = clock or Clock()
     rt = Runtime(
         env=settings.env,
         clock=clock,
         workspace=Workspace(settings.corpus_dir),
-        faults=Faults(),
+        faults=Faults(clock),
         notifier=Notifier(clock, policy or DeliveryPolicy()),
     )
     try:

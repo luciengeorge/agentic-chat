@@ -44,7 +44,8 @@ class Rendered:
 def render(doc: Document) -> Rendered:
     mime = MIME_TYPES[doc.format]
     if doc.format == "md":
-        return Rendered(doc.body.encode(), mime, None)
+        # The body starts after the frontmatter's closing ---, usually with a blank line.
+        return Rendered(doc.body.lstrip("\n").encode(), mime, None)
     if doc.format == "docx":
         data = word.render(
             b.parse(doc.body),

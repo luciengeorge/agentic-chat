@@ -5,7 +5,7 @@ folder: /HR/Policies
 filename: Travel and Expenses Policy.pdf
 format: pdf
 author: marco.bianchi
-created: 2025-01-02
+created: 2025-01-01
 modified: 2025-02-11
 valid_from: 2025-01-01
 valid_to: 2026-06-30

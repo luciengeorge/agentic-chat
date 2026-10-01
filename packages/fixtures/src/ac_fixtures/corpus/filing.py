@@ -10,6 +10,7 @@ import random
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from ac_fixtures.corpus import blocks as b
 
@@ -67,8 +68,13 @@ def weekday(d: date) -> str:
     return f"{_WEEKDAYS[d.weekday()]} {day(d)}"
 
 
-def money(value: float, symbol: str = "£") -> str:
+def money(value: Decimal | float, symbol: str = "£") -> str:
     return f"{symbol}{value:,.2f}"
+
+
+def pence(value: float) -> Decimal:
+    """`value` rounded to the penny. Figures that add up are rounded first, then summed."""
+    return Decimal(value).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
 def count(value: int) -> str:
@@ -372,18 +378,24 @@ def _months() -> Iterator[date]:
         yield date(PERIOD_START.year + (PERIOD_START.month - 1 + i) // 12, (6 + i) % 12 + 1, 1)
 
 
-def _method_b(volume: float) -> float:
+def _method_b(volume: Decimal) -> Decimal:
     """The PSRs 2017 Method B requirement on monthly payment volume, scaling factor 1."""
-    tiers = ((5e6, 0.04), (5e6, 0.025), (90e6, 0.01), (150e6, 0.005), (float("inf"), 0.0025))
-    need, rest = 0.0, volume
+    tiers = (
+        (5_000_000, "0.04"),
+        (5_000_000, "0.025"),
+        (90_000_000, "0.01"),
+        (150_000_000, "0.005"),
+        (None, "0.0025"),
+    )
+    need, rest = Decimal(0), volume
     for size, rate in tiers:
-        part = min(rest, size)
-        need += part * rate
+        part = rest if size is None else min(rest, Decimal(size))
+        need += part * Decimal(rate)
         rest -= part
-    return need
+    return need.quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
-OWN_FUNDS = 61_314_110.00
+OWN_FUNDS = Decimal("61314110.00")
 
 
 def _capital(seed: int) -> list[Page]:
@@ -428,11 +440,11 @@ def _capital(seed: int) -> list[Page]:
         ],
     ]
     for i, month in enumerate(_months()):
-        emoney = (590e6 + 120e6 * i / 11) * rng.uniform(0.98, 1.02)
-        volume = (1.72e9 + 0.3e9 * i / 11) * rng.uniform(0.97, 1.03)
-        method_d = emoney * 0.02
+        emoney = pence((590e6 + 120e6 * i / 11) * rng.uniform(0.98, 1.02))
+        volume = pence((1.72e9 + 0.3e9 * i / 11) * rng.uniform(0.97, 1.03))
+        method_d = (emoney * Decimal("0.02")).quantize(Decimal("0.01"), ROUND_HALF_UP)
         method_b = _method_b(volume)
-        own = OWN_FUNDS if i == 11 else (55.2e6 + 5.6e6 * i / 11) * rng.uniform(0.995, 1.005)
+        own = OWN_FUNDS if i == 11 else pence((55.2e6 + 5.6e6 * i / 11) * rng.uniform(0.995, 1.005))
         need = method_d + method_b
         pages.append(
             [
@@ -497,7 +509,7 @@ _ACCOUNTS = (
     ),
 )
 # The safeguarding breach SG-2025-02: a Payouts file paid twice from ACB-SG-01.
-_SHORTFALLS = {("GBP", date(2025, 11, 14)): 1_284_316.40}
+_SHORTFALLS = {("GBP", date(2025, 11, 14)): Decimal("1284316.40")}
 
 
 def business_days(start: date, end: date) -> Iterator[date]:
@@ -508,7 +520,7 @@ def business_days(start: date, end: date) -> Iterator[date]:
         d += timedelta(days=1)
 
 
-def _signed(value: float, symbol: str) -> str:
+def _signed(value: Decimal, symbol: str) -> str:
     return money(value, symbol) if value >= 0 else f"({money(-value, symbol)})"
 
 
@@ -562,7 +574,7 @@ def _safeguarding(seed: int) -> list[Page]:
     for code, account in zip(("4A", "4B"), _ACCOUNTS, strict=True):
         rng = random.Random(f"{seed}:safeguarding:{account.currency}")
         days = list(business_days(account.opened, PERIOD_END))
-        closing: float | None = None
+        closing: Decimal | None = None
         for i, d in enumerate(days):
             # Customer funds grew through the period, to the 30 June 2026 balances.
             growth = (
@@ -571,15 +583,17 @@ def _safeguarding(seed: int) -> list[Page]:
                 else (0.3 + 0.7 * i / (len(days) - 1))
             )
             lines = [
-                (label, end * growth * rng.uniform(0.97, 1.03))
+                (label, pence(end * growth * rng.uniform(0.97, 1.03)))
                 for label, end in account.requirement
             ]
-            requirement = sum(value for _, value in lines)
+            requirement = sum((value for _, value in lines), Decimal(0))
             shortfall = _SHORTFALLS.get((account.currency, d))
-            excess = -shortfall if shortfall else rng.uniform(40e3, 900e3)
+            excess = -shortfall if shortfall else pence(rng.uniform(40e3, 900e3))
             resource = requirement + excess
-            opening = closing if closing is not None else resource * rng.uniform(0.98, 1.02)
-            receipts = requirement * rng.uniform(0.18, 0.3)
+            opening = (
+                closing if closing is not None else pence(float(resource) * rng.uniform(0.98, 1.02))
+            )
+            receipts = pence(float(requirement) * rng.uniform(0.18, 0.3))
             payments = opening + receipts - resource
             closing = resource
             sym = account.symbol
@@ -589,7 +603,7 @@ def _safeguarding(seed: int) -> list[Page]:
                         3, f"Schedule {code}. Daily safeguarding reconciliation, {account.currency}"
                     ),
                     _p(_bold(f"Position at 17:00 on {weekday(d)}")),
-                    _p(f"Account {account.code}, {account.bank}."),
+                    _p(f"Account {account.code}, {account.bank.removesuffix('.')}."),
                     _table(
                         ["Line", "Amount"],
                         [
@@ -657,19 +671,18 @@ def _transactions(seed: int) -> list[Page]:
                     continue
                 rate = 1.0 if currency == "GBP" else 1.16
                 rows: list[list[str]] = []
-                totals = [0, 0.0, 0, 0]
+                numbers, values, declines, refunded = 0, Decimal(0), 0, 0
                 for d in days:
                     weekend = 0.45 if d.weekday() >= 5 else 1.0
-                    value = _DAILY_VALUE[product] * share * rate * weekend * rng.uniform(0.85, 1.15)
-                    number = int(value / (_AVERAGE[product] * rate * rng.uniform(0.9, 1.1)))
+                    raw = _DAILY_VALUE[product] * share * rate * weekend * rng.uniform(0.85, 1.15)
+                    number = int(raw / (_AVERAGE[product] * rate * rng.uniform(0.9, 1.1)))
                     declined = int(number * rng.uniform(0.012, 0.035))
                     refunds = int(number * rng.uniform(0.002, 0.008))
-                    totals = [
-                        totals[0] + number,
-                        totals[1] + value,
-                        totals[2] + declined,
-                        totals[3] + refunds,
-                    ]
+                    value = pence(raw)
+                    numbers += number
+                    values += value
+                    declines += declined
+                    refunded += refunds
                     rows.append(
                         [
                             weekday(d),
@@ -682,10 +695,10 @@ def _transactions(seed: int) -> list[Page]:
                 rows.append(
                     [
                         "Week total",
-                        count(int(totals[0])),
-                        money(totals[1], symbol),
-                        count(int(totals[2])),
-                        count(int(totals[3])),
+                        count(numbers),
+                        money(values, symbol),
+                        count(declines),
+                        count(refunded),
                     ]
                 )
                 pages.append(
@@ -738,8 +751,8 @@ def _fraud(seed: int) -> list[Page]:
                 cases = rng.randint(0, 60)
                 if kind == "Card not present" and start.year == 2026 and start.month == 4:
                     cases *= 4  # the April 2026 card-testing attacks
-                value = cases * rng.uniform(120, 1900)
-                recovered = value * rng.uniform(0.1, 0.6)
+                value = pence(cases * rng.uniform(120, 1900))
+                recovered = pence(float(value) * rng.uniform(0.1, 0.6))
                 rows.append(
                     [kind, count(cases), money(value), money(recovered), money(value - recovered)]
                 )
@@ -772,10 +785,19 @@ _COMPLAINT_TOPICS = (
     "Onboarding decision",
 )
 
+# Compliance's Q2 2026 monitoring report gives the quarter's mix of 432 complaints: payout
+# delays 31%, chargeback disputes 22%, account closures 14%, fees and pricing 11% and other
+# issues 22%, with payout delays rising in June. The register matches it exactly. Counts per
+# month, in _COMPLAINT_TOPICS order.
+_Q2_2026_TOPICS = {
+    date(2026, 4, 1): (40, 32, 20, 16, 12, 12, 12),
+    date(2026, 5, 1): (42, 32, 20, 16, 11, 12, 11),
+    date(2026, 6, 1): (52, 31, 20, 16, 9, 8, 8),
+}
 
 # The complaint the Financial Ombudsman Service later decided against the firm (see the source).
 _FIXED_COMPLAINTS = {
-    1171: (date(2026, 3, 14), "Accounts", "Fees and charges", "Not upheld", 0.0, 8),
+    1171: (date(2026, 3, 14), "Accounts", "Fees and charges", "Not upheld", Decimal(0), 8),
 }
 
 
@@ -784,6 +806,15 @@ def _complaints(seed: int) -> list[Page]:
     pages: list[Page] = []
     number = 0
     for month in _months():
+        mix = _Q2_2026_TOPICS.get(month)
+        topics = [
+            topic
+            for topic, n in zip(
+                _COMPLAINT_TOPICS, mix or (0,) * len(_COMPLAINT_TOPICS), strict=True
+            )
+            for _ in range(n)
+        ]
+        rng.shuffle(topics)  # draws nothing from an empty list, so other months don't change
         for sheet in range(6):
             rows: list[list[str]] = []
             for _ in range(24):
@@ -792,9 +823,9 @@ def _complaints(seed: int) -> list[Page]:
                 # About 96% are resolved within 15 business days, as Compliance reports.
                 days = rng.randint(1, 15) if rng.random() < 0.96 else rng.randint(16, 35)
                 outcome = rng.choice(("Upheld", "Not upheld", "Partly upheld"))
-                redress = rng.uniform(25, 950) if outcome != "Not upheld" else 0.0
+                redress = pence(rng.uniform(25, 950)) if outcome != "Not upheld" else Decimal(0)
                 product = rng.choice(PRODUCTS).removeprefix("Kestrel ")
-                topic = rng.choice(_COMPLAINT_TOPICS)
+                topic = topics.pop() if mix else rng.choice(_COMPLAINT_TOPICS)
                 if number in _FIXED_COMPLAINTS:
                     received, product, topic, outcome, redress, days = _FIXED_COMPLAINTS[number]
                 rows.append(

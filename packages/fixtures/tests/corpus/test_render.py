@@ -78,6 +78,37 @@ def test_a_long_table_splits_across_pages_and_repeats_its_header(
     assert tables[1][-1] == ["Line 80", "£80,000"]
 
 
+REGISTER_ROW = (
+    "| KPC-2026-0142 | Ashgrove Cloud Services Ltd | Amendment to KPC-2022-0019 | Nadia Kowalski "
+    "| 01/04/2026 | Ends with KPC-2026-0142 | Auto 12 months; 90 days' notice | Included in "
+    "KPC-2022-0019 |"
+)
+REGISTER = (
+    "| Contract no. | Counterparty | Subject | Owner | Start | End | Renewal | Annual value |\n"
+    "|---|---|---|---|---|---|---|---|\n" + "\n".join([REGISTER_ROW] * 3) + "\n"
+)
+
+
+def test_table_words_never_break_and_a_crowded_table_sets_smaller(
+    docs: dict[str, Document],
+) -> None:
+    (page,) = read(render(replace(docs["exec-report"], body=REGISTER)).data)
+    words = page.text.split()
+    assert words.count("KPC-2026-0142") == words.count("KPC-2022-0019") == 6
+    assert words.count("Kowalski") == 3
+    sizes = {round(c["size"], 1) for c in page.chars if c["text"].strip()}
+    assert max(sizes) < 9  # the register's words don't fit side by side at the usual 9pt
+    assert min(sizes) >= 7
+
+
+def test_a_table_too_wide_even_when_shrunk_fails(docs: dict[str, Document]) -> None:
+    columns = 20
+    row = "| " + " | ".join(["KPC-2026-0142"] * columns) + " |\n"
+    body = row + "|" + "---|" * columns + "\n" + row
+    with pytest.raises(RenderError, match="split the table"):
+        render(replace(docs["exec-report"], body=body))
+
+
 def test_hidden_text_is_in_the_text_layer_but_white_and_1pt(docs: dict[str, Document]) -> None:
     page = read(render(docs["exec-report"]).data)[1]
     hidden = [c for c in page.chars if c["size"] < 2]
@@ -235,6 +266,11 @@ def test_md_is_the_body_as_is(docs: dict[str, Document]) -> None:
     doc = docs["eng-runbook"]
     out = render(doc)
     assert (out.data, out.mime_type, out.pages) == (doc.body.encode(), "text/markdown", None)
+
+
+def test_md_drops_the_blank_lines_after_the_frontmatter(docs: dict[str, Document]) -> None:
+    doc = replace(docs["eng-runbook"], body=f"\n\n{docs['eng-runbook'].body}")
+    assert render(doc).data == docs["eng-runbook"].body.encode()
 
 
 def test_generated_needs_a_known_generator(docs: dict[str, Document]) -> None:

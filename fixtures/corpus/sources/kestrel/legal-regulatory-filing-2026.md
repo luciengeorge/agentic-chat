@@ -32,7 +32,7 @@ The build generates this filing: the `regulatory_filing` generator sets 3,000 pa
 
 ## Page 2417
 
-**Note.** From 14:00 to 14:35 UK time, EUR card payments went through the backup connection to the card processor while the primary link had planned maintenance (change CHG-2026-0612). The backup route processed 8,214 authorisations, and none was declined because of the switch.
+**Note.** From 14:00 to 14:35 UK time, EUR card payments went through the backup connection to the card processor while the primary link had planned maintenance (change CHG-2026-0612). The backup route processed 2,690 authorisations, and none was declined because of the switch.
 
 ## Page 2468
 

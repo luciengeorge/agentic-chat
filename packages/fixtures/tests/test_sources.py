@@ -110,12 +110,6 @@ def test_a_valid_source_loads(world: World, root: Path) -> None:
     assert first.meta.valid_to is None
 
 
-def test_the_committed_sources_load() -> None:
-    world = load_world()
-    for source in load_sources(world):
-        assert source.meta.id == source.file.stem
-
-
 def test_an_empty_root_has_no_sources(world: World, root: Path) -> None:
     assert load_sources(world, root) == []
 

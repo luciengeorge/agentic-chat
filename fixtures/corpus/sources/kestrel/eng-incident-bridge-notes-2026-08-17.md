@@ -51,6 +51,8 @@ On bridge: Kofi, Omar (Payments on-call), Sam, Emily (IC from 12:02), Hannah (co
 - void what is not captured, refund the rest
 - 15:30 Omar: 412 dupes, 375 voided. 37 already captured, refunds going out
 
+17:45 last 37 refunds out (Omar). Down to SEV3. Bridge closed, Emily to close the incident tomorrow 10:00
+
 To do:
 
 1. canary gates: add auth success rate + pool saturation (Sam)

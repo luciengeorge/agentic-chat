@@ -7,7 +7,7 @@ The shared agreements for the M0b lanes: schema, directory, corpus and fake-work
 - Keycloak imports both full realms with the ids `fixtures/world.yaml` implies, and every seeded user can log in.
 - fake-workspace serves the corpus with its sharing: Kestrel's token sees the M&A memo shared with `/Kestrel/Exec` only, and Harbour's token is refused on Kestrel's site.
 - Migration `0002` adds the content, identity, conversation and audit tables.
-- `ex smoke` passes, including a new 7th check on fake-workspace.
+- `ex smoke` passes, including two new checks: fake-workspace (7th) and the directory (8th).
 
 ## Lanes and file ownership
 
@@ -155,7 +155,7 @@ Write like real internal documents at the company: specific, dated, with concret
 }
 ```
 
-Each site also carries `"users": {"<user id>": {"username": "...", "display_name": "..."}}` for every user in the tenant, so fake-workspace can fill in Graph identities (`displayName`). Groups use their path as `principal_name` and `displayName`.
+Each site also carries `"users": {"<user id>": {"username": "...", "display_name": "..."}}` and `"groups": {"<group id>": {"path": "..."}}`, listing every user (disabled ones included) and every group in the tenant. fake-workspace fills Graph identities (`displayName`) from `users`, and refuses to load a manifest, or to accept a sharing change, that grants to a user or group missing from its own site's maps. A group grant must match both its id and its path. Groups use their path as `principal_name` and `displayName`.
 
 The keys are sorted and the JSON is written in a stable form. Folders take `created`/`modified` from world.today. A folder's author comes from its effective write grants, its own before the inherited ones: a user grant names the user, and a group grant resolves to the group's first enabled member (directly or through a subgroup). With no write grant (the root), it's the tenant's first enabled admin. A file's times are its frontmatter dates at a fixed time of day derived from its id.
 
@@ -166,7 +166,8 @@ Blobs are content-addressed (`blobs/<sha256>.<ext>`), so two files with the same
 - `--verify` builds twice into temporary directories and fails if any byte differs. It touches neither the real build nor the running stack.
 - `--json` output: `{"directory": {"changed": [...files], "recreated": [...services], "detail": "..." | null}, "corpus": {"documents": n, "rendered": n, "reused": n, "bytes": n, "manifest_sha256": "..."}, "workspace": {"reset": true | false, "detail": "..."}, "duration_s": n}`.
 - `--verify --json` output: `{"verify": {"identical": bool, "files": n, "differences": ["<path>: bytes differ" | "<path>: only in the first build" | ...]}, "corpus": {...as above, for the first build}, "duration_s": n}`.
-- If the realm exports changed and Keycloak is running, it recreates Keycloak (`compose up --wait --force-recreate --no-deps`), since Keycloak imports realms only when its container is created. A new container signs with new keys, and Envoy caches the JWKS for 60 seconds, so a running Envoy is recreated after it: Envoy fetches the keys before it opens its listener, so no request sees a 401 for a good token. `directory.recreated` lists what was recreated. A stopped Keycloak container is removed instead, so the next `ex up` imports the new exports. A failed recreate fails the command, after the fake-workspace reset still runs.
+- If Keycloak hasn't loaded the realm exports on disk and is running, it recreates Keycloak (`compose up --wait --force-recreate --no-deps`), since Keycloak imports realms only when its container is created. A new container signs with new keys, and Envoy caches the JWKS for 60 seconds, so a running Envoy is recreated after it: Envoy fetches the keys before it opens its listener, so no request sees a 401 for a good token. `directory.recreated` lists what was recreated. A stopped Keycloak container is removed instead, so the next `ex up` imports the new exports. A failed recreate fails the command, after the fake-workspace reset still runs.
+- **Pending reloads:** the exports are written before the reload, so a failed reload leaves files that no longer change. After each successful reload (or a removal, or a stack with no Keycloak container), `ex fixtures` records the exports' sha256 in `.ex/realm-applied.json`. Every run compares it with the exports and reloads when they differ, so a failed reload is retried until it succeeds. With no record yet (a fresh clone, say), the first run with Keycloak up reloads once. If `docker compose ps` itself fails (the daemon is down, say), the command fails and the reload stays pending; "no stack" means that command succeeded and listed no Keycloak container. With no `docker` on PATH at all, the reload just stays pending.
 
 ## Directory (lane W)
 
@@ -178,18 +179,19 @@ Blobs are content-addressed (`blobs/<sha256>.<ext>`), so two files with the same
 
 ## Schema (lane S): migration `0002_content`
 
-Every table has `tenant_id uuid not null references tenants(id)` and the same RLS policy as `outbox` (enabled, not forced). `ac_db.models` matches the migrations exactly (the drift test). The column lists below are the floor; add what correctness needs and say why.
+Every table has `tenant_id uuid not null references tenants(id)` and the same RLS policy as `outbox` (enabled, not forced). `ac_db.models` matches the migrations exactly. The drift test runs alembic's `compare_metadata` with `compare_server_default=True`, as `migrations/env.py` does. It also compares the catalog of the migrated database (columns with their types, nullability and defaults; every constraint by name and definition; every index by definition, so partial-index predicates and `INCLUDE` count; sequences) with a database built from the models, since `compare_metadata` skips CHECKs, predicates and sequences. The column lists below are the floor; add what correctness needs and say why.
 
 - `principals(id uuid pk, tenant_id, kind text check in ('user','group'), external_id text, name text, display_name text, email text null, enabled bool, synced_at timestamptz, unique(tenant_id, kind, external_id))`. For users, name is the username; for groups, the path.
 - `group_members(tenant_id, group_id → principals, member_id → principals, pk(group_id, member_id))`: direct memberships only. A member is a user or a group.
-- `group_closure(tenant_id, group_id, member_id, depth int, pk(group_id, member_id))`: computed. Every ancestor group paired with every descendant user and group.
+- `group_closure(tenant_id, group_id, member_id, depth int check (depth >= 1), pk(group_id, member_id), check (group_id <> member_id))`: computed. Every ancestor group paired with every descendant user and group, with no self rows, so a direct member has depth 1. The member index is `(member_id, group_id) INCLUDE (tenant_id)`, so "which groups is this user in?" stays index-only once RLS is forced. A cycle in `group_members` would produce `(g, g)` pairs, which the builder must skip.
 - `documents(id uuid pk, tenant_id, source text, external_id text, title, path, mime_type, version int, source_version text, content_hash text, storage_key text null, status text check in ('pending','ingesting','ready','failed','deleted'), acl_version bigint not null default 0, valid_from date null, valid_to date null, created_at, updated_at, deleted_at null, unique(tenant_id, source, external_id))`.
 - `document_acl(tenant_id, document_id → documents on delete cascade, principal_id → principals, effect text check in ('allow','deny'), acl_version bigint, pk(document_id, principal_id))`.
-- `chunks(id uuid pk, tenant_id, document_id → documents on delete cascade, document_version int, ordinal int, text, page_start int, page_end int, section text null, token_count int, embedding vector(1536) null, embedding_model_version text null, created_at, unique(document_id, document_version, ordinal))`. Enable the `vector` extension in the migration (`CREATE EXTENSION IF NOT EXISTS vector`); it's already created in dev, and CI's pgvector image has it. **No HNSW index yet**: section 06 builds it.
+- **`acl_version`** comes from one global sequence, `acl_version_seq` (created in 0002). Every ACL change on a document sets `documents.acl_version = nextval('acl_version_seq')`, and the `document_acl` rows it writes carry that same value. 0 means the document has no ACL yet. So the values order ACL changes across every document and tenant, which the section 20 stale-ACL drill relies on (see `retrieval_audit`).
+- `chunks(id uuid pk, tenant_id, document_id → documents on delete cascade, document_version int, ordinal int, text, page_start int null, page_end int null, section text null, token_count int, embedding vector(1536) null, embedding_model_version text null, created_at, unique(document_id, document_version, ordinal))`. md and docx have no pages, so a chunk has both pages or neither: `chunks_pages_check` is `(page_start IS NULL) = (page_end IS NULL) AND (page_end IS NULL OR page_end >= page_start)`. Enable the `vector` extension in the migration (`CREATE EXTENSION IF NOT EXISTS vector`); it's already created in dev, and CI's pgvector image has it. **No HNSW index yet**: section 06 builds it.
 - `sync_state(tenant_id, connector text, scope text, cursor text null, delta_token text null, last_full_crawl_at null, last_delta_at null, updated_at, pk(tenant_id, connector, scope))`.
 - `conversations(id uuid pk, tenant_id, user_id → principals, title text null, created_at, updated_at)`.
-- `messages(id uuid pk, tenant_id, conversation_id → conversations on delete cascade, seq int, role text check in ('user','assistant','system','tool'), content jsonb, idempotency_key text null, created_at, unique(conversation_id, seq), unique(conversation_id, idempotency_key))`.
-- `retrieval_audit(id uuid pk, tenant_id, user_id → principals, query_hash text, returned_ids uuid[], denied_ids uuid[], acl_version bigint, created_at)`.
+- `messages(id uuid pk, tenant_id, conversation_id → conversations on delete cascade, seq int, role text check in ('user','assistant','system','tool'), content jsonb, idempotency_key text null, created_at, unique(conversation_id, seq), unique(conversation_id, idempotency_key))`. `content` is a JSON object or array.
+- `retrieval_audit(id uuid pk, tenant_id, user_id → principals, query_hash text, returned_ids uuid[], denied_ids uuid[], acl_version bigint, created_at)`. `acl_version` is `acl_version_seq`'s high-water mark when the query ran: read it as `coalesce(pg_sequence_last_value('acl_version_seq'), 0)`, since the sequence's `last_value` reads 1 before the first `nextval`. Any document whose `acl_version` is greater changed after the query. The converse doesn't hold: a transaction can draw its value before the query and commit after it.
 
 `runs`, `run_events` and `approvals` are **not** in M0b: the agent reference (M2) settles them. Tests cover the constraints that later steps rely on: duplicate idempotency keys, a duplicate `(conversation_id, seq)`, the cascades, the tenant FK, and that every new table has RLS enabled with the policy.
 
@@ -202,8 +204,8 @@ It plays each tenant's SharePoint. The shapes follow Microsoft Graph's drive API
 **Auth:** `Authorization: Bearer <token>`. `dev-workspace-kestrel` and `dev-workspace-harbour` each open only their own site. No token or a bad one is 401; the right token on the wrong site is 403. Errors look like Graph's: `{"error": {"code": "...", "message": "..."}}`.
 
 **Site API** (`/v1.0/sites/{site}/drive/...`; `root` works as an item id):
-- `GET root`, `GET items/{id}`: a driveItem. That's `id`, `name`, `eTag` and `cTag` (both change on edit; `eTag` also on move, rename or sharing change), `createdDateTime`, `lastModifiedDateTime`, `size`, `createdBy`/`lastModifiedBy` `{user: {id, displayName}}`, `parentReference {id, path: "/drive/root:/Finance"}`, then `folder {childCount}` or `file {mimeType, hashes {sha256Hash}}`.
-- `GET items/{id}/children?$top=N` (default 20, max 200): `{"value": [...], "@odata.nextLink": "..."}`, sorted by name (case-insensitive), then id. The `nextLink` is an absolute URL on the request's host.
+- `GET root`, `GET items/{id}`: a driveItem. That's `id`, `name`, `eTag` and `cTag` (both change on edit; `eTag` also on move, rename, or any change to its effective sharing, inherited included), `createdDateTime`, `lastModifiedDateTime`, `size`, `createdBy`/`lastModifiedBy` `{user: {id, displayName}}`, `parentReference {id, path: "/drive/root:/Finance"}`, then `folder {childCount}` or `file {mimeType, hashes {sha256Hash}}`.
+- `GET items/{id}/children?$top=N` (default 20, max 200): `{"value": [...], "@odata.nextLink": "..."}`, sorted by name (case-insensitive), then id. The `nextLink` is an absolute URL on the request's host. Paging is by key: the `$skiptoken` holds the sort key of the last child returned, and the next page starts after it.
 - `GET items/{id}/content`: the bytes, with `Content-Type`.
 - `GET items/{id}/permissions`: `{"value": [{"id", "roles": ["read"|"write"], "grantedToV2": {"user": {...}} | {"group": {"id", "displayName"}}, "inheritedFrom": {"id", "path"}?}]}`. These are the effective grants, own and inherited, with `inheritedFrom` set on inherited ones.
 - `GET root/delta[?token=...]`: changes since the token. With no token, it returns every item, then an `@odata.deltaLink`. `token=latest` returns nothing but a `deltaLink`. Deleted items come back as `{"id", "deleted": {"state": "deleted"}, "parentReference"}`. Moves and renames appear as the item with its new `parentReference` or name. Sharing changes appear only when the request carries `Prefer: deltashowsharingchanges`, on items annotated `"@microsoft.graph.sharedChanged": "True"`. Results are paginated with `nextLink`, and the last page carries the `deltaLink`. Tokens are opaque but deterministic.
@@ -211,20 +213,20 @@ It plays each tenant's SharePoint. The shapes follow Microsoft Graph's drive API
   - **Stale tokens:** a token from another corpus or from before a reset (`ex fixtures` resets), or one ahead of the change log (after a restart), gets 410 `resyncRequired` (inner code `resyncChangesApplyDifferences`) with a `Location` header to enumerate again from.
   - **Sharing changes** are recorded on the item and on every descendant whose effective permissions changed with it (the ones that inherit), so `deltashowsharingchanges` shows each of them.
 - `POST /v1.0/subscriptions {changeType: "updated", notificationUrl, resource: "sites/{site}/drive/root", expirationDateTime, clientState}`:
-  - **Validation:** it first POSTs to `notificationUrl?validationToken=<token>`, which must answer 200 with the token as `text/plain` within 10 seconds; otherwise it returns 400.
+  - **Validation:** it first POSTs to `notificationUrl?validationToken=<token>`, which must answer 200 with the token as `text/plain` within 10 seconds; otherwise it returns 400. If a reset lands while it waits, the subscription isn't created and the request gets 503 `serviceNotAvailable`.
   - **Management:** `PATCH` renews a subscription and `DELETE` removes it.
   - **Notifications:** after every change, it POSTs `{"value": [{"subscriptionId", "clientState", "changeType": "updated", "resource", "subscriptionExpirationDateTime", "tenantId"}]}`. It doesn't say what changed; the client calls `delta`.
   - **Delivery:** in order per subscription, retried with backoff on a non-2xx response, and logged.
 
-**Control API** (`/_control/...`): dev only (refused unless `AC_ENV=dev`), no bearer token. Every mutation lands in delta and triggers notifications. The control API has no user, so items it creates or changes carry an application identity in `createdBy`/`lastModifiedBy`: `{"application": {"id", "displayName": "fake-workspace"}}`.
-- `POST /_control/reset` reloads the manifest and clears faults, subscriptions, deliveries and the change log.
+**Control API** (`/_control/...`): dev only (refused unless `AC_ENV=dev`), no bearer token. Settings default to dev, so every app image's prod stage sets `ENV AC_ENV=prod`, and a test checks each Dockerfile for it. Every mutation lands in delta and triggers notifications. The control API has no user, so items it creates or changes carry an application identity in `createdBy`/`lastModifiedBy`: `{"application": {"id", "displayName": "fake-workspace"}}`.
+- `POST /_control/reset` reloads the manifest and clears faults, subscriptions, deliveries and the change log. Subscription ids are never reused across resets. Deliveries in flight are cancelled, and a change that lands during the reset notifies nobody.
 - `POST /_control/faults {"site"?, "kind": "throttle" | "error" | "latency", "path_prefix"?, "after_requests"?: n, "count"?: n, "retry_after_s"?: n, "status"?: 503, "latency_ms"?: n}` and `DELETE /_control/faults`. A throttle answers 429 with `Retry-After` and a Graph `TooManyRequests` error.
 - Item mutations under `/_control/sites/{site}/items`:
   - `POST` with `{parent_id, name, content_base64, mime_type}` creates a file.
   - `PUT {id}/content` uploads a new version.
   - `POST {id}/move` with `{parent_id, name?}` moves an item; `POST {id}/rename` with `{name}` renames it.
   - `DELETE {id}` deletes it (a folder's descendants go with it).
-  - `PUT {id}/sharing` with `{inherit, grants}` changes its sharing.
+  - `PUT {id}/sharing` with `{inherit, grants}` changes its sharing. Every grant must name a user or group of that site: a user by id, a group by id and path together (its path is the `displayName` that permissions show). Anything else is 400.
 - `POST /_control/clock {"now": "<iso>"}` pins the time used for timestamps; without it, the server uses real time.
 - `GET /_control/deliveries` returns the webhook log, and `POST /_control/flush` waits until pending deliveries are done.
 
@@ -232,14 +234,19 @@ It plays each tenant's SharePoint. The shapes follow Microsoft Graph's drive API
 
 Lane F tests against small manifests built in the tests, not the real corpus. Use real HTTP for the webhook paths: a test receiver on localhost.
 
-## `ex smoke` check 7 (integrator)
+## `ex smoke` checks 7 and 8 (integrator)
 
-As Kestrel's connector:
+**7. fake-workspace pages and shares.** As Kestrel's connector:
 - list the root's children with `$top=2` and follow `nextLink`;
-- find the Project Heron memo through the manifest (`traps` contains `acl-leak`), and check that its permissions grant exactly `/Kestrel/Exec`;
+- find the Project Heron memo through the manifest (`traps` contains `acl-leak`), and check that its permissions grant exactly one thing: the `write` role to the group `/Kestrel/Exec`, matched by the world's group id as well as its name;
 - then check that Harbour's token on Kestrel's site is 403.
 
-It reads the manifest from `<repo>/fixtures/corpus/build/manifest.json`, the build Compose mounts, and also checks that the pages hold `$top` or fewer children and add up to the root's distinct `childCount`. A 503 means no corpus is loaded, and the check says to run `ex fixtures`.
+It reads the manifest from `<repo>/fixtures/corpus/build/manifest.json`, the build Compose mounts, and also checks that the pages hold `$top` or fewer children and add up to the root's distinct `childCount`. A 503 means no corpus is loaded, and the check says to run `ex fixtures`. So does a 404 for the memo: fake-workspace serves an older corpus than the host's manifest.
+
+**8. Directory logins and ids.**
+- `leo.martin` signs in through the BFF with the tenant's password, and `/api/me` says `kestrel`.
+- `peter.hall`, who is disabled, posts the same password and gets no session.
+- With the dev admin credentials that Compose bootstraps Keycloak with (read from `infra/compose.yaml`), the admin API returns `leo.martin`, `peter.hall` (`enabled: false`) and the nested group `/Kestrel/Finance/AP`, each with the id `fixtures/world.yaml` implies.
 
 ## Settled during the build
 
@@ -251,3 +258,12 @@ The lanes and the integrator changed or pinned down these points; the sections a
 - PDF text is Windows-1252 only.
 - The manifest's root is named `root`; `file.pages` is on PDFs only; blobs are shared between identical files.
 - fake-workspace: full delta in creation order; 410 `resyncRequired` on stale tokens; sharing changes recorded for every inheriting descendant; control changes attributed to an application identity.
+- **Delta order:** a full enumeration comes in creation order, so a folder moved under a newer one can arrive after its own children, as in Graph. Section 02 must buffer items whose parent it hasn't seen yet.
+- **Delta items** carry no `cTag` and no `parentReference.path`: Graph says to track items by id, since renaming a folder doesn't return its descendants.
+- **eTag:** an item's eTag changes when its effective sharing changes, inherited changes included, so a connector that skips unchanged eTags can't keep a revoked grant. The cTag doesn't change.
+- **Paging:** children are paged by key, so a delete or insert between pages can't skip a child that was there from the start or return one twice. A child added or renamed behind the cursor mid-crawl isn't returned: take a `token=latest` delta before the crawl and replay it afterwards.
+- **SSRF:** declined. fake-workspace POSTs to any `notificationUrl`, as Graph does, and it runs only on a developer's machine. Don't deploy it.
+- **Webhook `tenantId`** is a uuid fake-workspace makes up per site. It has nothing to do with the `tenants` table.
+- **Login:** a user must exist as a principal before they can own conversations or audit rows. M1's api upserts the principal from the token's `sub` at login (sections 10 and 11).
+- The manifest lists each site's groups by id (`groups`), and fake-workspace refuses a group grant whose id and path aren't a group of that site.
+- **Realm reloads** are retried until one succeeds (`.ex/realm-applied.json`), and a failed `docker compose ps` fails `ex fixtures` instead of passing for "no stack".

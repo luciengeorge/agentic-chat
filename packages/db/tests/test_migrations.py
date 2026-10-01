@@ -1,12 +1,79 @@
+from collections.abc import Iterator
+from typing import Any
+
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
-from sqlalchemy import create_engine, text
+from sqlalchemy import Connection, create_engine, text
 
 from ac_db.engine import create_direct_engine, create_pooled_engine
 from ac_db.models import Base
+from ac_db.testing import temporary_database
 
 pytestmark = pytest.mark.postgres
+
+# compare_metadata skips CHECK constraints, index predicates and sequences, so `drift` also
+# compares these catalog rows against a database built from the models.
+CATALOG = (
+    """
+    SELECT 'column', c.relname, a.attname, format_type(a.atttypid, a.atttypmod), a.attnotnull,
+           pg_get_expr(d.adbin, d.adrelid)
+    FROM pg_attribute a
+    JOIN pg_class c ON c.oid = a.attrelid
+    LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+    WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'r'
+      AND c.relname <> 'alembic_version' AND a.attnum > 0 AND NOT a.attisdropped
+    """,
+    """
+    SELECT 'constraint', conrelid::regclass::text, conname, pg_get_constraintdef(oid)
+    FROM pg_constraint
+    WHERE connamespace = 'public'::regnamespace AND conrelid::regclass::text <> 'alembic_version'
+    """,
+    """
+    SELECT 'index', tablename, indexname, indexdef FROM pg_indexes
+    WHERE schemaname = 'public' AND tablename <> 'alembic_version'
+    """,
+    """
+    SELECT 'sequence', sequencename, data_type::text, start_value, increment_by, min_value,
+           max_value, cycle
+    FROM pg_sequences WHERE schemaname = 'public'
+    """,
+)
+
+
+@pytest.fixture(scope="module")
+def models_url(database_url: str) -> Iterator[str]:
+    """A database built from the models alone, for `drift` to compare against."""
+    with temporary_database(database_url, migrate=False) as url:
+        engine = create_engine(url)
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            Base.metadata.create_all(conn)
+        engine.dispose()
+        yield url
+
+
+def catalog(conn: Connection) -> set[tuple[Any, ...]]:
+    return {tuple(row) for query in CATALOG for row in conn.execute(text(query))}
+
+
+def drift(url: str, models_url: str) -> list[Any]:
+    """How the migrated database at `url` differs from `ac_db.models`."""
+    engine = create_engine(url)
+    with engine.connect() as conn:
+        context = MigrationContext.configure(conn, opts={"compare_server_default": True})
+        diff: list[Any] = compare_metadata(context, Base.metadata)
+        migrated = catalog(conn)
+    engine.dispose()
+    engine = create_engine(models_url)
+    with engine.connect() as conn:
+        modelled = catalog(conn)
+    engine.dispose()
+    return [
+        *diff,
+        *(("only in the migrations", *row) for row in sorted(migrated - modelled, key=str)),
+        *(("only in the models", *row) for row in sorted(modelled - migrated, key=str)),
+    ]
 
 
 async def test_tenants_are_seeded(database_url: str) -> None:
@@ -75,9 +142,43 @@ async def test_rls_policy_tolerates_an_unset_tenant(database_url: str, setting: 
     await engine.dispose()
 
 
-def test_models_match_the_migrations(database_url: str) -> None:
-    engine = create_engine(database_url)
-    with engine.connect() as conn:
-        diff = compare_metadata(MigrationContext.configure(conn), Base.metadata)
-    engine.dispose()
-    assert diff == []
+def test_models_match_the_migrations(database_url: str, models_url: str) -> None:
+    assert drift(database_url, models_url) == []
+
+
+@pytest.mark.parametrize(
+    ("mutation", "name"),
+    [
+        pytest.param(
+            ["ALTER TABLE documents DROP CONSTRAINT documents_status_check"],
+            "documents_status_check",
+            id="dropped-check",
+        ),
+        pytest.param(
+            ["ALTER TABLE documents ALTER COLUMN acl_version DROP DEFAULT"],
+            "acl_version",
+            id="dropped-default",
+        ),
+        pytest.param(
+            [
+                "DROP INDEX outbox_pending_idx",
+                "CREATE INDEX outbox_pending_idx ON outbox (created_at) WHERE published_at IS NULL",
+            ],
+            "outbox_pending_idx",
+            id="changed-index-predicate",
+        ),
+        pytest.param(["DROP SEQUENCE acl_version_seq"], "acl_version_seq", id="dropped-sequence"),
+    ],
+)
+def test_drift_check_catches(
+    database_url: str, models_url: str, mutation: list[str], name: str
+) -> None:
+    with temporary_database(database_url) as url:
+        engine = create_engine(url)
+        with engine.begin() as conn:
+            for statement in mutation:
+                conn.execute(text(statement))
+        engine.dispose()
+        found = drift(url, models_url)
+    assert found
+    assert name in str(found)

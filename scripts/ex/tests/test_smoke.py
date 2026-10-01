@@ -1,15 +1,27 @@
 import asyncio
 import json
+import shutil
 import uuid
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
 
+from ac_core.slots import find_repo_root
 from ac_ex import services, smoke
 from ac_ex.smoke import Endpoints, HelloDeps, SmokeError
+from ac_fake_workspace.app import create_app
+from ac_fake_workspace.settings import WorkspaceSettings
+from ac_fixtures.corpus import build
+from ac_fixtures.world import load_world
 
+REPO = find_repo_root()
+WORLD_YAML = REPO / smoke.WORLD
+WORLD = load_world(WORLD_YAML)
+ADMIN = ("admin", "admin")
 E = Endpoints()
 KC = "http://localhost:8081"
 FORM = (
@@ -19,6 +31,13 @@ FORM = (
 )
 MEMO_ID = "11111111-1111-5111-8111-111111111111"
 DRIVE = f"{E.workspace}/v1.0/sites/kestrel/drive"
+EXEC = str(WORLD.group_id("kestrel", "/Kestrel/Exec"))
+
+
+def heron_grant(
+    group_id: str = EXEC, name: str = "/Kestrel/Exec", roles: tuple[str, ...] = ("write",)
+) -> dict[str, object]:
+    return {"roles": list(roles), "grantedToV2": {"group": {"id": group_id, "displayName": name}}}
 
 
 @dataclass
@@ -26,12 +45,11 @@ class Drive:
     """Kestrel's site on a fake fake-workspace."""
 
     children: list[str] = field(default_factory=lambda: ["Company", "Exec", "Finance"])
-    grantees: list[dict[str, object]] = field(
-        default_factory=lambda: [{"group": {"id": "g1", "displayName": "/Kestrel/Exec"}}]
-    )
+    permissions: list[dict[str, object]] = field(default_factory=lambda: [heron_grant()])
     harbour_status: int = 403
     loaded: bool = True
     honour_top: bool = True
+    child_count: int | None = None  # what the root claims; by default, len(children)
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         if not self.loaded:
@@ -43,7 +61,8 @@ class Drive:
         params = request.url.params
         match request.url.path.removeprefix("/v1.0/sites/kestrel/drive"):
             case "/root":
-                return httpx.Response(200, json={"folder": {"childCount": len(self.children)}})
+                count = len(self.children) if self.child_count is None else self.child_count
+                return httpx.Response(200, json={"folder": {"childCount": count}})
             case "/items/root/children":
                 top = int(params["$top"]) if self.honour_top else 20
                 start = int(params.get("$skiptoken", "0"))
@@ -56,10 +75,58 @@ class Drive:
                     )
                 return httpx.Response(200, json=body)
             case path if path == f"/items/{MEMO_ID}/permissions":
-                grants = [{"roles": ["write"], "grantedToV2": g} for g in self.grantees]
-                return httpx.Response(200, json={"value": grants})
+                return httpx.Response(200, json={"value": self.permissions})
             case _:
                 return httpx.Response(404)
+
+
+@dataclass
+class Directory:
+    """Kestrel's realm on a fake Keycloak: who may sign in, and what the admin API returns."""
+
+    accounts: dict[str, str] = field(
+        default_factory=lambda: {
+            "smoke.kestrel": "smoke-password",
+            "leo.martin": "dev-password",
+            "peter.hall": "",  # disabled: no password gets in
+        }
+    )
+    ids: dict[str, str] = field(
+        default_factory=lambda: {
+            "leo.martin": str(WORLD.user_id("kestrel", "leo.martin")),
+            "peter.hall": str(WORLD.user_id("kestrel", "peter.hall")),
+            "/Kestrel/Finance/AP": str(WORLD.group_id("kestrel", "/Kestrel/Finance/AP")),
+        }
+    )
+    enabled: dict[str, bool] = field(default_factory=lambda: {"peter.hall": False})
+
+    def sign_in(self, username: str, password: str) -> httpx.Response:
+        if password and self.accounts.get(username) == password:
+            location = f"{E.web}/auth/callback?code={username}"
+            return httpx.Response(302, headers={"location": location})
+        return httpx.Response(200, text=FORM.replace("</form>", "</form>Invalid login"))
+
+    def admin(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/realms/master/protocol/openid-connect/token":
+            form = dict(httpx.QueryParams(request.content.decode()))
+            if (form.get("username"), form.get("password")) != ADMIN:
+                return httpx.Response(401)
+            assert form["client_id"] == "admin-cli"
+            return httpx.Response(200, json={"access_token": "adm"})
+        if request.headers.get("authorization") != "Bearer adm":
+            return httpx.Response(401)
+        path = request.url.path.removeprefix("/admin/realms/kestrel")
+        if path == "/users":
+            assert request.url.params["exact"] == "true"
+            name = request.url.params["username"]
+            if name not in self.ids:
+                return httpx.Response(200, json=[])
+            enabled = self.enabled.get(name, True)
+            return httpx.Response(200, json=[{"id": self.ids[name], "enabled": enabled}])
+        group = path.removeprefix("/group-by-path")
+        if group in self.ids:
+            return httpx.Response(200, json={"id": self.ids[group], "path": group})
+        return httpx.Response(404)
 
 
 def write_manifest(path: Path, memo_traps: tuple[str, ...] = ("acl-leak",)) -> Path:
@@ -80,9 +147,11 @@ def stack(
     envoy_me: int = 401,
     sections: tuple[str, ...] = ("00",),
     drive: Drive | None = None,
+    directory: Directory | None = None,
 ) -> httpx.MockTransport:
     """A fake BFF, Keycloak, Envoy, workshop app and fake-workspace."""
     workspace = drive or Drive()
+    realm = directory or Directory()
 
     def handler(request: httpx.Request) -> httpx.Response:
         url = request.url
@@ -98,19 +167,20 @@ def stack(
                 if "AUTH_SESSION_ID=k1" not in request.headers.get("cookie", ""):
                     return httpx.Response(400, text="Cookie not found")
                 assert url.params["execution"] == "b"
-                body = request.content.decode()
-                assert "username=smoke.kestrel" in body
-                assert "password=smoke-password" in body
-                return httpx.Response(302, headers={"location": f"{E.web}/auth/callback?code=c"})
+                body = dict(httpx.QueryParams(request.content.decode()))
+                return realm.sign_in(body["username"], body["password"])
             case ("GET", E.web, "/auth/callback"):
                 headers = {"location": f"{E.web}/"}
                 if set_cookie:
-                    headers["set-cookie"] = "ac_session=s1; Path=/; HttpOnly; SameSite=Lax"
+                    session = f"ac_session={url.params['code']}; Path=/; HttpOnly; SameSite=Lax"
+                    headers["set-cookie"] = session
                 return httpx.Response(302, headers=headers)
             case ("GET", E.web, "/api/me"):
-                if "ac_session=s1" not in request.headers.get("cookie", ""):
+                if "ac_session=" not in request.headers.get("cookie", ""):
                     return httpx.Response(401)
                 return httpx.Response(200, json={"sub": "u1", "tenant": tenant})
+            case (_, E.keycloak, _):
+                return realm.admin(request)
             case ("GET", E.web | E.workshop, "/"):
                 return httpx.Response(200, text="ok")
             case ("GET", E.envoy, "/health"):
@@ -244,8 +314,8 @@ async def test_run_check_captures_any_exception() -> None:
 async def test_workspace(tmp_path: Path) -> None:
     manifest = write_manifest(tmp_path / "manifest.json")
     async with client(stack()) as c:
-        detail = await smoke.check_workspace(c, E, manifest)
-    assert detail == "3 root children over 2 pages; Heron.pdf: /Kestrel/Exec only"
+        detail = await smoke.check_workspace(c, E, manifest, WORLD_YAML)
+    assert detail == "3 root children over 2 pages; Heron.pdf: /Kestrel/Exec (write) only"
 
 
 @pytest.mark.parametrize(
@@ -253,40 +323,180 @@ async def test_workspace(tmp_path: Path) -> None:
     [
         (Drive(loaded=False), "no corpus loaded; run `ex fixtures`"),
         (Drive(honour_top=False), r"a \$top=2 page of the root has 3 children"),
+        (Drive(child_count=4), r"paging the root gave .*, expected 4 distinct children"),
+        (
+            Drive(children=["Company", "Exec", "Exec"]),
+            r"paging the root gave \['Company', 'Exec', 'Exec'\], expected 3 distinct",
+        ),
         (
             Drive(
-                grantees=[
-                    {"group": {"id": "g1", "displayName": "/Kestrel/Exec"}},
-                    {"user": {"id": "u1", "displayName": "Tom Whitfield"}},
+                permissions=[
+                    heron_grant(),
+                    {"roles": ["read"], "grantedToV2": {"user": {"id": "u1", "displayName": "T"}}},
                 ]
             ),
-            "shared with .*Tom Whitfield.*, expected only /Kestrel/Exec",
+            r"shared with .*'u1', 'T'.*, expected only",
         ),
-        (Drive(grantees=[]), r"shared with \[\], expected only /Kestrel/Exec"),
+        (Drive(permissions=[]), r"shared with \[\], expected only"),
+        # The right name on another group's id: only the id says who really holds the grant.
+        (Drive(permissions=[heron_grant(group_id="g1")]), "'g1', '/Kestrel/Exec'.*expected"),
+        (Drive(permissions=[heron_grant(roles=("read",))]), r"\['read'\].*expected"),
         (Drive(harbour_status=200), "Harbour's token on Kestrel's site got HTTP 200, not 403"),
     ],
-    ids=["no corpus", "top ignored", "extra grantee", "no grantee", "harbour allowed"],
+    ids=[
+        "no corpus",
+        "top ignored",
+        "short of the child count",
+        "a child twice",
+        "extra grantee",
+        "no grantee",
+        "wrong group id",
+        "wrong role",
+        "harbour allowed",
+    ],
 )
 async def test_workspace_failures(tmp_path: Path, drive: Drive, error: str) -> None:
     manifest = write_manifest(tmp_path / "manifest.json")
     async with client(stack(drive=drive)) as c:
         with pytest.raises(SmokeError, match=error):
-            await smoke.check_workspace(c, E, manifest)
+            await smoke.check_workspace(c, E, manifest, WORLD_YAML)
 
 
 async def test_workspace_needs_the_manifest_and_its_memo(tmp_path: Path) -> None:
     async with client(stack()) as c:
         with pytest.raises(SmokeError, match=r"manifest\.json is missing; run `ex fixtures`"):
-            await smoke.check_workspace(c, E, tmp_path / "manifest.json")
+            await smoke.check_workspace(c, E, tmp_path / "manifest.json", WORLD_YAML)
         manifest = write_manifest(tmp_path / "manifest.json", memo_traps=())
         with pytest.raises(SmokeError, match="0 acl-leak documents, expected 1"):
-            await smoke.check_workspace(c, E, manifest)
+            await smoke.check_workspace(c, E, manifest, WORLD_YAML)
+
+
+# The check against the real fake-workspace, serving a corpus from the real build.
+
+HERON = "exec-project-heron-board-memo"
+SOURCES = (HERON, "hr-leave-policy", "company-office-guide")
+
+
+@pytest.fixture(scope="module")
+def corpus(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A real build of the world with three real sources, among them the Project Heron memo."""
+    root = tmp_path_factory.mktemp("corpus")
+    sources = root / "sources" / "kestrel"
+    sources.mkdir(parents=True)
+    for doc in SOURCES:
+        shutil.copy(REPO / "fixtures" / "corpus" / "sources" / "kestrel" / f"{doc}.md", sources)
+    build.build(root / "build", world_path=WORLD_YAML, sources_root=root / "sources")
+    return root / "build"
+
+
+@pytest.fixture
+async def workspace(corpus: Path) -> AsyncIterator[httpx.AsyncClient]:
+    app = create_app(WorkspaceSettings(corpus_dir=corpus, env="dev"))
+    yield smoke.http_client(httpx.ASGITransport(app))
+    await app.state.runtime.notifier.close()
+
+
+FW = Endpoints(workspace="http://fw")
+
+
+async def test_workspace_against_the_real_fake_workspace(
+    workspace: httpx.AsyncClient, corpus: Path
+) -> None:
+    async with workspace as c:
+        detail = await smoke.check_workspace(c, FW, corpus / "manifest.json", WORLD_YAML)
+    top_level = sorted({f.path.split("/")[1] for f in WORLD.tenants["kestrel"].folders})
+    pages = -(-len(top_level) // 2)
+    assert detail == (
+        f"{len(top_level)} root children over {pages} pages; "
+        "Project Heron Board Memo.pdf: /Kestrel/Exec (write) only"
+    )
+
+
+async def test_an_older_corpus_on_fake_workspace_says_to_run_ex_fixtures(
+    workspace: httpx.AsyncClient, corpus: Path, tmp_path: Path
+) -> None:
+    """The host's manifest is newer than the corpus fake-workspace loaded: the memo moved."""
+    manifest: dict[str, Any] = json.loads((corpus / "manifest.json").read_text())
+    [memo] = [i for i in manifest["sites"]["kestrel"]["items"] if i.get("doc_id") == HERON]
+    memo["id"] = str(WORLD.item_id("kestrel", "/Exec/Board/Project Heron Board Memo.pdf"))
+    newer = tmp_path / "manifest.json"
+    newer.write_text(json.dumps(manifest))
+    async with workspace as c:
+        with pytest.raises(SmokeError, match="serves an older corpus; run `ex fixtures`"):
+            await smoke.check_workspace(c, FW, newer, WORLD_YAML)
+
+
+# 8. Directory
+
+
+def clients(transport: httpx.AsyncBaseTransport) -> Any:
+    return lambda: client(transport)
+
+
+async def test_directory() -> None:
+    detail = await smoke.check_directory(clients(stack()), E, WORLD_YAML, ADMIN)
+    assert detail == (
+        "leo.martin signed in, peter.hall (disabled) was refused; "
+        "leo.martin and /Kestrel/Finance/AP carry the world's ids"
+    )
+
+
+@pytest.mark.parametrize(
+    ("directory", "admin", "error"),
+    [
+        (Directory(accounts={"peter.hall": ""}), ADMIN, "no ac_session cookie after login"),
+        (
+            Directory(accounts={"leo.martin": "dev-password", "peter.hall": "dev-password"}),
+            ADMIN,
+            "peter.hall is disabled but signed in",
+        ),
+        (Directory(), ("admin", "nope"), "admin login returned HTTP 401"),
+        (
+            Directory(ids={"peter.hall": str(WORLD.user_id("kestrel", "peter.hall"))}),
+            ADMIN,
+            "Keycloak has 0 users named leo.martin",
+        ),
+        (
+            Directory(
+                ids={
+                    "leo.martin": "u1",
+                    "peter.hall": str(WORLD.user_id("kestrel", "peter.hall")),
+                    "/Kestrel/Finance/AP": "g1",
+                }
+            ),
+            ADMIN,
+            r"leo.martin has id u1, the world says .*; /Kestrel/Finance/AP has id g1",
+        ),
+        (Directory(enabled={}), ADMIN, "peter.hall isn't disabled in Keycloak"),
+    ],
+    ids=["user refused", "disabled user let in", "bad admin", "no user", "wrong ids", "enabled"],
+)
+async def test_directory_failures(directory: Directory, admin: tuple[str, str], error: str) -> None:
+    with pytest.raises(SmokeError, match=error):
+        await smoke.check_directory(clients(stack(directory=directory)), E, WORLD_YAML, admin)
+
+
+def test_keycloak_admin_comes_from_compose() -> None:
+    assert smoke.keycloak_admin(REPO / services.COMPOSE_FILE) == ADMIN
+
+
+def fake_repo(root: Path) -> Path:
+    """What `Smoke` reads from the repo: the manifest, the world and Compose's Keycloak admin."""
+    write_manifest(root / smoke.MANIFEST)
+    (root / smoke.WORLD).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(WORLD_YAML, root / smoke.WORLD)
+    compose = root / services.COMPOSE_FILE
+    compose.parent.mkdir(parents=True)
+    compose.write_text(
+        "services:\n  keycloak:\n    environment:\n"
+        "      KC_BOOTSTRAP_ADMIN_USERNAME: admin\n      KC_BOOTSTRAP_ADMIN_PASSWORD: admin\n"
+    )
+    return root
 
 
 async def test_all_checks_pass_against_a_fake_stack(tmp_path: Path) -> None:
-    write_manifest(tmp_path / smoke.MANIFEST)
     results = await smoke.Smoke(
-        root=tmp_path, transport=stack(), statuses=healthy, hello=hello("hello smoke")
+        root=fake_repo(tmp_path), transport=stack(), statuses=healthy, hello=hello("hello smoke")
     ).run()
     assert [r.name for r in results] == [
         "services healthy",
@@ -296,16 +506,16 @@ async def test_all_checks_pass_against_a_fake_stack(tmp_path: Path) -> None:
         "fake model",
         "workshop lists section 00",
         "fake-workspace pages and shares",
+        "directory logins and ids",
     ]
     assert all(r.passed for r in results), results
 
 
 async def test_checks_fail_independently(tmp_path: Path) -> None:
     results = await smoke.Smoke(
-        root=tmp_path,
+        root=fake_repo(tmp_path),
         transport=stack(envoy_me=200),
         statuses=healthy,
         hello=hello("hello smoke"),
-        manifest=write_manifest(tmp_path / "manifest.json"),
     ).run()
-    assert [r.passed for r in results] == [True, True, False, True, True, True, True]
+    assert [r.passed for r in results] == [True, True, False, True, True, True, True, True]

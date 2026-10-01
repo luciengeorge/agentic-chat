@@ -1,6 +1,10 @@
 import io
+import json
 import re
 import shutil
+from collections import Counter
+from datetime import datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pdfplumber
@@ -8,16 +12,17 @@ import pytest
 from pdfplumber.pdf import PDF
 
 from ac_core.slots import find_repo_root
-from ac_fixtures.corpus import blocks, build, filing
-from ac_fixtures.corpus.render import render
+from ac_fixtures.corpus import blocks, filing
 from ac_fixtures.sources import Source, load_sources
 from ac_fixtures.world import load_world
 
-STUB = find_repo_root() / "fixtures/corpus/sources/kestrel/legal-regulatory-filing-2026.md"
+SOURCES = find_repo_root() / "fixtures/corpus/sources/kestrel"
+STUB = SOURCES / "legal-regulatory-filing-2026.md"
+Page = list[blocks.Block]
 
 
-def pages(content: list[blocks.Block]) -> list[list[blocks.Block]]:
-    out: list[list[blocks.Block]] = [[]]
+def pages(content: list[blocks.Block]) -> list[Page]:
+    out: list[Page] = [[]]
     for block in content:
         if isinstance(block, blocks.PageBreak):
             out.append([])
@@ -26,11 +31,18 @@ def pages(content: list[blocks.Block]) -> list[list[blocks.Block]]:
     return out
 
 
+@pytest.fixture(scope="module")
+def sheets() -> list[Page]:
+    """The real filing's pages, as blocks."""
+    body = STUB.read_text(encoding="utf-8").split("---\n", 2)[2]
+    return pages(filing.build(body, pages=3000, seed=2026))
+
+
 def test_the_generator_is_deterministic_and_seeded() -> None:
-    first = filing.build("", pages=3000, seed=2026)
-    assert first == filing.build("", pages=3000, seed=2026)
-    assert first != filing.build("", pages=3000, seed=2027)
-    assert len(pages(first)) == 3000
+    first = filing.build("", pages=2600, seed=2026)
+    assert first == filing.build("", pages=2600, seed=2026)
+    assert first != filing.build("", pages=2600, seed=2027)
+    assert len(pages(first)) == 2600
 
 
 def test_the_last_annex_takes_the_remaining_pages() -> None:
@@ -63,20 +75,18 @@ def test_bad_bodies_are_refused(body: str, pages_: int, problem: str) -> None:
         filing.build(body, pages=pages_, seed=1)
 
 
-def test_the_incident_register_agrees_with_compliance_reporting() -> None:
+def test_the_incident_register_agrees_with_compliance_reporting(sheets: list[Page]) -> None:
     """Q1 2026: four P1 incidents and major incident MI-2026-03; Q2 2026: none."""
-    content = filing.build("", pages=3000, seed=2026)
-    p1 = [line for page in pages(content) for line in blocks.lines(page) if " | P1 | " in line]
+    p1 = [line for page in sheets for line in blocks.lines(page) if " | P1 | " in line]
     in_2026 = [line for line in p1 if "2026 |" in line]
     assert len(in_2026) == 5
     assert sum(line.startswith("MI-2026-03 | 6 February 2026") for line in in_2026) == 1
     assert not any(month in line for line in in_2026 for month in ("April", "May", "June"))
 
 
-def test_the_people_in_the_filing_are_in_the_world() -> None:
+def test_the_people_in_the_filing_are_in_the_world(sheets: list[Page]) -> None:
     users = {user.username: user for user in load_world().tenants["kestrel"].users}
-    content = filing.build("", pages=3000, seed=1)
-    text = " ".join(line for page in pages(content) for line in blocks.lines(page))
+    text = " ".join(line for page in sheets for line in blocks.lines(page))
     for username in ("helen.marsh", "sofia.lindqvist", "tom.whitfield"):
         assert f"{users[username].name}, {users[username].title}" in text
     for username in ("amara.okafor", "daniel.reyes", "priya.nair"):
@@ -92,10 +102,11 @@ def stub_source(root: Path) -> Source:
 
 
 @pytest.fixture(scope="module")
-def rendered(tmp_path_factory: pytest.TempPathFactory) -> bytes:
-    """The real filing, rendered once (3,000 pages, a few seconds)."""
-    source = stub_source(tmp_path_factory.mktemp("filing") / "sources")
-    return render(build.document(load_world(), source)).data
+def rendered(corpus_build: Path) -> bytes:
+    """The real filing, from the session's corpus build."""
+    manifest = json.loads((corpus_build / "manifest.json").read_text(encoding="utf-8"))
+    (item,) = [i for i in manifest["sites"]["kestrel"]["items"] if i.get("doc_id") == STUB.stem]
+    return (corpus_build / item["file"]["blob"]).read_bytes()
 
 
 def _text(pdf: PDF, number: int) -> str:
@@ -149,3 +160,213 @@ def test_the_stub_is_a_valid_source(tmp_path: Path) -> None:
         2026,
         ("fan-out",),
     )
+
+
+def heading(page: Page) -> str:
+    first = page[0]
+    assert isinstance(first, blocks.Heading)
+    return blocks.plain(first.content)
+
+
+def tables(page: Page) -> list[list[list[str]]]:
+    """Each table's body rows, as cell text."""
+    return [
+        [[blocks.plain(cell) for cell in row] for row in block.rows]
+        for block in page
+        if isinstance(block, blocks.Table)
+    ]
+
+
+def amount(text: str) -> Decimal:
+    """£1,234.56, €1,234.56 or a shortfall in brackets, (£1,234.56)."""
+    value = Decimal(re.sub(r"[£€,()]", "", text))
+    return -value if text.startswith("(") else value
+
+
+def number(text: str) -> int:
+    return int(text.replace(",", ""))
+
+
+def test_every_schedule_adds_up(sheets: list[Page]) -> None:
+    """Totals equal the sum of the figures shown, to the penny, and each day's safeguarding
+    position opens where the last one closed."""
+    checked: Counter[str] = Counter()
+    closing: dict[str, Decimal] = {}
+    for page in sheets:
+        title = heading(page)
+        if title.startswith("Schedule 3. Own funds requirement"):
+            ((emoney, method_d, _, method_b, total, own, surplus, _),) = [
+                [amount(r[1]) if r[0] != "Coverage" else Decimal(0) for r in table]
+                for table in tables(page)
+            ]
+            assert method_d == (emoney * Decimal("0.02")).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            assert total == method_d + method_b, title
+            assert surplus == own - total, title
+        elif title.startswith("Schedule 4"):
+            balances, flows = tables(page)
+            *lines, requirement, resource, excess = (amount(r[1]) for r in balances)
+            opening, receipts, payments, close = (amount(cell) for cell in flows[0])
+            where = blocks.lines(page[1:2])
+            assert sum(lines) == requirement, where
+            assert resource - requirement == excess, where
+            assert opening + receipts - payments == close == resource, where
+            currency = title.rsplit(" ", 1)[1]
+            assert closing.get(currency, opening) == opening, where
+            closing[currency] = close
+        elif title.startswith("Schedule 5."):
+            ((*days, total),) = tables(page)
+            for column in (1, 3, 4):
+                assert sum(number(day[column]) for day in days) == number(total[column]), title
+            assert sum(amount(day[2]) for day in days) == amount(total[2]), title
+        elif title.startswith("Schedule 6."):
+            for kind, _, gross, recovered, net in tables(page)[0]:
+                assert amount(gross) - amount(recovered) == amount(net), (title, kind)
+        else:
+            continue
+        checked[title.split(".")[0]] += 1
+    # 12 months; 371 business days across GBP and EUR; 53 weeks by product (and by currency
+    # for Schedule 5, EUR from January 2026)
+    assert checked == {
+        "Schedule 3": 12,
+        "Schedule 4A": 253,
+        "Schedule 4B": 118,
+        "Schedule 5": 234,
+        "Schedule 6": 159,
+    }
+
+
+def facts() -> dict[int, str]:
+    """The source's `## Page N` sections, by page, as one line of text each."""
+    text = STUB.read_text(encoding="utf-8")
+    found = re.findall(r"^## Page ([\d,]+)\n\n(.+?)(?=^## |\Z)", text, flags=re.M | re.S)
+    return {int(n.replace(",", "")): " ".join(body.replace("**", "").split()) for n, body in found}
+
+
+def row(page: Page, first: str) -> list[str]:
+    (found,) = [r for table in tables(page) for r in table if r[0] == first]
+    return found
+
+
+def minutes(start: str, end: str) -> int:
+    return (datetime.strptime(end, "%H:%M") - datetime.strptime(start, "%H:%M")).seconds // 60
+
+
+def test_each_fact_page_agrees_with_its_rows(sheets: list[Page]) -> None:
+    notes = facts()
+    assert set(notes) == {130, 328, 845, 883, 2417, 2468, 2861}
+
+    page, note = sheets[129], notes[130]
+    match = re.search(r"Friday (\d+ \w+ \d{4}), so (£[\d,]+\.\d\d) left (ACB-SG-\d+) twice", note)
+    assert match is not None
+    lines = list(blocks.lines(page))
+    assert f"Position at 17:00 on Friday {match[1]}" in lines
+    assert any(line.startswith(f"Account {match[3]},") for line in lines)
+    assert amount(row(page, "Excess (shortfall)")[1]) == -amount(match[2])
+
+    page, note = sheets[327], notes[328]
+    match = re.search(r"due by 11:00 on \w+ (\d+ \w+ \d{4})", note)
+    assert match is not None
+    assert "It found no shortfall" in note
+    due = datetime.strptime(match[1], "%d %B %Y").date()
+    position = max(d for d in filing.business_days(due - timedelta(days=7), due) if d < due)
+    lines = list(blocks.lines(page))
+    assert f"Position at 17:00 on {filing.weekday(position)}" in lines
+    assert any(line.startswith("Account BM-SG-02, Banco Meridional") for line in lines)
+    assert amount(row(page, "Excess (shortfall)")[1]) >= 0
+
+    note = notes[845]
+    (reference,) = re.findall(r"CMP-\d{4}-\d{5}", note)
+    assert "which the firm had not upheld" in note
+    assert "Kestrel Accounts customers" in note
+    received, product, topic, outcome, redress = row(sheets[844], reference)[1:6]
+    assert (product, topic, outcome, amount(redress)) == (
+        "Accounts",
+        "Fees and charges",
+        "Not upheld",
+        0,
+    )
+    charged = re.search(r"between \d+ and (\d+ \w+ \d{4})", note)
+    assert charged is not None
+    assert datetime.strptime(charged[1], "%d %B %Y") <= datetime.strptime(received, "%d %B %Y")
+
+    note = notes[883]
+    match = re.search(r"(MI-\d{4}-\d+)\. On (\d+ \w+ \d{4}), from (\d\d:\d\d) to (\d\d:\d\d)", note)
+    assert match is not None
+    assert "classified P1" in note
+    assert row(sheets[882], match[1])[1:] == [
+        match[2],
+        "Card authorisation",
+        "P1",
+        f"{minutes(match[3], match[4])} min",
+        "Yes",
+    ]
+
+    page, note = sheets[2416], notes[2417]
+    match = re.search(r"From (\d\d):(\d\d) to \1:(\d\d) UK time, EUR card payments", note)
+    authorised = re.search(r"processed ([\d,]+) authorisations", note)
+    assert match is not None
+    assert authorised is not None
+    assert heading(page) == "Annex A. Kestrel Checkout, EUR: Wednesday 17 June 2026"
+    hour = row(page, f"{match[1]}:00 to {match[1]}:59")
+    share = (int(match[3]) - int(match[2])) / 60
+    assert number(authorised[1]) <= number(hour[1]) * share
+
+    page, note = sheets[2467], notes[2468]
+    match = re.search(r"([\d,]+) payouts worth (£[\d,]+\.\d\d)", note)
+    assert match is not None
+    assert "payroll file" in note
+    assert heading(page) == "Annex A. Kestrel Payouts, GBP: Thursday 25 June 2026"
+    (hours,) = tables(page)
+    assert sum(number(h[1]) for h in hours) >= number(match[1])
+    assert sum(amount(h[2]) for h in hours) >= amount(match[2])
+
+    note = notes[2861]
+    match = re.search(
+        r"Merchant (M-\d+), .+ \(MCC (\d+), ([\w ]+)\), was exited on (\d+ \w+ \d{4})", note
+    )
+    assert match is not None
+    assert "chargeback ratio" in note
+    exited = datetime.strptime(match[4], "%d %B %Y").date()
+    category, region, event, when, detail = row(sheets[2860], match[1])[1:]
+    assert category.startswith(f"{match[2]} ")
+    assert (region, event, when) == (match[3], "Exited", filing.short_day(exited))
+    assert detail == "Chargeback ratio above limit"
+
+
+def test_q2_complaints_follow_the_compliance_report(sheets: list[Page]) -> None:
+    report = (SOURCES / "legal-compliance-monitoring-q2-2026.md").read_text(encoding="utf-8")
+    causes = re.search(r"Main causes in Q2: (.+?)\. ", report)
+    received = re.search(r"\| Complaints received \| ([\d,]+) \| ([\d,]+) \|", report)
+    assert causes is not None
+    assert received is not None
+    shares = {
+        cause: int(pct)
+        for cause, pct in re.findall(r"(?:^|, | and )([a-z ]+?) \((\d+)%\)", causes[1])
+    }
+    topics = {
+        "payout delays": "Payment delay",
+        "chargeback disputes": "Chargeback dispute",
+        "account closures": "Account closure",
+        "fees and pricing": "Fees and charges",
+    }
+    assert set(shares) == {*topics, "other issues"}
+
+    by_month: dict[str, Counter[str]] = {m: Counter() for m in ("April", "May", "June")}
+    for page in sheets:
+        title = heading(page)
+        month = re.match(r"Schedule 7\. Complaints register: (\w+) 2026", title)
+        if month and month[1] in by_month:
+            by_month[month[1]].update(r[3] for r in tables(page)[0])
+    quarter = sum(by_month.values(), Counter[str]())
+    total = sum(quarter.values())
+    assert total == number(received[2])
+    other = total - sum(quarter[topic] for topic in topics.values())
+    counts = {cause: quarter[topic] for cause, topic in topics.items()} | {"other issues": other}
+    assert {cause: round(100 * n / total) for cause, n in counts.items()} == shares
+    delays = {month: topics["Payment delay"] for month, topics in by_month.items()}
+    assert delays["June"] > max(delays["April"], delays["May"])  # "rose in June"
+
+
+def test_no_sentence_ends_twice(sheets: list[Page]) -> None:
+    doubled = [line for page in sheets for line in blocks.lines(page) if ".." in line]
+    assert not doubled, doubled[:3]

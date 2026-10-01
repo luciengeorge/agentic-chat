@@ -57,8 +57,9 @@ async def test_root(client: httpx.AsyncClient, corpus: Corpus) -> None:
     assert root["folder"] == {"childCount": 4}
     assert "parentReference" not in root
     assert "cTag" not in root
-    # The root has no author in the manifest: an app made it.
-    assert set(root["createdBy"]) == {"application"}
+    # As in the real build, the tenant's first enabled admin made the root.
+    amara = {"user": {"id": corpus.user("kestrel", "amara.okafor"), "displayName": "Amara Okafor"}}
+    assert (root["createdBy"], root["lastModifiedBy"]) == (amara, amara)
     assert (await client.get(item_url("root"))).json() == root
 
 
@@ -128,6 +129,42 @@ async def test_children_are_paged_and_sorted_case_insensitively(
     assert pages == [["alpha.md", "Bravo.md"], ["charlie.md", "Delta.md"], ["echo.md"]]
 
 
+async def test_children_paging_survives_changes_between_pages(
+    client: httpx.AsyncClient, corpus: Corpus
+) -> None:
+    """Each page starts after the last child returned, so changes between pages can't skip a
+    child that was there from the start, or return one twice. Children added behind the cursor
+    aren't returned: a crawl takes a delta token first to catch those."""
+    company = corpus.id("kestrel", "/Company")
+
+    async def add(name: str) -> None:
+        body = {"parent_id": company, "name": name, "content_base64": "", "mime_type": "text/plain"}
+        assert (await client.post("/_control/sites/kestrel/items", json=body)).status_code == 201
+
+    async def delete(name: str) -> None:
+        url = f"/_control/sites/kestrel/items/{corpus.id('kestrel', f'/Company/{name}')}"
+        assert (await client.delete(url)).status_code == 204
+
+    async def page(url: str) -> tuple[list[str], str | None]:
+        body = (await client.get(url)).json()
+        return [child["name"] for child in body["value"]], body.get("@odata.nextLink")
+
+    first, url = await page(item_url(company, "/children?$top=2"))
+    assert first == ["alpha.md", "Bravo.md"]
+    await delete("alpha.md")  # behind the cursor: an offset would now skip charlie.md
+    await add("aardvark.md")
+    await add("Able.md")  # two more in front: an offset would repeat Bravo.md
+    assert url is not None
+    second, url = await page(url)
+    assert second == ["charlie.md", "Delta.md"]
+    await delete("charlie.md")
+    await add("Beta.md")  # behind the cursor again
+    await add("foxtrot.md")  # ahead of it: returned
+    assert url is not None
+    third, url = await page(url)
+    assert (third, url) == (["echo.md", "foxtrot.md"], None)
+
+
 async def test_children_default_page_and_root_alias(
     client: httpx.AsyncClient, corpus: Corpus
 ) -> None:
@@ -153,7 +190,9 @@ async def test_children_top_is_capped_at_200(client: httpx.AsyncClient, corpus: 
     assert "@odata.nextLink" in page
 
 
-@pytest.mark.parametrize("query", ["$top=0", "$top=x", "$skiptoken=garbage"])
+@pytest.mark.parametrize(
+    "query", ["$top=0", "$top=x", "$skiptoken=garbage", "$skiptoken=WzFd", "$skiptoken=WzEsMl0"]
+)
 async def test_bad_paging_is_400(client: httpx.AsyncClient, query: str) -> None:
     response = await client.get(f"{SITE}/root/children?{query}")
     assert response.status_code == 400

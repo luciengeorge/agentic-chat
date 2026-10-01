@@ -22,7 +22,7 @@ Both are Checkout Standard with no monthly fee. KC-STD-01 is monthly rolling at 
 Checkout Pro costs £49 a month on KC-PRO-01 or £39 a month on KC-PRO-12, and charges 1.19% + 15p or 1.09% + 15p. On UK consumer cards, KC-PRO-12 is cheaper than KC-STD-12 once a merchant processes about £9,200 a month at an average ticket of £40. Pro also brings the 99.95% availability commitment, same-day settlement to a Kestrel Accounts balance and the £20,000 single transaction limit.
 
 **Why did KC-PRO-01 go up?**
-It rose from £45 to £49 a month on 1 April 2026 (price list 2026.2). Existing KC-PRO-01 merchants kept £45 until 1 July 2026 and were told by email on 2 March 2026. KC-PRO-12 stayed at £39.
+It rose from £45 to £49 a month on 1 April 2026 (price list 2026.2). Like every 2026.2 change, the new price applies to new contracts and renewals only, so merchants already on KC-PRO-01 keep £45 until they renew. KC-PRO-12 stayed at £39.
 
 **Can a merchant switch from monthly to a 12-month plan mid-month?**
 Yes. The 12-month term starts on the day of the switch, and the first invoice is pro-rated. A move the other way, from 12 months to monthly, counts as ending the 12-month plan early.

@@ -1,7 +1,7 @@
-import time
-
 import httpx
 import pytest
+
+from ac_fake_workspace.testing import MakeClient, ManualClock
 
 ITEMS = "/v1.0/sites/kestrel/drive/items"
 HARBOUR = {"Authorization": "Bearer dev-workspace-harbour"}
@@ -72,11 +72,16 @@ async def test_error_fault_with_retry_after(client: httpx.AsyncClient) -> None:
     assert response.headers["retry-after"] == "3"
 
 
-async def test_latency_fault(client: httpx.AsyncClient) -> None:
+async def test_latency_fault(make_client: MakeClient) -> None:
+    clock = ManualClock()
+    client = make_client(clock=clock)
     await add_fault(client, kind="latency", latency_ms=150, path_prefix=ITEMS)
-    start = time.monotonic()
+    await add_fault(client, kind="latency", latency_ms=50, path_prefix=ITEMS, count=1)
     assert (await client.get(f"{ITEMS}/root")).status_code == 200
-    assert time.monotonic() - start >= 0.15
+    assert (await client.get(f"{ITEMS}/root")).status_code == 200
+    assert (await client.get("/v1.0/sites/kestrel/drive/root")).status_code == 200
+    # Latencies stack, a count runs out, and other paths wait for nothing.
+    assert clock.waits == [0.15, 0.05, 0.15]
 
 
 async def test_faults_apply_to_subscriptions(client: httpx.AsyncClient) -> None:

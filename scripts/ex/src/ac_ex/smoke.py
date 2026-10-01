@@ -1,4 +1,4 @@
-"""`ex smoke`: the six M0a checks from docs/m0a-contract.md and M0b's seventh
+"""`ex smoke`: the six M0a checks from docs/m0a-contract.md and M0b's seventh and eighth
 (docs/m0b-contract.md), each run on its own."""
 
 import asyncio
@@ -10,12 +10,17 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from http.cookiejar import Cookie, DefaultCookiePolicy
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+from urllib.parse import quote
 from urllib.request import Request
 
 import httpx
+import yaml
 
 from ac_ex import services
+
+if TYPE_CHECKING:
+    from ac_fixtures.world import World
 
 # Compose services only: Postgres runs on the host, and the hello check exercises it.
 EXPECTED_SERVICES = (
@@ -37,7 +42,12 @@ SMOKE_USER = "smoke.kestrel"
 SMOKE_PASSWORD = "smoke-password"
 HELLO_TIMEOUT_S = 30.0
 MANIFEST = Path("fixtures/corpus/build/manifest.json")
-HERON_GRANTEES = [("group", "/Kestrel/Exec")]
+WORLD = Path("fixtures/world.yaml")
+HERON_GROUP = "/Kestrel/Exec"
+HERON_ROLES = ["write"]  # /Exec's grant in world.yaml; the memo adds none of its own
+DIRECTORY_USER = "leo.martin"
+DISABLED_USER = "peter.hall"
+NESTED_GROUP = "/Kestrel/Finance/AP"
 
 
 class SmokeError(Exception):
@@ -89,6 +99,7 @@ class Endpoints:
     workshop: str = "http://localhost:3100"
     envoy: str = "http://localhost:8080"
     workspace: str = "http://localhost:8100"
+    keycloak: str = "http://localhost:8081"
 
 
 # 1. Services
@@ -154,17 +165,34 @@ def login_form_action(html: str) -> str | None:
     return parser.action
 
 
-async def check_login(client: httpx.AsyncClient, endpoints: Endpoints) -> str | None:
+async def sign_in(
+    client: httpx.AsyncClient, endpoints: Endpoints, username: str, password: str
+) -> httpx.Response:
+    """Starts the BFF's login for Kestrel and posts the credentials to Keycloak's form. Returns
+    where that ended: back at the BFF with a session cookie, unless Keycloak refused."""
     page = await client.get(f"{endpoints.web}/auth/login", params={"tenant": "kestrel"})
     action = login_form_action(page.text)
     if not action:
         raise SmokeError(f"no #kc-form-login at {page.url} (HTTP {page.status_code})")
-    done = await client.post(
-        action, data={"username": SMOKE_USER, "password": SMOKE_PASSWORD, "credentialId": ""}
+    return await client.post(
+        action, data={"username": username, "password": password, "credentialId": ""}
     )
+
+
+def has_session(client: httpx.AsyncClient) -> bool:
+    return any(cookie.name == "ac_session" for cookie in client.cookies.jar)
+
+
+async def check_login(
+    client: httpx.AsyncClient,
+    endpoints: Endpoints,
+    username: str = SMOKE_USER,
+    password: str = SMOKE_PASSWORD,
+) -> str | None:
+    done = await sign_in(client, endpoints, username, password)
     if done.status_code >= 400:
         raise SmokeError(f"login ended at {done.url} with HTTP {done.status_code}")
-    if not any(cookie.name == "ac_session" for cookie in client.cookies.jar):
+    if not has_session(client):
         raise SmokeError(f"no ac_session cookie after login (ended at {done.url})")
     me = await client.get(f"{endpoints.web}/api/me")
     if me.status_code != 200:
@@ -172,7 +200,7 @@ async def check_login(client: httpx.AsyncClient, endpoints: Endpoints) -> str | 
     tenant = me.json().get("tenant")
     if tenant != "kestrel":
         raise SmokeError(f"/api/me tenant is {tenant!r}, expected 'kestrel'")
-    return f"signed in as {SMOKE_USER}"
+    return f"signed in as {username}"
 
 
 def http_client(transport: httpx.AsyncBaseTransport | None = None) -> httpx.AsyncClient:
@@ -300,11 +328,19 @@ def _bearer(site: str) -> dict[str, str]:
 
 
 async def _graph(
-    client: httpx.AsyncClient, url: str, site: str, params: dict[str, int] | None = None
+    client: httpx.AsyncClient,
+    url: str,
+    site: str,
+    params: dict[str, int] | None = None,
+    *,
+    missing: str | None = None,
 ) -> Any:
+    """GET a Graph URL as `site`'s connector. A 404 raises `missing`, when given."""
     response = await client.get(url, headers=_bearer(site), params=params)
     if response.status_code == 503:
         raise SmokeError("fake-workspace has no corpus loaded; run `ex fixtures`")
+    if response.status_code == 404 and missing is not None:
+        raise SmokeError(missing)
     if response.status_code != 200:
         raise SmokeError(f"GET {response.url} returned HTTP {response.status_code}")
     return response.json()
@@ -317,6 +353,12 @@ def read_manifest(path: Path) -> dict[str, Any]:
         raise SmokeError(f"{path} is missing; run `ex fixtures`") from None
 
 
+def read_world(path: Path) -> "World":
+    from ac_fixtures.world import load_world
+
+    return load_world(path)
+
+
 def acl_leak_memo(manifest: dict[str, Any]) -> dict[str, Any]:
     """The Kestrel file whose traps include `acl-leak`: the Project Heron memo."""
     found = [
@@ -327,8 +369,14 @@ def acl_leak_memo(manifest: dict[str, Any]) -> dict[str, Any]:
     return found[0]
 
 
+def _grant(permission: dict[str, Any]) -> tuple[list[str], str, str, str]:
+    """(roles, principal kind, principal id, display name) of a Graph permission."""
+    [(kind, principal)] = permission["grantedToV2"].items()
+    return permission["roles"], kind, principal["id"], principal["displayName"]
+
+
 async def check_workspace(
-    client: httpx.AsyncClient, endpoints: Endpoints, manifest_path: Path
+    client: httpx.AsyncClient, endpoints: Endpoints, manifest_path: Path, world_path: Path
 ) -> str | None:
     drive = f"{endpoints.workspace}/v1.0/sites/kestrel/drive"
     root = await _graph(client, f"{drive}/root", "kestrel")
@@ -349,19 +397,104 @@ async def check_workspace(
         raise SmokeError(f"paging the root gave {names}, expected {expected} distinct children")
 
     memo = acl_leak_memo(await asyncio.to_thread(read_manifest, manifest_path))
-    permissions = await _graph(client, f"{drive}/items/{memo['id']}/permissions", "kestrel")
-    grantees = sorted(
-        (kind, principal["displayName"])
-        for p in permissions["value"]
-        for kind, principal in p["grantedToV2"].items()
+    world = await asyncio.to_thread(read_world, world_path)
+    stale = (
+        f"fake-workspace has no {memo['name']} ({memo['id']}), which {manifest_path} lists: "
+        "it serves an older corpus; run `ex fixtures`"
     )
-    if grantees != HERON_GRANTEES:
-        raise SmokeError(f"{memo['name']} is shared with {grantees}, expected only /Kestrel/Exec")
+    permissions = await _graph(
+        client, f"{drive}/items/{memo['id']}/permissions", "kestrel", missing=stale
+    )
+    grants = [_grant(p) for p in permissions["value"]]
+    expected = [(HERON_ROLES, "group", str(world.group_id("kestrel", HERON_GROUP)), HERON_GROUP)]
+    if grants != expected:
+        raise SmokeError(f"{memo['name']} is shared with {grants}, expected only {expected}")
 
     other = await client.get(f"{drive}/root", headers=_bearer("harbour"))
     if other.status_code != 403:
         raise SmokeError(f"Harbour's token on Kestrel's site got HTTP {other.status_code}, not 403")
-    return f"{len(names)} root children over {pages} pages; {memo['name']}: /Kestrel/Exec only"
+    return (
+        f"{len(names)} root children over {pages} pages; "
+        f"{memo['name']}: {HERON_GROUP} ({', '.join(HERON_ROLES)}) only"
+    )
+
+
+# 8. Directory
+
+
+def keycloak_admin(compose_file: Path) -> tuple[str, str]:
+    """The dev admin's username and password, as Compose bootstraps Keycloak with them."""
+    compose = cast(dict[str, Any], yaml.safe_load(compose_file.read_text(encoding="utf-8")))
+    env = cast(dict[str, str], compose["services"]["keycloak"]["environment"])
+    return env["KC_BOOTSTRAP_ADMIN_USERNAME"], env["KC_BOOTSTRAP_ADMIN_PASSWORD"]
+
+
+async def _admin_get(
+    client: httpx.AsyncClient, url: str, token: str, params: dict[str, str] | None = None
+) -> Any:
+    response = await client.get(url, headers={"authorization": f"Bearer {token}"}, params=params)
+    if response.status_code != 200:
+        raise SmokeError(f"GET {response.url} returned HTTP {response.status_code}")
+    return response.json()
+
+
+async def check_directory(
+    client: Callable[[], httpx.AsyncClient],
+    endpoints: Endpoints,
+    world_path: Path,
+    admin: tuple[str, str],
+) -> str | None:
+    """A seeded user signs in and a disabled one can't, and Keycloak holds the world's ids."""
+    world = await asyncio.to_thread(read_world, world_path)
+    password = world.tenants["kestrel"].password
+    async with client() as user:
+        await check_login(user, endpoints, DIRECTORY_USER, password)
+    async with client() as former:
+        done = await sign_in(former, endpoints, DISABLED_USER, password)
+        if has_session(former):
+            raise SmokeError(f"{DISABLED_USER} is disabled but signed in (ended at {done.url})")
+
+    async with client() as kc:
+        username, secret = admin
+        token = await kc.post(
+            f"{endpoints.keycloak}/realms/master/protocol/openid-connect/token",
+            data={
+                "grant_type": "password",
+                "client_id": "admin-cli",
+                "username": username,
+                "password": secret,
+            },
+        )
+        if token.status_code != 200:
+            raise SmokeError(f"Keycloak's admin login returned HTTP {token.status_code}")
+        access = token.json()["access_token"]
+        realm = f"{endpoints.keycloak}/admin/realms/kestrel"
+        found: dict[str, Any] = {}
+        for name in (DIRECTORY_USER, DISABLED_USER):
+            query = {"exact": "true", "username": name}
+            users = await _admin_get(kc, f"{realm}/users", access, query)
+            if len(users) != 1:
+                raise SmokeError(f"Keycloak has {len(users)} users named {name}, expected 1")
+            found[name] = users[0]
+        group = await _admin_get(kc, f"{realm}/group-by-path{quote(NESTED_GROUP)}", access)
+
+    problems = [
+        f"{label} has id {actual}, the world says {wanted}"
+        for label, actual, wanted in (
+            (DIRECTORY_USER, found[DIRECTORY_USER]["id"], world.user_id("kestrel", DIRECTORY_USER)),
+            (DISABLED_USER, found[DISABLED_USER]["id"], world.user_id("kestrel", DISABLED_USER)),
+            (NESTED_GROUP, group["id"], world.group_id("kestrel", NESTED_GROUP)),
+        )
+        if actual != str(wanted)
+    ]
+    if found[DISABLED_USER].get("enabled") is not False:
+        problems.append(f"{DISABLED_USER} isn't disabled in Keycloak")
+    if problems:
+        raise SmokeError("; ".join(problems))
+    return (
+        f"{DIRECTORY_USER} signed in, {DISABLED_USER} (disabled) was refused; "
+        f"{DIRECTORY_USER} and {NESTED_GROUP} carry the world's ids"
+    )
 
 
 @dataclass
@@ -373,6 +506,7 @@ class Smoke:
     hello: HelloDeps | None = None
     fake_model: Check = check_fake_model
     manifest: Path | None = None  # default: <root>/fixtures/corpus/build/manifest.json
+    world: Path | None = None  # default: <root>/fixtures/world.yaml
 
     def client(self) -> httpx.AsyncClient:
         return http_client(self.transport)
@@ -382,6 +516,12 @@ class Smoke:
             statuses = self.statuses or (lambda: services.status(self.root))
             hello = self.hello or HelloDeps(insert_hello_row, await_workflow_result)
             manifest = self.manifest or self.root / MANIFEST
+            world = self.world or self.root / WORLD
+
+            async def directory() -> str | None:
+                admin = await asyncio.to_thread(keycloak_admin, self.root / services.COMPOSE_FILE)
+                return await check_directory(self.client, self.endpoints, world, admin)
+
             return await run_checks(
                 [
                     ("services healthy", lambda: check_services(statuses, shared, self.endpoints)),
@@ -392,7 +532,8 @@ class Smoke:
                     ("workshop lists section 00", lambda: check_workshop(shared, self.endpoints)),
                     (
                         "fake-workspace pages and shares",
-                        lambda: check_workspace(shared, self.endpoints, manifest),
+                        lambda: check_workspace(shared, self.endpoints, manifest, world),
                     ),
+                    ("directory logins and ids", directory),
                 ]
             )

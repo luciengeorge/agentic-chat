@@ -1,12 +1,12 @@
 """Injected faults: throttling, errors and latency on matching Graph requests."""
 
-import asyncio
 from dataclasses import dataclass
 from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from ac_fake_workspace.errors import GraphError
+from ac_fake_workspace.state import Clock
 
 
 class FaultSpec(BaseModel):
@@ -34,7 +34,8 @@ class _Fault:
 
 
 class Faults:
-    def __init__(self) -> None:
+    def __init__(self, clock: Clock) -> None:
+        self._clock = clock
         self._faults: list[_Fault] = []
 
     def add(self, spec: FaultSpec) -> None:
@@ -56,7 +57,7 @@ class Faults:
             fault.fired += 1
             if spec.kind == "latency":
                 assert spec.latency_ms is not None
-                await asyncio.sleep(spec.latency_ms / 1000)
+                await self._clock.sleep(spec.latency_ms / 1000)
             elif spec.kind == "throttle":
                 retry = {
                     "Retry-After": str(1 if spec.retry_after_s is None else spec.retry_after_s)
