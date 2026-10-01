@@ -13,6 +13,7 @@ members = [
     "ac-db",
     "ac-ex",
     "ac-fake-workspace",
+    "ac-fixtures",
     "ac-models",
     "ac-relay",
     "ac-reranker",
@@ -128,6 +129,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "ac-fixtures"
+version = "0.0.0"
+source = { editable = "packages/fixtures" }
+dependencies = [
+    { name = "ac-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ac-core", editable = "packages/core" }]
+
+[[package]]
 name = "ac-models"
 version = "0.0.0"
 source = { editable = "packages/models" }
@@ -219,6 +231,7 @@ dependencies = [
     { name = "ac-db" },
     { name = "ac-ex" },
     { name = "ac-fake-workspace" },
+    { name = "ac-fixtures" },
     { name = "ac-models" },
     { name = "ac-relay" },
     { name = "ac-reranker" },
@@ -242,6 +255,7 @@ requires-dist = [
     { name = "ac-db", editable = "packages/db" },
     { name = "ac-ex", editable = "scripts/ex" },
     { name = "ac-fake-workspace", editable = "apps/fake_workspace" },
+    { name = "ac-fixtures", editable = "packages/fixtures" },
     { name = "ac-models", editable = "packages/models" },
     { name = "ac-relay", editable = "apps/relay" },
     { name = "ac-reranker", editable = "apps/reranker" },

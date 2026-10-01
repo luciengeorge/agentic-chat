@@ -12,6 +12,7 @@ dependencies = [
   "ac-reranker",
   "ac-fake-workspace",
   "ac-ex",
+  "ac-fixtures",
 ]
 
 [tool.uv]
@@ -28,6 +29,7 @@ members = [
   "apps/reranker",
   "apps/fake_workspace",
   "scripts/ex",
+  "packages/fixtures",
 ]
 
 [tool.uv.sources]
@@ -40,6 +42,7 @@ ac-relay = { workspace = true }
 ac-reranker = { workspace = true }
 ac-fake-workspace = { workspace = true }
 ac-ex = { workspace = true }
+ac-fixtures = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -81,6 +84,7 @@ extraPaths = [
   "apps/reranker/src",
   "apps/fake_workspace/src",
   "scripts/ex/src",
+  "packages/fixtures/src",
 ]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*", "playground"]
 

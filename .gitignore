@@ -34,3 +34,6 @@ playground/
 .idea/
 .vscode/
 *.swp
+
+# built by `ex fixtures`
+fixtures/corpus/build/
