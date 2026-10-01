@@ -1,0 +1,115 @@
+# The fictional world every fixture is built from: tenants, the directory (users and
+# groups), the workspace folder tree with its sharing, and the facts documents must agree on.
+# Ids are never written here; ac_fixtures.world derives them (uuid5 of "<tenant>:<kind>:<name>").
+version: 1
+id_namespace: 7d491e87-db78-4901-a173-34260d9df5d1
+today: 2026-09-30
+
+tenants:
+  kestrel:
+    name: Kestrel Pay
+    domain: kestrelpay.example
+    password: dev-password
+    facts:
+      - Kestrel Pay Ltd is a London fintech founded in 2017, with offices in London (HQ), Lisbon and Dublin, and about 600 employees.
+      - It sells to small and medium businesses in the UK and EU. Products are Kestrel Checkout (card acceptance), Kestrel Accounts (business current accounts) and Kestrel Payouts (supplier and payroll payouts).
+      - About 48,000 merchant customers at the end of Q2 2026.
+      - It is an FCA-authorised electronic money institution, firm reference number FRN 999901 (fictional).
+      - Financial year is the calendar year; reporting currency GBP. FY2025 revenue was £138.4m. Q3 2026 revenue was £41.2m with a 58% gross margin.
+      - Project Heron is the proposed acquisition of Lumen Ledger, a Lisbon accounting-software startup, at an indicative £86m. Exec-only. The board votes on 2026-10-20.
+      - The expenses policy changed on 2026-07-01. The old version (effective 2025-01-01) allowed £35 a day for meals and £180 a night for London hotels; the new one allows £40 and £200 and needs receipts above £25.
+      - Identifier formats. Contracts KPC-YYYY-NNNN (e.g. KPC-2026-0142). Payments API error codes KP-NNNN (e.g. KP-4031). Product SKUs like KC-STD-01, KA-PLUS-12, KP-BULK-500.
+    groups:
+      - /Kestrel
+      - /Kestrel/Exec
+      - /Kestrel/Finance
+      - /Kestrel/Finance/AP
+      - /Kestrel/Finance/FP&A
+      - /Kestrel/Engineering
+      - /Kestrel/Engineering/Platform
+      - /Kestrel/Engineering/Payments
+      - /Kestrel/HR
+      - /Kestrel/Legal
+      - /Kestrel/Sales
+    # Users are direct members of the groups listed; nothing is a direct member of /Kestrel
+    # except ella.brooks, so all-staff access only works through the nested closure.
+    users:
+      - {username: amara.okafor, name: Amara Okafor, title: Chief Executive Officer, groups: [/Kestrel/Exec]}
+      - {username: daniel.reyes, name: Daniel Reyes, title: Chief Financial Officer, groups: [/Kestrel/Exec, /Kestrel/Finance], persona: cfo}
+      - {username: priya.nair, name: Priya Nair, title: Chief Technology Officer, groups: [/Kestrel/Exec, /Kestrel/Engineering]}
+      - {username: helen.marsh, name: Helen Marsh, title: General Counsel, groups: [/Kestrel/Exec, /Kestrel/Legal]}
+      - {username: tom.whitfield, name: Tom Whitfield, title: Financial Controller, groups: [/Kestrel/Finance]}
+      - {username: mia.chen, name: Mia Chen, title: Finance Analyst, groups: [/Kestrel/Finance/FP&A], persona: finance-analyst}
+      - {username: jonas.berg, name: Jonas Berg, title: FP&A Manager, groups: [/Kestrel/Finance/FP&A]}
+      - {username: chris.dunn, name: Chris Dunn, title: Data Analyst, groups: [/Kestrel/Finance/FP&A]}
+      - {username: grace.adeyemi, name: Grace Adeyemi, title: Accounts Payable Specialist, groups: [/Kestrel/Finance/AP]}
+      - {username: luis.ortega, name: Luis Ortega, title: Accounts Payable Clerk, groups: [/Kestrel/Finance/AP]}
+      - {username: leo.martin, name: Leo Martin, title: Finance Intern, groups: [/Kestrel/Finance/AP], persona: intern}
+      - {username: nadia.kowalski, name: Nadia Kowalski, title: Platform Engineering Lead, groups: [/Kestrel/Engineering/Platform]}
+      - {username: sam.patel, name: Sam Patel, title: Platform Engineer, groups: [/Kestrel/Engineering/Platform], persona: platform-engineer}
+      - {username: kofi.mensah, name: Kofi Mensah, title: Site Reliability Engineer, groups: [/Kestrel/Engineering/Platform]}
+      - {username: tariq.aziz, name: Tariq Aziz, title: IT Administrator, groups: [/Kestrel/Engineering/Platform], roles: [employee, admin]}
+      - {username: emily.tran, name: Emily Tran, title: Payments Engineering Manager, groups: [/Kestrel/Engineering/Payments]}
+      - {username: omar.haddad, name: Omar Haddad, title: Payments Engineer, groups: [/Kestrel/Engineering/Payments]}
+      - {username: julia.novak, name: Julia Novak, title: Payments Product Manager, groups: [/Kestrel/Engineering/Payments]}
+      - {username: lena.fischer, name: Lena Fischer, title: Security Engineer, groups: [/Kestrel/Engineering]}
+      - {username: marco.bianchi, name: Marco Bianchi, title: Head of People, groups: [/Kestrel/HR]}
+      - {username: rachel.obi, name: Rachel Obi, title: HR Business Partner, groups: [/Kestrel/HR], persona: hr-partner}
+      - {username: aisha.rahman, name: Aisha Rahman, title: Recruiter, groups: [/Kestrel/HR]}
+      - {username: ben.carter, name: Ben Carter, title: Commercial Counsel, groups: [/Kestrel/Legal]}
+      - {username: sofia.lindqvist, name: Sofia Lindqvist, title: Compliance Officer, groups: [/Kestrel/Legal]}
+      - {username: maya.levi, name: Maya Levi, title: Paralegal, groups: [/Kestrel/Legal]}
+      - {username: jake.morrison, name: Jake Morrison, title: Head of Sales, groups: [/Kestrel/Sales]}
+      - {username: chloe.dubois, name: Chloe Dubois, title: Account Executive, groups: [/Kestrel/Sales]}
+      - {username: ravi.shah, name: Ravi Shah, title: Sales Engineer, groups: [/Kestrel/Sales]}
+      - {username: hannah.kim, name: Hannah Kim, title: Customer Success Manager, groups: [/Kestrel/Sales]}
+      - {username: ella.brooks, name: Ella Brooks, title: Office Manager, groups: [/Kestrel]}
+      # Left the company: disabled in the directory but still listed in a group. Sync must drop them.
+      - {username: peter.hall, name: Peter Hall, title: Former FP&A Analyst, groups: [/Kestrel/Finance/FP&A], enabled: false}
+    # A folder's effective sharing = (inherit ? the parent's effective sharing : nothing) + its own
+    # grants. The root shares nothing. Roles are read or write.
+    folders:
+      - {path: /Company, grants: [{group: /Kestrel, role: read}, {user: ella.brooks, role: write}]}
+      - {path: /HR, grants: [{group: /Kestrel/HR, role: write}]}
+      - {path: /HR/Policies, grants: [{group: /Kestrel, role: read}]}
+      - {path: /HR/Casework, inherit: true}
+      - {path: /Finance, grants: [{group: /Kestrel/Finance, role: read}, {user: tom.whitfield, role: write}]}
+      - {path: /Finance/Reports, grants: [{group: /Kestrel/Exec, role: read}]}
+      - {path: /Finance/AP, grants: [{group: /Kestrel/Finance/AP, role: write}]}
+      - {path: /Finance/FP&A, inherit: false, grants: [{group: /Kestrel/Finance/FP&A, role: write}, {user: daniel.reyes, role: read}]}
+      - {path: /Legal, grants: [{group: /Kestrel/Legal, role: write}]}
+      - {path: /Legal/Contracts, grants: [{group: /Kestrel/Finance, role: read}]}
+      - {path: /Legal/Regulatory, grants: [{group: /Kestrel/Exec, role: read}]}
+      - {path: /Exec, grants: [{group: /Kestrel/Exec, role: write}]}
+      - {path: /Engineering, grants: [{group: /Kestrel/Engineering, role: write}]}
+      - {path: /Engineering/Runbooks}
+      - {path: /Engineering/Incidents}
+      - {path: /Sales, grants: [{group: /Kestrel/Sales, role: write}]}
+      - {path: /Sales/Playbooks}
+
+  harbour:
+    name: Harbour Health
+    domain: harbourhealth.example
+    password: dev-password
+    # Operational documents only: no patient or clinical records, even fictional ones.
+    facts:
+      - Harbour Health is a fictional network of four community clinics in Bristol with about 120 staff.
+      - Its expenses policy allows £25 a day for meals and £150 a night for hotels. Kestrel's must never be used to answer a Harbour question, or the reverse.
+    groups:
+      - /Harbour
+      - /Harbour/Operations
+      - /Harbour/IT
+      - /Harbour/Finance
+    users:
+      - {username: nina.osei, name: Nina Osei, title: Operations Director, groups: [/Harbour/Operations]}
+      - {username: george.evans, name: George Evans, title: Procurement Lead, groups: [/Harbour/Operations]}
+      - {username: isla.mcgregor, name: Isla McGregor, title: Rota Coordinator, groups: [/Harbour/Operations]}
+      - {username: david.cho, name: David Cho, title: IT Manager, groups: [/Harbour/IT], roles: [employee, admin]}
+      # Same username as a Kestrel user on purpose: principals are tenant-scoped.
+      - {username: sam.patel, name: Sam Patel, title: Systems Analyst, groups: [/Harbour/IT]}
+      - {username: fatima.ali, name: Fatima Ali, title: Finance Officer, groups: [/Harbour/Finance]}
+    folders:
+      - {path: /Policies, grants: [{group: /Harbour, role: read}, {group: /Harbour/Operations, role: write}]}
+      - {path: /Operations, grants: [{group: /Harbour/Operations, role: write}]}
+      - {path: /IT, grants: [{group: /Harbour/IT, role: write}]}
+      - {path: /Finance, grants: [{group: /Harbour/Finance, role: write}, {user: nina.osei, role: read}]}
