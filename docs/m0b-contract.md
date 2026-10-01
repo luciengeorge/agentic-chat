@@ -116,7 +116,7 @@ Write like real internal documents at the company: specific, dated, with concret
 - **Output:** `fixtures/corpus/build/` (git-ignored) holds `manifest.json` and `blobs/<sha256>.<ext>`.
 - **Determinism:** the same sources, world and generator code give byte-identical blobs and manifest. Pin every embedded date, id and seed (e.g. reportlab `invariant=1`). Nothing reads the wall clock, the hostname or the locale. A test builds twice into separate directories and compares them.
 - **Formats:**
-  - `pdf`: markdown to a PDF with a text layer, tables as real tables.
+  - `pdf`: markdown to a PDF with a text layer, tables as real tables. The text is set in the standard Helvetica, which covers Windows-1252 only, so a character outside it (an arrow, say) fails the build, naming the document and the character. The same holds for every format that renders through the PDF path (`pdf_mixed`, `scan`, `generated`).
   - `scan`: the rendered pages rasterised, then given seeded skew, blur, speckle and JPEG artefacts, and wrapped in a PDF with no text layer.
   - `handwriting`: the text set in a vendored OFL handwriting font (licence file alongside it), rasterised, with light noise and no text layer.
   - `pdf_mixed`: text pages plus `scan-begin` regions as image-only pages.
@@ -133,7 +133,7 @@ Write like real internal documents at the company: specific, dated, with concret
   "version": 1,
   "sites": {
     "kestrel": {
-      "items": [   // every folder (including the root, path "/") and every file, parents before children
+      "items": [   // every folder (including the root: path "/", name "root") and every file, parents before children
         {
           "id": "<world.item_id(tenant, path)>",
           "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
@@ -143,7 +143,7 @@ Write like real internal documents at the company: specific, dated, with concret
           "created": "2026-09-08T09:00:00Z",
           "modified": "2026-09-09T16:30:00Z",
           "created_by": "<user id>", "modified_by": "<user id>",
-          "file": {"mime_type": "application/pdf", "size": 182345, "sha256": "...", "blob": "blobs/<sha256>.pdf", "pages": 14},  // files only; pages for PDFs
+          "file": {"mime_type": "application/pdf", "size": 182345, "sha256": "...", "blob": "blobs/<sha256>.pdf", "pages": 14},  // files only; "pages" only on PDFs, absent for docx and md
           "doc_id": "finance-q3-2026-quarterly-report",   // files only
           "format": "pdf", "traps": ["tables"], "valid_from": null, "valid_to": null,
           "sharing": {"inherit": true, "grants": [{"principal_type": "group", "principal_id": "<uuid>", "principal_name": "/Kestrel/Finance", "role": "read"}]}
@@ -157,13 +157,16 @@ Write like real internal documents at the company: specific, dated, with concret
 
 Each site also carries `"users": {"<user id>": {"username": "...", "display_name": "..."}}` for every user in the tenant, so fake-workspace can fill in Graph identities (`displayName`). Groups use their path as `principal_name` and `displayName`.
 
-The keys are sorted and the JSON is written in a stable form. Folders take `created`/`modified` from world.today and their author from the first write grant. A file's times are its frontmatter dates at a fixed time of day derived from its id.
+The keys are sorted and the JSON is written in a stable form. Folders take `created`/`modified` from world.today. A folder's author comes from its effective write grants, its own before the inherited ones: a user grant names the user, and a group grant resolves to the group's first enabled member (directly or through a subgroup). With no write grant (the root), it's the tenant's first enabled admin. A file's times are its frontmatter dates at a fixed time of day derived from its id.
+
+Blobs are content-addressed (`blobs/<sha256>.<ext>`), so two files with the same bytes share one blob.
 
 **`ex fixtures [--json] [--clean] [--verify]`**:
 - With no flags, it regenerates the realm exports (lane W's `ac_fixtures.directory`), builds the corpus incrementally, and, if fake-workspace is running, calls `POST /_control/reset`.
-- `--verify` builds twice into temporary directories and fails if any byte differs.
-- `--json` output: `{"directory": {"changed": [...files]}, "corpus": {"documents": n, "rendered": n, "reused": n, "bytes": n, "manifest_sha256": "..."}, "workspace": {"reset": true | false, "detail": "..."}, "duration_s": n}`.
-- If the realm exports changed and Keycloak is running, it says so: Keycloak needs a recreate, which the integrator wires.
+- `--verify` builds twice into temporary directories and fails if any byte differs. It touches neither the real build nor the running stack.
+- `--json` output: `{"directory": {"changed": [...files], "recreated": [...services], "detail": "..." | null}, "corpus": {"documents": n, "rendered": n, "reused": n, "bytes": n, "manifest_sha256": "..."}, "workspace": {"reset": true | false, "detail": "..."}, "duration_s": n}`.
+- `--verify --json` output: `{"verify": {"identical": bool, "files": n, "differences": ["<path>: bytes differ" | "<path>: only in the first build" | ...]}, "corpus": {...as above, for the first build}, "duration_s": n}`.
+- If the realm exports changed and Keycloak is running, it recreates Keycloak (`compose up --wait --force-recreate --no-deps`), since Keycloak imports realms only when its container is created. A new container signs with new keys, and Envoy caches the JWKS for 60 seconds, so a running Envoy is recreated after it: Envoy fetches the keys before it opens its listener, so no request sees a 401 for a good token. `directory.recreated` lists what was recreated. A stopped Keycloak container is removed instead, so the next `ex up` imports the new exports. A failed recreate fails the command, after the fake-workspace reset still runs.
 
 ## Directory (lane W)
 
@@ -194,7 +197,7 @@ Every table has `tenant_id uuid not null references tenants(id)` and the same RL
 
 It plays each tenant's SharePoint. The shapes follow Microsoft Graph's drive API, simplified, so the section 02 connector teaches real patterns. It serves port 8100.
 
-**Loading:** at start and on reset, it reads `AC_CORPUS_DIR` (default `<repo>/fixtures/corpus/build`), which holds `manifest.json` and the blobs. All state lives in memory, so a restart resets it. `GET /health` always returns 200, with `"corpus_loaded": bool`. The site APIs return 503 (`{"error": {"code": "serviceNotReady"}}`) until a corpus is loaded.
+**Loading:** at start and on reset, it reads `AC_CORPUS_DIR` (default `<repo>/fixtures/corpus/build`; Compose sets `/repo/fixtures/corpus/build`, the bind mount), which holds `manifest.json` and the blobs. All state lives in memory, so a restart resets it. `GET /health` always returns 200, with `"corpus_loaded": bool`. The site APIs return 503 (`{"error": {"code": "serviceNotReady"}}`) until a corpus is loaded.
 
 **Auth:** `Authorization: Bearer <token>`. `dev-workspace-kestrel` and `dev-workspace-harbour` each open only their own site. No token or a bad one is 401; the right token on the wrong site is 403. Errors look like Graph's: `{"error": {"code": "...", "message": "..."}}`.
 
@@ -204,13 +207,16 @@ It plays each tenant's SharePoint. The shapes follow Microsoft Graph's drive API
 - `GET items/{id}/content`: the bytes, with `Content-Type`.
 - `GET items/{id}/permissions`: `{"value": [{"id", "roles": ["read"|"write"], "grantedToV2": {"user": {...}} | {"group": {"id", "displayName"}}, "inheritedFrom": {"id", "path"}?}]}`. These are the effective grants, own and inherited, with `inheritedFrom` set on inherited ones.
 - `GET root/delta[?token=...]`: changes since the token. With no token, it returns every item, then an `@odata.deltaLink`. `token=latest` returns nothing but a `deltaLink`. Deleted items come back as `{"id", "deleted": {"state": "deleted"}, "parentReference"}`. Moves and renames appear as the item with its new `parentReference` or name. Sharing changes appear only when the request carries `Prefer: deltashowsharingchanges`, on items annotated `"@microsoft.graph.sharedChanged": "True"`. Results are paginated with `nextLink`, and the last page carries the `deltaLink`. Tokens are opaque but deterministic.
+  - **Order:** with no token, every item in creation order (the manifest's, parents first, then items created since). With a token, each changed item appears once, in its current state, in the order it first changed.
+  - **Stale tokens:** a token from another corpus or from before a reset (`ex fixtures` resets), or one ahead of the change log (after a restart), gets 410 `resyncRequired` (inner code `resyncChangesApplyDifferences`) with a `Location` header to enumerate again from.
+  - **Sharing changes** are recorded on the item and on every descendant whose effective permissions changed with it (the ones that inherit), so `deltashowsharingchanges` shows each of them.
 - `POST /v1.0/subscriptions {changeType: "updated", notificationUrl, resource: "sites/{site}/drive/root", expirationDateTime, clientState}`:
   - **Validation:** it first POSTs to `notificationUrl?validationToken=<token>`, which must answer 200 with the token as `text/plain` within 10 seconds; otherwise it returns 400.
   - **Management:** `PATCH` renews a subscription and `DELETE` removes it.
   - **Notifications:** after every change, it POSTs `{"value": [{"subscriptionId", "clientState", "changeType": "updated", "resource", "subscriptionExpirationDateTime", "tenantId"}]}`. It doesn't say what changed; the client calls `delta`.
   - **Delivery:** in order per subscription, retried with backoff on a non-2xx response, and logged.
 
-**Control API** (`/_control/...`): dev only (refused unless `AC_ENV=dev`), no bearer token. Every mutation lands in delta and triggers notifications.
+**Control API** (`/_control/...`): dev only (refused unless `AC_ENV=dev`), no bearer token. Every mutation lands in delta and triggers notifications. The control API has no user, so items it creates or changes carry an application identity in `createdBy`/`lastModifiedBy`: `{"application": {"id", "displayName": "fake-workspace"}}`.
 - `POST /_control/reset` reloads the manifest and clears faults, subscriptions, deliveries and the change log.
 - `POST /_control/faults {"site"?, "kind": "throttle" | "error" | "latency", "path_prefix"?, "after_requests"?: n, "count"?: n, "retry_after_s"?: n, "status"?: 503, "latency_ms"?: n}` and `DELETE /_control/faults`. A throttle answers 429 with `Retry-After` and a Graph `TooManyRequests` error.
 - Item mutations under `/_control/sites/{site}/items`:
@@ -232,3 +238,16 @@ As Kestrel's connector:
 - list the root's children with `$top=2` and follow `nextLink`;
 - find the Project Heron memo through the manifest (`traps` contains `acl-leak`), and check that its permissions grant exactly `/Kestrel/Exec`;
 - then check that Harbour's token on Kestrel's site is 403.
+
+It reads the manifest from `<repo>/fixtures/corpus/build/manifest.json`, the build Compose mounts, and also checks that the pages hold `$top` or fewer children and add up to the root's distinct `childCount`. A 503 means no corpus is loaded, and the check says to run `ex fixtures`.
+
+## Settled during the build
+
+The lanes and the integrator changed or pinned down these points; the sections above already say them.
+
+- `ex fixtures --verify --json` has its own shape (`verify.identical`, `verify.files`, `verify.differences`), and `directory` gained `detail` and `recreated`.
+- `ex fixtures` recreates Keycloak, then Envoy, when the realm exports change.
+- A folder's author: its own write grants first, a group resolves to its first enabled member, otherwise the tenant's first enabled admin.
+- PDF text is Windows-1252 only.
+- The manifest's root is named `root`; `file.pages` is on PDFs only; blobs are shared between identical files.
+- fake-workspace: full delta in creation order; 410 `resyncRequired` on stale tokens; sharing changes recorded for every inheriting descendant; control changes attributed to an application identity.

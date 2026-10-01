@@ -95,6 +95,15 @@ def start_services(root: Path, names: list[str]) -> None:
     compose(root, "start", *names)
 
 
+def recreate_service(root: Path, name: str) -> None:
+    """A new container for `name`, its dependencies left alone; returns once it's healthy."""
+    compose(root, "up", "--detach", "--wait", "--force-recreate", "--no-deps", name)
+
+
+def remove_service(root: Path, name: str) -> None:
+    compose(root, "rm", "--force", "--stop", name)
+
+
 async def terminate_open_workflows(address: str, namespace: str, reason: str) -> list[str]:
     """Terminate every running workflow in the namespace. Raises TemporalUnreachableError if
     Temporal isn't there to connect to; any failure after connecting propagates."""

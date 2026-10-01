@@ -53,6 +53,22 @@ def test_only_running_slot_services_are_stopped_and_started(
     assert calls[-2:] == [("stop", "api", "relay"), ("start", "api", "relay")]
 
 
+def test_recreate_waits_and_leaves_dependencies_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def compose(root: Path, *args: str, **kwargs: object) -> str:
+        calls.append(args)
+        return ""
+
+    monkeypatch.setattr(services, "compose", compose)
+    services.recreate_service(Path("/repo"), "keycloak")
+    services.remove_service(Path("/repo"), "keycloak")
+    assert calls == [
+        ("up", "--detach", "--wait", "--force-recreate", "--no-deps", "keycloak"),
+        ("rm", "--force", "--stop", "keycloak"),
+    ]
+
+
 def test_compose_needs_the_compose_file(tmp_path: Path) -> None:
     with pytest.raises(ExError, match=r"infra/compose\.yaml is missing|docker is not on PATH"):
         services.compose_command(tmp_path, "ps")

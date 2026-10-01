@@ -94,6 +94,8 @@ version = "0.0.0"
 source = { editable = "scripts/ex" }
 dependencies = [
     { name = "ac-core" },
+    { name = "ac-fixtures" },
+    { name = "ac-models" },
     { name = "httpx" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pytest" },
@@ -105,6 +107,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ac-core", editable = "packages/core" },
+    { name = "ac-fixtures", editable = "packages/fixtures" },
+    { name = "ac-models", editable = "packages/models" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
     { name = "pytest", specifier = ">=9.1.1" },

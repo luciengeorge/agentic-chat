@@ -6,7 +6,7 @@ would pay for them at start-up.
 
 import tempfile
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,25 +14,33 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+from ac_ex import services
 from ac_ex.errors import ExError
 
 if TYPE_CHECKING:
     from ac_fixtures.corpus.build import BuildReport
 
 WORKSPACE_URL = "http://localhost:8100"
-KEYCLOAK_RECREATE = (
-    "Keycloak is running and imports realms only when it's created; "
-    "recreate it to load the new exports"
-)
 
 
 @dataclass(frozen=True)
 class Endpoints:
     workspace: str = WORKSPACE_URL
-    keycloak: str | None = None  # default: AC_KEYCLOAK_URL
 
 
 ENDPOINTS = Endpoints()
+
+
+@dataclass(frozen=True)
+class Stack:
+    """The Compose calls that load new realm exports; the tests swap in fakes."""
+
+    status: Callable[[Path], list[services.ServiceStatus]] = services.status
+    recreate: Callable[[Path, str], None] = services.recreate_service
+    remove: Callable[[Path, str], None] = services.remove_service
+
+
+STACK = Stack()
 
 
 def run(root: Path, *, clean: bool) -> tuple[dict[str, object], str, bool]:
@@ -40,12 +48,11 @@ def run(root: Path, *, clean: bool) -> tuple[dict[str, object], str, bool]:
     changed, report = _build(
         root, root / "fixtures" / "directory", root / "fixtures" / "corpus" / "build", clean=clean
     )
-    recreate = changed and _reachable(_keycloak_url(ENDPOINTS))
-    keycloak = KEYCLOAK_RECREATE if recreate else None
-    reset, detail, ok = _reset_workspace(ENDPOINTS.workspace)
+    recreated, keycloak, realms_ok = _load_realms(root, STACK) if changed else ([], None, True)
+    reset, detail, reset_ok = _reset_workspace(ENDPOINTS.workspace)
     files = [str(path.relative_to(root)) for path in changed]
     payload: dict[str, object] = {
-        "directory": {"changed": files, "detail": keycloak},
+        "directory": {"changed": files, "recreated": recreated, "detail": keycloak},
         "corpus": report.to_json(),
         "workspace": {"reset": reset, "detail": detail},
         "duration_s": round(time.perf_counter() - started, 3),
@@ -58,7 +65,7 @@ def run(root: Path, *, clean: bool) -> tuple[dict[str, object], str, bool]:
         f"manifest {report.manifest_sha256[:12]}",
         f"workspace: {detail}",
     ]
-    return payload, "\n".join(lines), ok
+    return payload, "\n".join(lines), realms_ok and reset_ok
 
 
 def verify(root: Path) -> tuple[dict[str, object], str, bool]:
@@ -139,6 +146,38 @@ def _differences(first: Path, second: Path) -> list[str]:
     return out
 
 
+def _load_realms(root: Path, stack: Stack) -> tuple[list[str], str | None, bool]:
+    """(recreated services, detail, ok) after the realm exports changed.
+
+    Keycloak imports realms only when its container is created, so a running one is recreated and
+    a stopped one removed (`ex up` would start it again on the old realms). A new container signs
+    with new keys, and Envoy would answer 401 until its JWKS cache expired, so a running Envoy is
+    recreated after it: it fetches the keys before it opens its listener.
+    """
+    try:
+        found = {s.name: s for s in stack.status(root)}
+    except ExError:  # no Docker or no stack: `ex up` creates Keycloak with the new exports
+        return [], None, True
+    keycloak = found.get("keycloak")
+    if keycloak is None:
+        return [], None, True
+    envoy = found.get("envoy")
+    recreated: list[str] = []
+    try:
+        if keycloak.state != "running":
+            stack.remove(root, "keycloak")
+            return [], "removed the stopped Keycloak, so `ex up` imports the new exports", True
+        stack.recreate(root, "keycloak")
+        recreated.append("keycloak")
+        if envoy is not None and envoy.state == "running":
+            stack.recreate(root, "envoy")
+            recreated.append("envoy")
+    except ExError as exc:
+        output = f": {str(exc.detail).strip()[-300:]}" if exc.detail else ""
+        return recreated, f"couldn't reload the realms: {exc.message}{output}", False
+    return recreated, f"recreated {' and '.join(recreated)} to load the new realm exports", True
+
+
 def _reset_workspace(url: str) -> tuple[bool, str, bool]:
     """(reset, detail, ok). Not running is fine; running and refusing the reset is not."""
     try:
@@ -154,22 +193,3 @@ def _reset_workspace(url: str) -> tuple[bool, str, bool]:
         f"fake-workspace refused the reset: HTTP {response.status_code} {response.text[:200]}",
         False,
     )
-
-
-def _keycloak_url(endpoints: Endpoints) -> str:
-    if endpoints.keycloak is not None:
-        return endpoints.keycloak
-    from ac_core.settings import get_settings
-
-    return get_settings().keycloak_url
-
-
-def _reachable(url: str) -> bool:
-    """Something listens at `url`, even if it's too busy to answer in time."""
-    try:
-        httpx.get(url, timeout=2.0)
-    except (httpx.ConnectError, httpx.ConnectTimeout):
-        return False
-    except httpx.TransportError:
-        return True
-    return True

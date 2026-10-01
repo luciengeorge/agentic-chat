@@ -1,5 +1,7 @@
 import asyncio
+import json
 import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import httpx
@@ -15,6 +17,59 @@ FORM = (
     f'action="{KC}/realms/kestrel/login-actions/authenticate?session_code=a&amp;execution=b">'
     "</form></html>"
 )
+MEMO_ID = "11111111-1111-5111-8111-111111111111"
+DRIVE = f"{E.workspace}/v1.0/sites/kestrel/drive"
+
+
+@dataclass
+class Drive:
+    """Kestrel's site on a fake fake-workspace."""
+
+    children: list[str] = field(default_factory=lambda: ["Company", "Exec", "Finance"])
+    grantees: list[dict[str, object]] = field(
+        default_factory=lambda: [{"group": {"id": "g1", "displayName": "/Kestrel/Exec"}}]
+    )
+    harbour_status: int = 403
+    loaded: bool = True
+    honour_top: bool = True
+
+    def handle(self, request: httpx.Request) -> httpx.Response:
+        if not self.loaded:
+            return httpx.Response(503, json={"error": {"code": "serviceNotReady"}})
+        token = request.headers.get("authorization")
+        if token == "Bearer dev-workspace-harbour":
+            return httpx.Response(self.harbour_status, json={"error": {"code": "accessDenied"}})
+        assert token == "Bearer dev-workspace-kestrel"
+        params = request.url.params
+        match request.url.path.removeprefix("/v1.0/sites/kestrel/drive"):
+            case "/root":
+                return httpx.Response(200, json={"folder": {"childCount": len(self.children)}})
+            case "/items/root/children":
+                top = int(params["$top"]) if self.honour_top else 20
+                start = int(params.get("$skiptoken", "0"))
+                body: dict[str, object] = {
+                    "value": [{"name": n} for n in self.children[start : start + top]]
+                }
+                if start + top < len(self.children):
+                    body["@odata.nextLink"] = (
+                        f"{DRIVE}/items/root/children?$top={top}&$skiptoken={start + top}"
+                    )
+                return httpx.Response(200, json=body)
+            case path if path == f"/items/{MEMO_ID}/permissions":
+                grants = [{"roles": ["write"], "grantedToV2": g} for g in self.grantees]
+                return httpx.Response(200, json={"value": grants})
+            case _:
+                return httpx.Response(404)
+
+
+def write_manifest(path: Path, memo_traps: tuple[str, ...] = ("acl-leak",)) -> Path:
+    items = [
+        {"id": "r", "path": "/", "kind": "folder"},
+        {"id": MEMO_ID, "path": "/Exec/Heron.pdf", "name": "Heron.pdf", "traps": list(memo_traps)},
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"version": 1, "sites": {"kestrel": {"items": items}}}))
+    return path
 
 
 def stack(
@@ -24,8 +79,10 @@ def stack(
     set_cookie: bool = True,
     envoy_me: int = 401,
     sections: tuple[str, ...] = ("00",),
+    drive: Drive | None = None,
 ) -> httpx.MockTransport:
-    """A fake BFF, Keycloak, Envoy and workshop app."""
+    """A fake BFF, Keycloak, Envoy, workshop app and fake-workspace."""
+    workspace = drive or Drive()
 
     def handler(request: httpx.Request) -> httpx.Response:
         url = request.url
@@ -62,6 +119,8 @@ def stack(
                 return httpx.Response(envoy_me)
             case ("GET", E.workshop, "/api/steps"):
                 return httpx.Response(200, json={"sections": [{"id": s} for s in sections]})
+            case ("GET", E.workspace, _):
+                return workspace.handle(request)
             case _:
                 return httpx.Response(404)
 
@@ -182,7 +241,50 @@ async def test_run_check_captures_any_exception() -> None:
     assert (result.name, result.passed, result.detail) == ("boom", False, "kaput")
 
 
+async def test_workspace(tmp_path: Path) -> None:
+    manifest = write_manifest(tmp_path / "manifest.json")
+    async with client(stack()) as c:
+        detail = await smoke.check_workspace(c, E, manifest)
+    assert detail == "3 root children over 2 pages; Heron.pdf: /Kestrel/Exec only"
+
+
+@pytest.mark.parametrize(
+    ("drive", "error"),
+    [
+        (Drive(loaded=False), "no corpus loaded; run `ex fixtures`"),
+        (Drive(honour_top=False), r"a \$top=2 page of the root has 3 children"),
+        (
+            Drive(
+                grantees=[
+                    {"group": {"id": "g1", "displayName": "/Kestrel/Exec"}},
+                    {"user": {"id": "u1", "displayName": "Tom Whitfield"}},
+                ]
+            ),
+            "shared with .*Tom Whitfield.*, expected only /Kestrel/Exec",
+        ),
+        (Drive(grantees=[]), r"shared with \[\], expected only /Kestrel/Exec"),
+        (Drive(harbour_status=200), "Harbour's token on Kestrel's site got HTTP 200, not 403"),
+    ],
+    ids=["no corpus", "top ignored", "extra grantee", "no grantee", "harbour allowed"],
+)
+async def test_workspace_failures(tmp_path: Path, drive: Drive, error: str) -> None:
+    manifest = write_manifest(tmp_path / "manifest.json")
+    async with client(stack(drive=drive)) as c:
+        with pytest.raises(SmokeError, match=error):
+            await smoke.check_workspace(c, E, manifest)
+
+
+async def test_workspace_needs_the_manifest_and_its_memo(tmp_path: Path) -> None:
+    async with client(stack()) as c:
+        with pytest.raises(SmokeError, match=r"manifest\.json is missing; run `ex fixtures`"):
+            await smoke.check_workspace(c, E, tmp_path / "manifest.json")
+        manifest = write_manifest(tmp_path / "manifest.json", memo_traps=())
+        with pytest.raises(SmokeError, match="0 acl-leak documents, expected 1"):
+            await smoke.check_workspace(c, E, manifest)
+
+
 async def test_all_checks_pass_against_a_fake_stack(tmp_path: Path) -> None:
+    write_manifest(tmp_path / smoke.MANIFEST)
     results = await smoke.Smoke(
         root=tmp_path, transport=stack(), statuses=healthy, hello=hello("hello smoke")
     ).run()
@@ -193,6 +295,7 @@ async def test_all_checks_pass_against_a_fake_stack(tmp_path: Path) -> None:
         "outbox -> hello workflow",
         "fake model",
         "workshop lists section 00",
+        "fake-workspace pages and shares",
     ]
     assert all(r.passed for r in results), results
 
@@ -203,5 +306,6 @@ async def test_checks_fail_independently(tmp_path: Path) -> None:
         transport=stack(envoy_me=200),
         statuses=healthy,
         hello=hello("hello smoke"),
+        manifest=write_manifest(tmp_path / "manifest.json"),
     ).run()
-    assert [r.passed for r in results] == [True, True, False, True, True, True]
+    assert [r.passed for r in results] == [True, True, False, True, True, True, True]
