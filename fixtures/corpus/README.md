@@ -80,7 +80,7 @@ Three files override their folder's sharing. Everything else inherits.
 
 **Facts deep in the filing.** The filing is generated from seed 2026, page by page. Its source adds hand-written facts to the foot of pages 130, 328, 845, 883, 2,417, 2,468 and 2,861 (its `## Page N` sections), each agreeing with the generated figures on its page. Questions about them test that ingestion reached the whole document and that citations carry the right page. Every schedule's totals add up to the penny, and the Q2 2026 rows of the complaints register (Schedule 7) give the topic mix in the Q2 compliance report.
 
-**Markdown documents have no pages.** Only PDFs carry `file.pages` in the manifest; md and docx files don't. `chunks.page_start` and `page_end` are NOT NULL, so M1's chunker must use page 1 for md documents.
+**Markdown documents have no pages.** Only PDFs carry `file.pages` in the manifest; md and docx files don't. `chunks.page_start` and `page_end` are both set or both null (a CHECK enforces it), so md and docx chunks leave them null and cite by heading instead.
 
 ## Notes for section 02 (the connector)
 
