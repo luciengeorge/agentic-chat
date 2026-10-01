@@ -346,13 +346,6 @@ def test_up_stops_before_compose_when_a_port_is_taken(monkeypatch: pytest.Monkey
     assert composed == []
 
 
-def test_fixtures_is_m0b() -> None:
-    assert ex("fixtures", ok=False) == {
-        "error": "ex fixtures is not implemented until M0b",
-        "detail": {"milestone": "M0b"},
-    }
-
-
 def test_unknown_step_is_a_json_error() -> None:
     out = ex("start", "42.1", ok=False)
     assert out == {"error": "no step 42.1", "detail": "run `ex list --all` to see every step"}

@@ -1,71 +1,1014 @@
 {
-  "realm": "kestrel",
-  "displayName": "Kestrel",
-  "enabled": true,
-  "roles": {
-    "realm": [
-      { "name": "admin", "description": "Workspace administrator" },
-      { "name": "employee", "description": "Every staff member" }
-    ]
-  },
   "clients": [
     {
-      "clientId": "web-bff",
-      "name": "Web BFF",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "dev-web-bff-secret",
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:3000/auth/callback"],
-      "webOrigins": ["http://localhost:3000"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:3000/"
       },
+      "clientAuthenticatorType": "client-secret",
+      "clientId": "web-bff",
+      "directAccessGrantsEnabled": false,
+      "enabled": true,
+      "implicitFlowEnabled": false,
+      "name": "Web BFF",
+      "protocol": "openid-connect",
       "protocolMappers": [
         {
-          "name": "audience-agentic-api",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.custom.audience": "agentic-api",
             "access.token.claim": "true",
             "id.token.claim": "false",
+            "included.custom.audience": "agentic-api",
             "introspection.token.claim": "true"
-          }
+          },
+          "name": "audience-agentic-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper"
         },
         {
-          "name": "tenant",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
           "config": {
+            "access.token.claim": "true",
             "claim.name": "tenant",
             "claim.value": "kestrel",
-            "jsonType.label": "String",
-            "access.token.claim": "true",
             "id.token.claim": "true",
-            "userinfo.token.claim": "true",
-            "introspection.token.claim": "true"
-          }
+            "introspection.token.claim": "true",
+            "jsonType.label": "String",
+            "userinfo.token.claim": "true"
+          },
+          "name": "tenant",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper"
+        }
+      ],
+      "publicClient": false,
+      "redirectUris": [
+        "http://localhost:3000/auth/callback"
+      ],
+      "secret": "dev-web-bff-secret",
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": true,
+      "webOrigins": [
+        "http://localhost:3000"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"displayName\": \"${username}\", \"multivalued\": false, \"name\": \"username\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255, \"min\": 3}, \"up-username-not-idn-homograph\": {}, \"username-prohibited-characters\": {}}}, {\"displayName\": \"${email}\", \"multivalued\": false, \"name\": \"email\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"required\": {\"roles\": [\"user\"]}, \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}}, {\"displayName\": \"${firstName}\", \"multivalued\": false, \"name\": \"firstName\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"required\": {\"roles\": [\"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"displayName\": \"${lastName}\", \"multivalued\": false, \"name\": \"lastName\", \"permissions\": {\"edit\": [\"admin\", \"user\"], \"view\": [\"admin\", \"user\"]}, \"required\": {\"roles\": [\"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"displayName\": \"Job title\", \"multivalued\": false, \"name\": \"title\", \"permissions\": {\"edit\": [\"admin\"], \"view\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}}}], \"groups\": [{\"displayDescription\": \"Attributes, which refer to user metadata\", \"displayHeader\": \"User metadata\", \"name\": \"user-metadata\"}]}"
+          ]
+        },
+        "providerId": "declarative-user-profile",
+        "subComponents": {}
+      }
+    ]
+  },
+  "displayName": "Kestrel Pay",
+  "enabled": true,
+  "groups": [
+    {
+      "id": "e9737a02-5d27-5fb5-8c02-aa0cc3c45cc0",
+      "name": "Kestrel",
+      "path": "/Kestrel",
+      "subGroups": [
+        {
+          "id": "0c0199be-c8c7-5561-a0d7-6c1424e5565b",
+          "name": "Exec",
+          "path": "/Kestrel/Exec",
+          "subGroups": []
+        },
+        {
+          "id": "667f0e2a-5bdd-5096-9fc7-9e5264d4cd18",
+          "name": "Finance",
+          "path": "/Kestrel/Finance",
+          "subGroups": [
+            {
+              "id": "26d275a1-b769-5d72-b7c2-8377cc12860f",
+              "name": "AP",
+              "path": "/Kestrel/Finance/AP",
+              "subGroups": []
+            },
+            {
+              "id": "ec526e44-230c-506d-ba92-80a4731d9986",
+              "name": "FP&A",
+              "path": "/Kestrel/Finance/FP&A",
+              "subGroups": []
+            }
+          ]
+        },
+        {
+          "id": "37bf0d8f-622f-521f-8ef7-81e72ba61b4d",
+          "name": "Engineering",
+          "path": "/Kestrel/Engineering",
+          "subGroups": [
+            {
+              "id": "430c70a4-13a5-5d63-82bf-520cd021eb4c",
+              "name": "Platform",
+              "path": "/Kestrel/Engineering/Platform",
+              "subGroups": []
+            },
+            {
+              "id": "dbcac778-7d58-57c6-bccb-024650b82cfb",
+              "name": "Payments",
+              "path": "/Kestrel/Engineering/Payments",
+              "subGroups": []
+            }
+          ]
+        },
+        {
+          "id": "6ed20b9a-1809-5e8e-9f85-14c9631c7d9e",
+          "name": "HR",
+          "path": "/Kestrel/HR",
+          "subGroups": []
+        },
+        {
+          "id": "606f6c2c-8054-55fa-b358-2b2b66166ece",
+          "name": "Legal",
+          "path": "/Kestrel/Legal",
+          "subGroups": []
+        },
+        {
+          "id": "cb01003d-94c5-5b78-bb05-ecdd2102f5cb",
+          "name": "Sales",
+          "path": "/Kestrel/Sales",
+          "subGroups": []
         }
       ]
     }
   ],
+  "realm": "kestrel",
+  "roles": {
+    "realm": [
+      {
+        "description": "Workspace administrator",
+        "name": "admin"
+      },
+      {
+        "description": "Every staff member",
+        "name": "employee"
+      }
+    ]
+  },
   "users": [
     {
-      "username": "smoke.kestrel",
-      "enabled": true,
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "smoke-password"
+        }
+      ],
       "email": "smoke.kestrel@kestrel.example",
       "emailVerified": true,
+      "enabled": true,
       "firstName": "Smoke",
       "lastName": "Kestrel",
-      "credentials": [{ "type": "password", "value": "smoke-password", "temporary": false }],
-      "realmRoles": ["employee"]
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "smoke.kestrel"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Chief Executive Officer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "amara.okafor@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Amara",
+      "groups": [
+        "/Kestrel/Exec"
+      ],
+      "id": "cfbd0e53-10cf-531a-866f-0bf102d602e2",
+      "lastName": "Okafor",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "amara.okafor"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Chief Financial Officer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "daniel.reyes@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Daniel",
+      "groups": [
+        "/Kestrel/Exec",
+        "/Kestrel/Finance"
+      ],
+      "id": "cc04b66d-ace4-5327-8590-8d0a41fca0fc",
+      "lastName": "Reyes",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "daniel.reyes"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Chief Technology Officer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "priya.nair@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Priya",
+      "groups": [
+        "/Kestrel/Exec",
+        "/Kestrel/Engineering"
+      ],
+      "id": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+      "lastName": "Nair",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "priya.nair"
+    },
+    {
+      "attributes": {
+        "title": [
+          "General Counsel"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "helen.marsh@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Helen",
+      "groups": [
+        "/Kestrel/Exec",
+        "/Kestrel/Legal"
+      ],
+      "id": "922e38e6-45e0-5086-a7ff-a3546614576b",
+      "lastName": "Marsh",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "helen.marsh"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Financial Controller"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "tom.whitfield@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Tom",
+      "groups": [
+        "/Kestrel/Finance"
+      ],
+      "id": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+      "lastName": "Whitfield",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "tom.whitfield"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Finance Analyst"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "mia.chen@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Mia",
+      "groups": [
+        "/Kestrel/Finance/FP&A"
+      ],
+      "id": "8daad9b0-d47e-5d0b-b27a-4d344e4876b3",
+      "lastName": "Chen",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "mia.chen"
+    },
+    {
+      "attributes": {
+        "title": [
+          "FP&A Manager"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "jonas.berg@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Jonas",
+      "groups": [
+        "/Kestrel/Finance/FP&A"
+      ],
+      "id": "680dda86-986a-5703-9a3a-ffc3ed29b1c7",
+      "lastName": "Berg",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "jonas.berg"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Data Analyst"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "chris.dunn@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Chris",
+      "groups": [
+        "/Kestrel/Finance/FP&A"
+      ],
+      "id": "be5074cf-130f-50d4-aac8-878c6993b81f",
+      "lastName": "Dunn",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "chris.dunn"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Accounts Payable Specialist"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "grace.adeyemi@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Grace",
+      "groups": [
+        "/Kestrel/Finance/AP"
+      ],
+      "id": "50e2b299-7468-577d-a8e3-ed6e5bdb9f0f",
+      "lastName": "Adeyemi",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "grace.adeyemi"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Accounts Payable Clerk"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "luis.ortega@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Luis",
+      "groups": [
+        "/Kestrel/Finance/AP"
+      ],
+      "id": "124ed148-b5a7-5274-a79c-4ba807a82fd8",
+      "lastName": "Ortega",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "luis.ortega"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Finance Intern"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "leo.martin@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Leo",
+      "groups": [
+        "/Kestrel/Finance/AP"
+      ],
+      "id": "0ae8fa04-8d89-5fd9-b3f0-17a15e8a72f6",
+      "lastName": "Martin",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "leo.martin"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Platform Engineering Lead"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "nadia.kowalski@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Nadia",
+      "groups": [
+        "/Kestrel/Engineering/Platform"
+      ],
+      "id": "784278c5-091c-599d-ac11-d401c2355cf4",
+      "lastName": "Kowalski",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "nadia.kowalski"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Platform Engineer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "sam.patel@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Sam",
+      "groups": [
+        "/Kestrel/Engineering/Platform"
+      ],
+      "id": "cdc93fa3-cbef-5ee9-b1c7-2d154f4694f7",
+      "lastName": "Patel",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "sam.patel"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Site Reliability Engineer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "kofi.mensah@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Kofi",
+      "groups": [
+        "/Kestrel/Engineering/Platform"
+      ],
+      "id": "e5397a73-54e0-5ceb-8234-5bf1c4acf383",
+      "lastName": "Mensah",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "kofi.mensah"
+    },
+    {
+      "attributes": {
+        "title": [
+          "IT Administrator"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "tariq.aziz@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Tariq",
+      "groups": [
+        "/Kestrel/Engineering/Platform"
+      ],
+      "id": "f59f93fa-02ac-559f-bc9d-22462b8945f3",
+      "lastName": "Aziz",
+      "realmRoles": [
+        "employee",
+        "admin"
+      ],
+      "username": "tariq.aziz"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Payments Engineering Manager"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "emily.tran@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Emily",
+      "groups": [
+        "/Kestrel/Engineering/Payments"
+      ],
+      "id": "951d3b25-8ed7-51e8-b1b8-764efaebe9a5",
+      "lastName": "Tran",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "emily.tran"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Payments Engineer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "omar.haddad@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Omar",
+      "groups": [
+        "/Kestrel/Engineering/Payments"
+      ],
+      "id": "7380299f-ea90-590b-a973-2c136309aa46",
+      "lastName": "Haddad",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "omar.haddad"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Payments Product Manager"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "julia.novak@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Julia",
+      "groups": [
+        "/Kestrel/Engineering/Payments"
+      ],
+      "id": "851b31df-0166-52b7-8fdc-88696aee2a8b",
+      "lastName": "Novak",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "julia.novak"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Security Engineer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "lena.fischer@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Lena",
+      "groups": [
+        "/Kestrel/Engineering"
+      ],
+      "id": "3bdcb780-3a59-584b-91a7-cdbb0cca1981",
+      "lastName": "Fischer",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "lena.fischer"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Head of People"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "marco.bianchi@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Marco",
+      "groups": [
+        "/Kestrel/HR"
+      ],
+      "id": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+      "lastName": "Bianchi",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "marco.bianchi"
+    },
+    {
+      "attributes": {
+        "title": [
+          "HR Business Partner"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "rachel.obi@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Rachel",
+      "groups": [
+        "/Kestrel/HR"
+      ],
+      "id": "1dfe5421-8791-54f9-9360-ec597a009d20",
+      "lastName": "Obi",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "rachel.obi"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Recruiter"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "aisha.rahman@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Aisha",
+      "groups": [
+        "/Kestrel/HR"
+      ],
+      "id": "d276db83-6258-56e2-9fd9-a214a012b73f",
+      "lastName": "Rahman",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "aisha.rahman"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Commercial Counsel"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "ben.carter@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Ben",
+      "groups": [
+        "/Kestrel/Legal"
+      ],
+      "id": "c630d2ef-1c5e-5561-b986-c5fddd4391ac",
+      "lastName": "Carter",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "ben.carter"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Compliance Officer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "sofia.lindqvist@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Sofia",
+      "groups": [
+        "/Kestrel/Legal"
+      ],
+      "id": "50433ab3-3b93-5e12-aaa1-d614125b8dd1",
+      "lastName": "Lindqvist",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "sofia.lindqvist"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Paralegal"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "maya.levi@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Maya",
+      "groups": [
+        "/Kestrel/Legal"
+      ],
+      "id": "eb87f844-bfaa-5862-a168-a728853ffd57",
+      "lastName": "Levi",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "maya.levi"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Head of Sales"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "jake.morrison@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Jake",
+      "groups": [
+        "/Kestrel/Sales"
+      ],
+      "id": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+      "lastName": "Morrison",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "jake.morrison"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Account Executive"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "chloe.dubois@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Chloe",
+      "groups": [
+        "/Kestrel/Sales"
+      ],
+      "id": "78de2df3-1ff5-5148-9d61-14e593ee4438",
+      "lastName": "Dubois",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "chloe.dubois"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Sales Engineer"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "ravi.shah@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Ravi",
+      "groups": [
+        "/Kestrel/Sales"
+      ],
+      "id": "9ed52de6-e2c1-5455-bdf2-a4a0a74506ae",
+      "lastName": "Shah",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "ravi.shah"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Customer Success Manager"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "hannah.kim@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Hannah",
+      "groups": [
+        "/Kestrel/Sales"
+      ],
+      "id": "26350b13-8d4f-561f-8f85-270924feb3cb",
+      "lastName": "Kim",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "hannah.kim"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Office Manager"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "ella.brooks@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Ella",
+      "groups": [
+        "/Kestrel"
+      ],
+      "id": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+      "lastName": "Brooks",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "ella.brooks"
+    },
+    {
+      "attributes": {
+        "title": [
+          "Former FP&A Analyst"
+        ]
+      },
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "dev-password"
+        }
+      ],
+      "email": "peter.hall@kestrelpay.example",
+      "emailVerified": true,
+      "enabled": false,
+      "firstName": "Peter",
+      "groups": [
+        "/Kestrel/Finance/FP&A"
+      ],
+      "id": "92f42a42-ae8a-57ae-b0b9-3053863f4409",
+      "lastName": "Hall",
+      "realmRoles": [
+        "employee"
+      ],
+      "username": "peter.hall"
     }
   ]
 }

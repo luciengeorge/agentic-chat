@@ -12,7 +12,7 @@ from typing import Annotated, NoReturn, cast
 import typer
 
 from ac_core.slots import SlotError, find_repo_root
-from ac_ex import catalog, gate, services, smoke, state, testing, workspace
+from ac_ex import catalog, fixtures, gate, services, smoke, state, testing, workspace
 from ac_ex.catalog import Step
 from ac_ex.errors import ExError
 
@@ -382,10 +382,26 @@ def record(as_json: JsonFlag = False) -> None:
     _run(as_json, body)
 
 
-@app.command()
-def fixtures(as_json: JsonFlag = False) -> None:
-    """Build the corpus and directory fixtures."""
-    _fail(as_json, "ex fixtures is not implemented until M0b", detail={"milestone": "M0b"})
+@app.command("fixtures")
+def fixtures_command(
+    as_json: JsonFlag = False,
+    clean: Annotated[
+        bool, typer.Option("--clean", help="Delete the corpus build and render it all again.")
+    ] = False,
+    verify: Annotated[
+        bool,
+        typer.Option("--verify", help="Build twice into temporary directories; fail on any diff."),
+    ] = False,
+) -> None:
+    """Regenerate the realm exports, build the corpus, and reset fake-workspace if it's up."""
+
+    def body() -> tuple[object, str, bool]:
+        root = _root()
+        if verify and clean:
+            raise ExError("--verify builds in temporary directories, so --clean has no effect")
+        return fixtures.verify(root) if verify else fixtures.run(root, clean=clean)
+
+    _run(as_json, body)
 
 
 @app.command("gate")
