@@ -1,39 +1,21 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-*.egg-info/
-dist/
-build/
-
-# Node
-node_modules/
-.pnpm-store/
-.output/
-.vinxi/
-.nitro/
-.tanstack/
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
 *.tsbuildinfo
-coverage/
+
+# Secrets
+*.local
+.env
+
+# Build and framework output
+.nitro
+.tanstack
+.output
+.vinxi
+.vercel
 
 # Workshop state
 playground/
 .ex/
-
-# Secrets
-.env
-.env.*
-!.env.example
-
-# Editors and OS
-.DS_Store
-.idea/
-.vscode/
-*.swp
-
-# built by `ex fixtures`
-fixtures/corpus/build/

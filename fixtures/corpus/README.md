@@ -1,29 +1,33 @@
 # The corpus
 
-The documents the workshop searches: 40 for Kestrel Pay and 6 for Harbour Health. Each one is a markdown source in `sources/<tenant>/<id>.md` (frontmatter, then the body). `ex fixtures` renders them into PDFs, scans, handwriting, Word files and plain markdown, and fake-workspace serves the result as each tenant's SharePoint. `fixtures/world.yaml` holds the people, groups, folders and facts every document agrees with; `docs/m0b-contract.md` has the rules.
+The documents the workshop searches: 40 for Kestrel Pay and 6 for Harbour Health. Each one is a markdown source in `sources/<tenant>/<id>.md` (frontmatter, then the body). The renderer at the `python-m0b` tag turned them into PDFs, scans, handwriting, Word files and plain markdown, and the result is committed in `build/`. fake-workspace serves it as each tenant's SharePoint. `fixtures/world.yaml` holds the people, groups, folders and facts every document agrees with; `docs/m0b-contract.md` has the rules.
 
 ## Build
 
+The built corpus is committed, so nothing here renders it. The renderer is retired and lives on at the `python-m0b` tag. The sources stay as the readable truth. To change a document, edit its source here (and `world.yaml`, if a fact moves), render at the tag, then copy the build back:
+
 ```sh
-uv run ex fixtures            # realm exports + corpus, incremental; reloads what's running
-uv run ex fixtures --clean    # throw the build away and render everything again
+git worktree add ../agentic-chat-m0b python-m0b
+/bin/cp -f fixtures/corpus/sources/<tenant>/<id>.md ../agentic-chat-m0b/fixtures/corpus/sources/<tenant>/
+cd ../agentic-chat-m0b
+uv sync
+uv run ex fixtures --clean    # render everything, in about 20 seconds
 uv run ex fixtures --verify   # build twice in temporary directories; fail if a byte differs
-uv run python -m ac_fixtures.sources   # check the sources against world.yaml, without rendering
+cd -
+rm -rf fixtures/corpus/build
+/bin/cp -R ../agentic-chat-m0b/fixtures/corpus/build fixtures/corpus/build
+rm fixtures/corpus/build/inputs.json   # the renderer's incremental-build record; not committed
+git worktree remove --force ../agentic-chat-m0b
 ```
 
-A clean build takes about 20 seconds. After that, a document renders again only when its source, the world or the renderer changed; `build/inputs.json` records the input hash of each one.
+The output, in `build/` (about 14 MB):
 
-`ex fixtures` also regenerates `fixtures/directory/*-realm.json`. When an export changed and Keycloak is running, it recreates Keycloak (which imports realms only when its container is created), then Envoy (so it fetches the new signing keys instead of answering 401 until its cache expires). If fake-workspace is up, it calls `POST /_control/reset` so the service loads the new build.
-
-The output, in `build/` (git-ignored):
-
-- `manifest.json`: every folder and file per site, with ids, dates, authors and sharing, and each site's users and groups by id. fake-workspace reads it from `AC_CORPUS_DIR`, which defaults to this directory; Compose points it at the `/repo` mount.
+- `manifest.json`: every folder and file per site, with ids, dates, authors and sharing, and each site's users and groups by id. fake-workspace reads it from `AC_CORPUS_DIR`, which defaults to this directory.
 - `blobs/<sha256>.<ext>`: the rendered files. They're content-addressed, so two documents with the same bytes would share one blob.
-- `inputs.json`: the input hash per document, for incremental builds.
 
-`fonts/` holds the vendored handwriting font (Kalam, OFL; the licence is next to it). The other PDFs use the standard Helvetica, which sets only Windows-1252 characters: the build fails on anything else (an arrow, say), naming the document and the character.
+The handwriting is set in Kalam, an OFL font vendored at the tag, and rasterised with no text layer. The other PDFs use the standard Helvetica, which sets only Windows-1252 characters: the build fails on anything else (an arrow, say), naming the document and the character.
 
-**Identifiers are whole in the text layer.** No table column is set narrower than its longest word, so codes (`KPC-`, `KP-`, SKUs, `INC-`, `OF-`, `CMP-`, `SG-`, the FRN) and people's names never break mid-token. A table whose words don't fit side by side sets in a smaller font, down to 7pt, and the build fails if it still doesn't fit. A name can still wrap at its space, as any text does. A test checks every PDF in the corpus.
+**Identifiers are whole in the text layer.** No table column is set narrower than its longest word, so codes (`KPC-`, `KP-`, SKUs, `INC-`, `OF-`, `CMP-`, `SG-`, the FRN) and people's names never break mid-token. A table whose words don't fit side by side sets in a smaller font, down to 7pt, and the build fails if it still doesn't fit. A name can still wrap at its space, as any text does. The renderer's tests at the tag check every PDF in the corpus.
 
 ## Traps
 
