@@ -5,9 +5,17 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
+import { workflow } from "workflow/vite";
+
+import { setWorkflowEsbuildPlugins } from "./src/workflows/esbuild-plugins.ts";
+import { learnSlots, learnSlotsEsbuild } from "./vite-plugins/learn-slots.ts";
+
+setWorkflowEsbuildPlugins([learnSlotsEsbuild({ root: import.meta.dirname })]);
 
 const config = defineConfig({
   plugins: [
+    workflow(),
+    learnSlots(),
     devtools(),
     nitro(),
     viteTsConfigPaths({ projects: ["./tsconfig.json"] }),

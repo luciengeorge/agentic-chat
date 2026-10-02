@@ -1,0 +1,42 @@
+Why this patch exists: Workflow bundles workflow and step files with its own esbuild (dist/base-builder.js),
+outside the app's Vite pipeline, in the dev server, in @workflow/vitest and in `pnpm build`. workflow 5.0.1 has no
+option to add esbuild plugins there, so `#learn/*` imports in steps ignored the course's active slots. This adds
+the plugins set on globalThis[Symbol.for("workflow.esbuildPlugins")] (see src/workflows/esbuild-plugins.ts) to
+the start of the steps and workflow builds. Drop it once @workflow/builders takes an esbuild plugins option.
+
+diff --git a/dist/base-builder.js b/dist/base-builder.js
+index f8179ce3f5ddf7724bb959a8d5c2ecc663942189..27b1be27b72dfacf723400cbcb4329e737082d83 100644
+--- a/dist/base-builder.js
++++ b/dist/base-builder.js
+@@ -36,6 +36,15 @@ const require = createRequire(import.meta.url);
+ const NODE_ESBUILD_SUPPORTED = {
+     'import-attributes': true,
+ };
++/**
++ * agentic-chat patch: esbuild plugins the app registers on
++ * `globalThis[Symbol.for('workflow.esbuildPlugins')]` run first in the steps
++ * and workflow bundles, which are built outside the app's Vite pipeline. The
++ * app uses it to resolve `#learn/*` through the active step's slots.
++ */
++function appEsbuildPlugins() {
++    return globalThis[Symbol.for('workflow.esbuildPlugins')] ?? [];
++}
+ /**
+  * Order the per-file manifest sections deterministically.
+  *
+@@ -860,6 +869,7 @@ export const __steps_registered = true;
+             // config option or the `WORKFLOW_SOURCEMAP` env var.
+             sourcemap: this.resolveSourcemap(this.defaultSourcemapMode),
+             plugins: [
++                ...appEsbuildPlugins(),
+                 // Handle pseudo-packages like 'server-only' and 'client-only' by providing
+                 // empty modules. Must run first to intercept these before other resolution.
+                 createPseudoPackagePlugin(),
+@@ -1035,6 +1045,7 @@ export const __steps_registered = true;
+                 '.cjs',
+             ],
+             plugins: [
++                ...appEsbuildPlugins(),
+                 // Handle pseudo-packages like 'server-only' and 'client-only' by providing
+                 // empty modules. Must run first to intercept these before other resolution.
+                 createPseudoPackagePlugin(),

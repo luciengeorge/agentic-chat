@@ -10,33 +10,141 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MeRouteImport } from './routes/me'
+import { Route as ApiMeRouteImport } from './routes/api/me'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiSpikeIndexRouteImport } from './routes/api/spike/index'
+import { Route as ApiSpikeResumeRouteImport } from './routes/api/spike/resume'
+import { Route as ApiSpikeRunIdIndexRouteImport } from './routes/api/spike/$runId/index'
+import { Route as ApiSpikeRunIdStreamRouteImport } from './routes/api/spike/$runId/stream'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMeRoute = ApiMeRouteImport.update({
+  id: '/api/me',
+  path: '/api/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSpikeIndexRoute = ApiSpikeIndexRouteImport.update({
+  id: '/api/spike/',
+  path: '/api/spike/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSpikeResumeRoute = ApiSpikeResumeRouteImport.update({
+  id: '/api/spike/resume',
+  path: '/api/spike/resume',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSpikeRunIdIndexRoute = ApiSpikeRunIdIndexRouteImport.update({
+  id: '/api/spike/$runId/',
+  path: '/api/spike/$runId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSpikeRunIdStreamRoute = ApiSpikeRunIdStreamRouteImport.update({
+  id: '/api/spike/$runId/stream',
+  path: '/api/spike/$runId/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/me': typeof MeRoute
+  '/api/me': typeof ApiMeRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/spike/resume': typeof ApiSpikeResumeRoute
+  '/api/spike/': typeof ApiSpikeIndexRoute
+  '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
+  '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/me': typeof MeRoute
+  '/api/me': typeof ApiMeRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/spike/resume': typeof ApiSpikeResumeRoute
+  '/api/spike': typeof ApiSpikeIndexRoute
+  '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
+  '/api/spike/$runId': typeof ApiSpikeRunIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/me': typeof MeRoute
+  '/api/me': typeof ApiMeRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/spike/resume': typeof ApiSpikeResumeRoute
+  '/api/spike/': typeof ApiSpikeIndexRoute
+  '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
+  '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/me'
+    | '/api/me'
+    | '/api/auth/$'
+    | '/api/spike/resume'
+    | '/api/spike/'
+    | '/api/spike/$runId/stream'
+    | '/api/spike/$runId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/me'
+    | '/api/me'
+    | '/api/auth/$'
+    | '/api/spike/resume'
+    | '/api/spike'
+    | '/api/spike/$runId/stream'
+    | '/api/spike/$runId'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/me'
+    | '/api/me'
+    | '/api/auth/$'
+    | '/api/spike/resume'
+    | '/api/spike/'
+    | '/api/spike/$runId/stream'
+    | '/api/spike/$runId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  MeRoute: typeof MeRoute
+  ApiMeRoute: typeof ApiMeRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiSpikeResumeRoute: typeof ApiSpikeResumeRoute
+  ApiSpikeIndexRoute: typeof ApiSpikeIndexRoute
+  ApiSpikeRunIdStreamRoute: typeof ApiSpikeRunIdStreamRoute
+  ApiSpikeRunIdIndexRoute: typeof ApiSpikeRunIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +156,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/me': {
+      id: '/api/me'
+      path: '/api/me'
+      fullPath: '/api/me'
+      preLoaderRoute: typeof ApiMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/spike/': {
+      id: '/api/spike/'
+      path: '/api/spike'
+      fullPath: '/api/spike/'
+      preLoaderRoute: typeof ApiSpikeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/spike/resume': {
+      id: '/api/spike/resume'
+      path: '/api/spike/resume'
+      fullPath: '/api/spike/resume'
+      preLoaderRoute: typeof ApiSpikeResumeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/spike/$runId/': {
+      id: '/api/spike/$runId/'
+      path: '/api/spike/$runId'
+      fullPath: '/api/spike/$runId/'
+      preLoaderRoute: typeof ApiSpikeRunIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/spike/$runId/stream': {
+      id: '/api/spike/$runId/stream'
+      path: '/api/spike/$runId/stream'
+      fullPath: '/api/spike/$runId/stream'
+      preLoaderRoute: typeof ApiSpikeRunIdStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  MeRoute: MeRoute,
+  ApiMeRoute: ApiMeRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiSpikeResumeRoute: ApiSpikeResumeRoute,
+  ApiSpikeIndexRoute: ApiSpikeIndexRoute,
+  ApiSpikeRunIdStreamRoute: ApiSpikeRunIdStreamRoute,
+  ApiSpikeRunIdIndexRoute: ApiSpikeRunIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
