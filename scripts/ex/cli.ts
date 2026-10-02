@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import type { Step } from "./catalog";
+import type { SmokeTargets } from "./smoke";
 import type { SlotSwitch, Switched } from "./switch";
 import type { Target } from "./testing";
 
@@ -12,15 +13,15 @@ import { SlotError } from "../../vite-plugins/learn-slots";
 import { findStep, loadCatalog } from "./catalog";
 import { ExError } from "./errors";
 import { runGate } from "./gate";
-import { compose, preflight, status } from "./services";
-import { runChecks, smokeChecks } from "./smoke";
+import { compose, up } from "./services";
+import { runChecks, smokeChecks, smokeTargets } from "./smoke";
 import { readState } from "./state";
 import { switchSlots } from "./switch";
 import { TARGETS, runStepTests } from "./testing";
 import { activate, diffPlayground, fillPlayground, hasChanges, markPassed, requireActive } from "./workspace";
 
 export type Io = { out(text: string): void; err(text: string): void };
-export type Context = { root: string; io: Io; slotSwitch: SlotSwitch; json: boolean };
+export type Context = { root: string; io: Io; slotSwitch: SlotSwitch; json: boolean; smoke?: SmokeTargets };
 type Outcome = { payload: unknown; text: string; ok: boolean };
 type Values = Record<string, string | boolean | undefined>;
 
@@ -35,6 +36,7 @@ type Command = {
 const NEXT = [
   "pnpm dev              # the app, http://localhost:3000",
   "pnpm fake-workspace   # http://localhost:8100",
+  "pnpm ex smoke         # then check the whole stack",
 ];
 
 function stepJson(step: Step, root: string, state: { activeStep: string | null; passed: string[] }) {
@@ -203,13 +205,14 @@ const COMMANDS: Record<string, Command> = {
   },
   up: {
     usage: "up",
-    summary: "Start ParadeDB in Docker Compose and wait until it's healthy",
+    summary: "Start ParadeDB in Docker Compose, apply the migrations and seed the world",
     async run({ root, json }) {
-      await preflight(root);
-      await compose(root, ["up", "--detach", "--wait"], { capture: json });
-      const services = await status(root);
-      const text = ["the stack is up. Start the app and fake-workspace on the host:", ...NEXT.map((n) => `  ${n}`)];
-      return { payload: { services, next: NEXT }, text: text.join("\n"), ok: true };
+      const { services, seed } = await up(root, { capture: json });
+      const text = [
+        "ParadeDB is up, migrated and seeded. Then, each in its own terminal:",
+        ...NEXT.map((n) => `  ${n}`),
+      ];
+      return { payload: { services, seed, next: NEXT }, text: text.join("\n"), ok: true };
     },
   },
   down: {
@@ -224,8 +227,8 @@ const COMMANDS: Record<string, Command> = {
   smoke: {
     usage: "smoke",
     summary: "Check the running stack end to end",
-    async run({ root }) {
-      const checks = await runChecks(smokeChecks(root));
+    async run({ root, smoke }) {
+      const checks = await runChecks(smokeChecks(root, smoke ?? smokeTargets(root)));
       const passed = checks.every((check) => check.passed);
       const lines = checks.map((c) => `${c.passed ? "ok  " : "FAIL"} ${c.name}${c.detail ? `  ${c.detail}` : ""}`);
       return { payload: { passed, checks }, text: lines.join("\n"), ok: passed };

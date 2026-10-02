@@ -3,7 +3,6 @@
 - TanStack Start (Vite-based) + TanStack Router + Query + Form
 - shadcn/ui (Base UI variant) + Tailwind v4 + hugeicons
 - AI SDK 7 (@ai-sdk/openai, @ai-sdk/react, ai)
-- Vercel Analytics + Speed Insights, Google Analytics
 - pnpm, oxlint + oxfmt + tsgo for tooling, Vitest
 - Hosted on Vercel
 

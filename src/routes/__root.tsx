@@ -4,15 +4,12 @@ import type { ReactNode } from "react";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import { GlobalLoading } from "@/components/global-loading";
 import { Toaster } from "@/components/ui/sonner";
 import { useToast } from "@/hooks/use-toast";
 import { getToast } from "@/lib/functions/get-toast";
 
-import { GoogleAnalyticsPageViews, GoogleAnalyticsScripts } from "../integrations/google-analytics/provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
 import appCss from "../styles.css?url";
@@ -76,13 +73,9 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <GoogleAnalyticsScripts />
       </head>
       <body className="font-sans antialiased">
         <GlobalLoading />
-        <Analytics />
-        <SpeedInsights />
-        <GoogleAnalyticsPageViews />
         <TanStackQueryProvider>
           <Toaster closeButton richColors />
           <main className="isolate flex min-h-svh w-full flex-col">{children}</main>

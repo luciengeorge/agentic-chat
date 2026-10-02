@@ -81,9 +81,41 @@ Ports: app 3000, fake-workspace 8100, ParadeDB 5432 (bound to 127.0.0.1), doclin
 
 ## `ex smoke` checks (integrator)
 
-1. ParadeDB is healthy; `pg_search` and `vector` exist; a BM25 query over a temporary table and a pgvector nearest-neighbour query both return rows.
+1. ParadeDB is healthy; `pg_search` and `vector` exist; a BM25 query and a pgvector nearest-neighbour query both return rows, over a probe table that is rolled back afterwards (see "Settled during the build").
 2. The app answers on 3000; `leo.martin` signs in with email and password and `GET /api/me` returns tenant `kestrel`; Harbour's `nina.osei` gets `harbour`.
 3. `peter.hall` is refused (banned).
 4. fake-workspace answers on 8100 with the corpus loaded; the Heron memo (manifest `traps` contains `acl-leak`) has exactly one grant, `write` to `/Kestrel/Exec` by world id; Harbour's token on Kestrel's site is 403; `/Kestrel/Exec`'s transitive members include `daniel.reyes` and not `leo.martin`.
 5. The spike workflow starts, waits on its hook, resumes, sleeps, streams, and completes.
-6. `pnpm ex gate` passes on `_smoke.1`.
+6. `pnpm ex gate` passes, and it checked `_smoke.1` and `_smoke.2`.
+
+## Settled during the build
+
+The lanes and the integrator changed or pinned down these points. Where they differ from the sections above, these win.
+
+**Seed and auth**
+- The seed creates every user with the world's id: `world.userId(tenant, username)`, a uuid5, so the database, the corpus manifest and fake-workspace name a person by the same id. `GET /api/me` returns it as `userId`, and smoke check 2 compares the two.
+- `peter.hall` is banned at creation, through the admin plugin's own fields on `createUser` (`data: { banned: true, banReason }`). A user who is already seeded and later disabled in `world.yaml` is banned on the next run: the seed sets the same fields and ends the user's sessions, which is what the admin plugin's `banUser` does (that endpoint needs an admin's session, and the seed has none). A banned sign-in answers 403 with code `BANNED_USER`.
+
+**fake-workspace** (where it differs from the Python service)
+- A path with no route for the method answers 404 `itemNotFound`, where FastAPI answered 405.
+- Timestamps carry milliseconds (a JS `Date`), still written with six fraction digits, as Python's `isoformat` does. Changes made through the control API are stamped to the whole second, as before.
+- It refuses a corpus whose manifest disagrees with `world.yaml` on any user or group id: the corpus stays unloaded, `/health` says `corpus_loaded: false`, and the Graph routes answer 503 until the corpus is rebuilt.
+- It binds to 127.0.0.1 only. It has no auth beyond dev tokens, so nothing off the machine should reach it.
+
+**Switching steps** (`ex start`, `ex reset`, `ex solution`)
+- **The pause protocol.** The dev server (through `learnSlots()`) writes `.ex/dev-server.json` once it listens: `{ pid, url, token }`. `POST /__ex/pause` with the headers `x-ex-token` and `x-ex-pid` (the pid of `pnpm ex`) answers 200, and from then on every other request gets 503 with `retry-after: 1`, the local world's queue deliveries included. `POST /__ex/resume` answers 202 and restarts the server. If the paused `ex` dies, the next request lifts the pause. The file is removed when the server closes, and `ex` forgets an entry whose pid is gone.
+- **The order:** pause the dev server, cancel the open workflow runs, swap the files, restart the dev server. A failed pause switches nothing. A failed cancel leaves the files as they were and restarts the server on them. A failed restart keeps the switch and says so under `skipped`; the server then restarts on its next request.
+- **Cancelling runs** goes through the workflow CLI, which reads the local world's files, so it works whether or not the dev server runs: `workflow inspect runs --status pending|running --json --backend local`, paged by cursor, then `workflow cancel <id> --backend local` for each. Outside `AC_ENV=dev` it is skipped and reported under `skipped`. A run that ended between the listing and its cancel doesn't count as a failure.
+- **Edits to a slotted file** restart the dev server, since Workflow rebuilds its step bundle only on a restart. After each restart `learnSlots()` compares the slot root's files with a snapshot taken before it, and restarts again if they changed meanwhile: an edit that lands mid-restart reaches neither the old watcher nor the new one.
+
+**Workflow**
+- `patches/@workflow__builders@5.0.1.patch` adds esbuild plugins to the two Workflow builds that resolve imports (the steps bundle and the interim workflow bundle), read from `globalThis[Symbol.for("workflow.esbuildPlugins")]`. `vite.config.ts` and `vitest.config.ts` put `learnSlotsEsbuild()` there. It exists because Workflow bundles step code with esbuild, outside Vite, so without it a step's `#learn/*` import always loads the reference, in dev and under Vitest. 5.0.1 has no option for this. `docs/workflow-notes.md` (b) has the evidence.
+- `vitest.config.ts` has two projects. `app` runs every test except `src/workflows/**`. `workflows` stands alone (`extends: false`), because `@workflow/vitest` loads esbuild, which refuses to run under jsdom. It runs in node and keeps its runs and bundles in `node_modules/.cache/workflow-vitest`, away from the dev server's `.workflow-data/`.
+- An exercise test that runs a workflow is named `*.workflow.test.ts`. `ex test` and the gate run those in the `workflows` project, from the repo root (workflow ids derive from the working directory), with `AC_WORKFLOW_TEST_ROOT` set to a fresh directory under `node_modules/.cache`. A Vitest inside another Vitest needs its own root, or it overwrites the parent's bundles. The root has to sit inside the repo, where the bundles resolve `workflow`. `_smoke.2` is that shape.
+
+**`ex up` and `ex smoke`**
+- `pnpm ex up` refuses without `.env.local`, refuses if a process outside Docker holds 5432, then runs `docker compose up --wait`, `pnpm db:migrate` and `pnpm db:seed`. Every step is safe to repeat. The app (`pnpm dev`) and fake-workspace (`pnpm fake-workspace`) are started by hand, each in its own terminal: they are long-running, they print logs worth reading, and `ex` already pauses and restarts the dev server it finds.
+- `ex smoke` finds the stack through the environment, then `.env.local`, then the defaults above: `DATABASE_URL`, `BETTER_AUTH_URL` for the app, `FAKE_WORKSPACE_URL`, `AC_CORPUS_DIR`. Its checks run at once, and each reports its own result.
+- Check 1 builds its probe table inside a transaction it rolls back. A temporary table would leave nothing behind too, but `pg_search` 0.25.11 leaks buffer pins on temporary tables: one index build on three rows printed 542 `resource was not closed` warnings. Ordinary tables print none.
+- Check 2 signs each user out again, so a smoke run leaves no sessions behind.
+- Check 6 runs the whole gate, and fails if the gate didn't reach both `_smoke` steps.

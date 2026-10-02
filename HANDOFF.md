@@ -185,6 +185,9 @@ Several choices superseded on 30 Sep came back: Drizzle, better-auth, ParadeDB a
 - **`.ex/realm-applied.json`** is obsolete (it tracked Keycloak). Delete it if you find it.
 - **`cp` is aliased to `cp -i`** in his shell, so scripts use `/bin/cp -f`.
 - **One owner for the live stack.** Only one agent runs or restarts the shared Compose stack and dev servers at a time; announce before touching it.
+- **One dev server per `.workflow-data/`.** Each dev server has its own in-memory queue, and at boot it re-enqueues every open run it finds on disk. Two servers on the same directory (say one on 3000 and a test server on 3010) would both process the same runs. Give a second server its own `WORKFLOW_LOCAL_DATA_DIR`.
+- **`.workflow-data/` is disposable.** It is Workflow's local world: runs, events, hooks and streams as JSON files. With the dev server stopped, deleting it just forgets every local run.
+- **The `@workflow/builders` patch.** `patches/@workflow__builders@5.0.1.patch` lets `learnSlots()` reach Workflow's step bundles. On every `workflow` upgrade, `pnpm install` fails until the patch is re-made (`pnpm patch @workflow/builders@<version>`) or dropped, if upstream has added an esbuild plugin option by then. `docs/workflow-notes.md` (b) explains it.
 - **The shared vault.** Other agents write to the same daily note at the same time. Append rather than rewriting, and `git add` only your own paths.
 - **Private GitHub repos return 404** in the in-app browser, which isn't signed in.
 - **Model gotcha (from poof):** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly. His `CLAUDE.md` lists `gpt-6-luna` and `gpt-6-sol` (for Codex), and `gpt-6-luna` is pinned as the default: it's the cheapest tier, and its reasoning default is medium.

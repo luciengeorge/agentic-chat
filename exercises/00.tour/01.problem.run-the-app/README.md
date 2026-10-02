@@ -18,27 +18,23 @@ type: guided
 
 ## Do this
 
-1. 🐨 Start ParadeDB and wait until it's healthy:
+1. 🐨 Start ParadeDB, create the tables and add the people:
    ```sh
    pnpm ex up
    ```
-2. 🐨 Create the tables and the people:
-   ```sh
-   pnpm db:migrate
-   pnpm db:seed
-   ```
-3. 🐨 In two more terminals, start the app and fake-workspace:
+   It does three things you can also run one at a time: `pnpm db:up` starts ParadeDB and waits until it's healthy, `pnpm db:migrate` applies the migrations, and `pnpm db:seed` adds the tenants and people. Each is safe to run again.
+2. 🐨 In two more terminals, start the app and fake-workspace:
    ```sh
    pnpm dev              # http://localhost:3000
    pnpm fake-workspace   # http://localhost:8100
    ```
-4. 🐨 Open http://localhost:3000 and sign in as `leo.martin@kestrelpay.example` with the password `dev-password`. The page should name the tenant `kestrel`.
-5. 🐨 Run the end-to-end check:
+3. 🐨 Open http://localhost:3000 and sign in as `leo.martin@kestrelpay.example` with the password `dev-password`. The page should name the tenant `kestrel`.
+4. 🐨 Run the end-to-end check:
    ```sh
    pnpm ex smoke
    ```
    Every line should say `ok`. Each line is one check, and a failure names the part to look at.
 
-🦉 `pnpm ex smoke` signs in the way you just did, asks fake-workspace who may read a confidential memo, runs a keyword search and a vector search in ParadeDB, and runs a small workflow to the end. If all of that works, every part on the path is up.
+🦉 `pnpm ex smoke` signs in the way you just did, asks fake-workspace who may read a confidential memo, runs a keyword search and a vector search in ParadeDB, runs a small workflow to the end, and checks that the exercise grader works. If all of that works, every part on the path is up.
 
 📜 [Docker Compose](https://docs.docker.com/compose/)
