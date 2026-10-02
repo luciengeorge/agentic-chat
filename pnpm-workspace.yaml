@@ -1,0 +1,2 @@
+patchedDependencies:
+  "@workflow/builders@5.0.1": patches/@workflow__builders@5.0.1.patch

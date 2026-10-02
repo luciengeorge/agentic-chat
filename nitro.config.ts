@@ -27,6 +27,7 @@ const securityHeaders = {
 };
 
 export default defineNitroConfig({
+  plugins: ["./src/workflows/start-world.ts", "./src/server/plugins/refuse-dev-secrets.ts"],
   routeRules: {
     "/**": {
       headers: securityHeaders,

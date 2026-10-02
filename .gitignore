@@ -15,7 +15,10 @@ coverage
 .output
 .vinxi
 .vercel
+# Vercel Workflow's local world (runs, events, hooks, streams)
+.workflow-data
 
 # Workshop state
 playground/
 .ex/
+/.swc

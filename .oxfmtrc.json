@@ -30,6 +30,7 @@
     ".tanstack",
     ".output",
     ".vercel",
+    ".workflow-data",
     "dist",
     "node_modules",
     "src/routeTree.gen.ts",
