@@ -251,6 +251,8 @@ export class Notifier {
       const response = await fetch(target, {
         method: "POST",
         headers: { "Content-Type": "text/plain; charset=utf-8" },
+        // Graph doesn't follow redirects, so a redirect fails the handshake (and a notification).
+        redirect: "manual",
         signal: AbortSignal.timeout(this.policy.validationTimeoutS * 1000),
       });
       status = response.status;
@@ -329,6 +331,7 @@ export class Notifier {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: [notification] }),
+        redirect: "manual",
         signal: AbortSignal.any([signal, AbortSignal.timeout(timeout * 1000)]),
       });
       await response.arrayBuffer();

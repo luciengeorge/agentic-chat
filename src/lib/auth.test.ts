@@ -139,6 +139,89 @@ describe.skipIf(!postgresAvailable)("auth", () => {
     });
   });
 
+  describe("the tenant comes from membership", () => {
+    it("ends a removed member's sessions", async () => {
+      await createUser("mia.leaving", "kestrelpay.example");
+      await auth.api.addMember({
+        body: { userId: users["mia.leaving"], organizationId: orgs.kestrel, role: "member" },
+      });
+      const mia = await sessionHeaders("mia.leaving@kestrelpay.example");
+      expect((await getViewer(mia)).tenant.slug).toBe("kestrel");
+
+      await auth.api.removeMember({
+        body: { memberIdOrEmail: "mia.leaving@kestrelpay.example", organizationId: orgs.kestrel },
+        headers: await sessionHeaders("tariq.aziz@kestrelpay.example"),
+      });
+
+      await expect(getViewer(mia)).rejects.toMatchObject({ status: 401 });
+      expect(await t.sql`SELECT id FROM session WHERE user_id = ${users["mia.leaving"]}`).toEqual([]);
+    });
+
+    it("keeps a user's tenant after a refused set-active, which nulls the session's cache", async () => {
+      const leo = await sessionHeaders("leo.martin@kestrelpay.example");
+      await expect(
+        auth.api.setActiveOrganization({ body: { organizationId: orgs.harbour }, headers: leo }),
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect((await getViewer(leo)).tenant).toEqual({ id: orgs.kestrel, slug: "kestrel" });
+    });
+  });
+
+  describe("invitations", () => {
+    const refusal = { statusCode: 400, body: { message: "Invitations are off: membership comes from the directory" } };
+
+    it("can't be sent", async () => {
+      await expect(
+        auth.api.createInvitation({
+          body: { email: "new.hire@kestrelpay.example", role: "member", organizationId: orgs.kestrel },
+          headers: await sessionHeaders("tariq.aziz@kestrelpay.example"),
+        }),
+      ).rejects.toMatchObject(refusal);
+      expect(await t.sql`SELECT id FROM invitation`).toEqual([]);
+    });
+
+    it("can't be accepted, even one that exists", async () => {
+      await createUser("invited.user", "harbourhealth.example");
+      const [{ id }] = await t.sql`
+        INSERT INTO invitation (organization_id, email, role, status, expires_at, inviter_id)
+        VALUES (${orgs.harbour}, 'invited.user@harbourhealth.example', 'member', 'pending', now() + interval '1 day',
+                ${users["david.cho"]})
+        RETURNING id`;
+      await expect(
+        auth.api.acceptInvitation({
+          body: { invitationId: id },
+          headers: await sessionHeaders("invited.user@harbourhealth.example"),
+        }),
+      ).rejects.toMatchObject(refusal);
+      expect(await t.sql`SELECT organization_id FROM member WHERE user_id = ${users["invited.user"]}`).toEqual([]);
+    });
+  });
+
+  describe("an organization's slug", () => {
+    const kestrel = () => t.sql`SELECT name, slug FROM organization WHERE id = ${orgs.kestrel}`;
+
+    it("can't change", async () => {
+      await expect(
+        auth.api.updateOrganization({
+          body: { organizationId: orgs.kestrel, data: { slug: "kestrel-pay" } },
+          headers: await sessionHeaders("tariq.aziz@kestrelpay.example"),
+        }),
+      ).rejects.toMatchObject({ statusCode: 400, body: { message: "An organization's slug can't change" } });
+      expect(await kestrel()).toEqual([{ name: "Kestrel Pay", slug: "kestrel" }]);
+    });
+
+    it("may be sent unchanged with the rest of an update", async () => {
+      const tariq = await sessionHeaders("tariq.aziz@kestrelpay.example");
+      const update = (name: string) =>
+        auth.api.updateOrganization({
+          body: { organizationId: orgs.kestrel, data: { name, slug: "kestrel" } },
+          headers: tariq,
+        });
+      await update("Kestrel Pay Ltd");
+      expect(await kestrel()).toEqual([{ name: "Kestrel Pay Ltd", slug: "kestrel" }]);
+      await update("Kestrel Pay");
+    });
+  });
+
   it("refuses to sign in a banned user", async () => {
     await createUser("gone.user", "kestrelpay.example", { banned: true, banReason: "Left the company" });
     const response = await signIn("gone.user@kestrelpay.example");

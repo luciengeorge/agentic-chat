@@ -1,5 +1,4 @@
-export const AC_ENVS = ["dev", "test", "prod"] as const;
-export type AcEnv = (typeof AC_ENVS)[number];
+import { acEnv, type Build } from "@/lib/env";
 
 // The values .env.example ships with. They're public, so prod refuses them.
 export const DEV_SECRETS = {
@@ -7,24 +6,17 @@ export const DEV_SECRETS = {
   TOAST_SECRET: "dev-toast-secret-not-for-production-use",
 } as const;
 
+// `openssl rand -hex 32` gives 64 characters; better-auth itself asks for at least 32.
+const MIN_SECRET_LENGTH = 32;
+
 type Env = Record<string, string | undefined>;
 
-// Unset means dev, except in a production build, where it means prod: forgetting AC_ENV on a deploy
-// must not switch on dev behaviour.
-export function acEnv(env: Env = process.env): AcEnv {
-  const value = env.AC_ENV ?? (env.NODE_ENV === "production" ? "prod" : "dev");
-  if (!(AC_ENVS as readonly string[]).includes(value)) {
-    throw new Error(`AC_ENV must be one of ${AC_ENVS.join(", ")}; got "${value}"`);
-  }
-  return value as AcEnv;
-}
-
-export function assertSafeSecrets(env: Env = process.env) {
-  if (acEnv(env) !== "prod") return;
+export function assertSafeSecrets(env: Env = process.env, build?: Build) {
+  if (acEnv(env, build) !== "prod") return;
   for (const [name, devValue] of Object.entries(DEV_SECRETS)) {
     const value = env[name];
-    if (!value || value === devValue) {
-      throw new Error(`${name} must be set to a real secret when AC_ENV=prod`);
+    if (!value || value === devValue || value.length < MIN_SECRET_LENGTH) {
+      throw new Error(`${name} must be set to a real secret of at least ${MIN_SECRET_LENGTH} characters in prod`);
     }
   }
 }

@@ -43,7 +43,7 @@ src/
     ui/                  # shadcn: add via `pnpm dlx shadcn@latest add <name>`
     global-loading.tsx   # progress bar for route loads
   hooks/                 # use-toast: shows server toasts with sonner
-  integrations/          # provider components (TanStack Query)
+  integrations/          # the TanStack Query devtools panel (router.tsx makes the QueryClient, one per request)
   lib/
     logger.ts            # structured logger, redacts sensitive keys
     toast.ts             # toast schema; toast-session.server.ts keeps it in a cookie
@@ -149,8 +149,16 @@ logger.info("document parsed", { documentId, pages });
 logger.error("parse failed", { error, documentId });
 ```
 
-Logger redacts keys matching `/pass|secret|token|cookie|authorization|apikey|api_key/i`. Never log raw secrets, even
-if you think they're safe.
+Logger redacts a value when its key, split into words, has pass, password, secret, token, cookie, authorization,
+bearer, credential(s) or api key in it: `x-api-key` and `accessToken` go, `inputTokens` and `passages` stay. In any
+string it also hides the password of a connection string and a bearer token. Never log raw secrets, even if you think
+they're safe.
+
+### Environment
+
+`acEnv()` from `@/lib/env` says whether a process runs in `dev`, `test` or `prod`, for the app, scripts and servers
+alike. Call it; don't read `AC_ENV` or `NODE_ENV` yourself. An explicit `AC_ENV` wins, the Vite dev server is dev,
+Vitest is test, and everything else is prod, a production build included.
 
 ### Toasts
 
@@ -181,10 +189,10 @@ pnpm fake-workspace   # fake-workspace on :8100
 pnpm ex smoke         # check the running stack end to end
 pnpm ex gate          # every graded step fails on its problem code and passes on its solution
 pnpm build            # production build into .output/
-pnpm start            # run the production build
+pnpm start            # run the production build, as prod (reads no .env.local)
 pnpm test             # vitest
 pnpm typecheck        # tsgo --noEmit
-pnpm lint             # oxfmt + oxlint on src (autofix)
+pnpm lint             # oxfmt formats, then oxlint reports lint problems (it doesn't fix them)
 pnpm lint:check       # CI: no writes
 pnpm format:check     # oxfmt over the repo (skips PLAN.md, HANDOFF.md, docs/ and fixtures/)
 pnpm dlx shadcn@latest add <component>   # add a shadcn component

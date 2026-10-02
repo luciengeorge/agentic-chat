@@ -1,9 +1,13 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { acEnv } from "@/lib/env";
+
+import type { PausedDevServer } from "./dev-server";
 import type { Run } from "./process";
 
 import { pauseDevServer } from "./dev-server";
+import { localEnv } from "./env";
 import { ExError } from "./errors";
 import { run as defaultRun } from "./process";
 
@@ -13,8 +17,8 @@ export class CancelSkipped extends Error {
 }
 
 export type SlotSwitch = {
-  /** Stops the running dev server taking work; resolves with how to restart it, or null when none runs. */
-  pauseDevServer(root: string): Promise<(() => Promise<void>) | null>;
+  /** Stops the running dev server taking work, or resolves with null when none runs. */
+  pauseDevServer(root: string): Promise<PausedDevServer | null>;
   /** Cancels every open local workflow run and returns their ids. */
   cancelOpenRuns(root: string): Promise<string[]>;
 };
@@ -23,14 +27,16 @@ const OPEN_STATUSES = ["pending", "running"] as const;
 
 /**
  * The local world keeps runs as files (`.workflow-data/`, or `WORKFLOW_LOCAL_DATA_DIR`), and the
- * workflow CLI reads and cancels them there, so this works whether or not the dev server runs.
+ * workflow CLI reads and cancels them there, so this works whether or not the dev server runs. It
+ * reads `.env.local` under `env`, as the dev server does, to look where the dev server keeps them.
  */
 export async function cancelLocalRuns(
   root: string,
-  { run = defaultRun, env = process.env }: { run?: Run; env?: NodeJS.ProcessEnv } = {},
+  { run = defaultRun, env: shell = process.env }: { run?: Run; env?: NodeJS.ProcessEnv } = {},
 ): Promise<string[]> {
-  const acEnv = env.AC_ENV ?? "dev";
-  if (acEnv !== "dev") throw new CancelSkipped(`AC_ENV is ${acEnv}, not dev`);
+  const env = localEnv(root, shell);
+  const mode = acEnv(env);
+  if (mode !== "dev") throw new CancelSkipped(`AC_ENV is ${mode}, not dev`);
   if (!existsSync(resolve(root, env.WORKFLOW_LOCAL_DATA_DIR || ".workflow-data"))) return [];
   const workflowCli = async (args: string[]) => {
     const result = await run(join(root, "node_modules/.bin/workflow"), [...args, "--backend", "local"], {
@@ -77,7 +83,10 @@ export async function cancelLocalRuns(
   return cancelled;
 }
 
-export const defaultSlotSwitch: SlotSwitch = { pauseDevServer, cancelOpenRuns: (root) => cancelLocalRuns(root) };
+export const defaultSlotSwitch: SlotSwitch = {
+  pauseDevServer: (root) => pauseDevServer(root),
+  cancelOpenRuns: (root) => cancelLocalRuns(root),
+};
 
 export type Switched = { files: string[]; restarted: string[]; cancelled: string[]; skipped: string[] };
 
@@ -105,11 +114,16 @@ async function cancel(slotSwitch: SlotSwitch, root: string, skipped: string[]): 
  */
 export async function switchSlots(slotSwitch: SlotSwitch, root: string, swap: () => string[]): Promise<Switched> {
   const skipped: string[] = [];
-  let restart: (() => Promise<void>) | null;
+  let paused: PausedDevServer | null;
   try {
-    restart = await slotSwitch.pauseDevServer(root);
+    paused = await slotSwitch.pauseDevServer(root);
   } catch (error) {
     throw new ExError("couldn't pause the dev server, so the step wasn't switched", describe(error));
+  }
+  if (paused && paused.open > 0) {
+    skipped.push(
+      `drain: ${paused.open} request(s) hadn't answered when the pause stopped waiting; a run one starts isn't cancelled`,
+    );
   }
   let switched: Omit<Switched, "restarted">;
   try {
@@ -117,16 +131,16 @@ export async function switchSlots(slotSwitch: SlotSwitch, root: string, swap: ()
     switched = { files: swap(), cancelled, skipped };
   } catch (error) {
     // If this fails too, the dev server lifts the pause itself once this process has exited.
-    await restart?.().catch(() => {});
+    await paused?.restart().catch(() => {});
     throw error;
   }
   const restarted: string[] = [];
-  if (restart) {
+  if (paused) {
     try {
-      await restart();
+      await paused.restart();
       restarted.push("dev server");
     } catch (error) {
-      skipped.push(`restart: ${describe(error).replace("\n", ": ")}; it restarts on its next request`);
+      skipped.push(`restart: ${describe(error).replace("\n", ": ")}`);
     }
   }
   return { ...switched, restarted };

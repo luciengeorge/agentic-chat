@@ -17,6 +17,7 @@ import type { DeliveryPolicy } from "./delivery";
 
 import { type AppEnv, type Runtime, createApp } from "./app";
 import { Clock } from "./clock";
+import { CONTROL_HEADER, DEV_CONTROL_TOKEN } from "./control";
 import { sha256 } from "./site";
 
 type Site = "kestrel" | "harbour";
@@ -270,10 +271,15 @@ export function buildCorpus(dir: string): Corpus {
 
 interface RequestOptions {
   json?: unknown;
+  /** A body that arrives as the stream sends it. */
+  body?: ReadableStream<Uint8Array> | string;
   headers?: Record<string, string>;
 }
 
-/** An in-process client for one app, sending its bearer token unless a request sets its own. */
+/**
+ * An in-process client for one app. It sends its bearer token and the control API's header unless a
+ * request sets its own.
+ */
 export interface Client {
   readonly runtime: Runtime;
   request(method: string, path: string, options?: RequestOptions): Promise<Response>;
@@ -288,6 +294,9 @@ export interface ClientOptions {
   corpusDir?: string;
   env?: AppEnv;
   token?: string | null;
+  /** The token the control API wants, sent as its header unless `sendControl` is false. */
+  controlToken?: string;
+  sendControl?: boolean;
   policy?: DeliveryPolicy;
   clock?: Clock;
 }
@@ -299,6 +308,13 @@ export interface Receiver {
   validation: "echo" | "wrong" | "empty" | "html" | "held";
   /** Replies to notifications, then 202. */
   statuses: number[];
+  /** An origin: when set, every request is answered with a 307 to the same path there. */
+  redirectTo: string | null;
+  /**
+   * Drops every connection unanswered, as an endpoint that has gone away. Closing the receiver
+   * instead would free its port for another test's server to take.
+   */
+  dropConnections: boolean;
   holdNotifications: boolean;
   readonly tokens: string[];
   readonly notifications: { value: Record<string, unknown>[] }[];
@@ -311,9 +327,17 @@ export interface Receiver {
 export async function serveReceiver(): Promise<Receiver> {
   const released = latch();
   const server = createServer((req, res) => {
+    if (receiver.dropConnections) {
+      req.socket.destroy();
+      return;
+    }
     const chunks: Buffer[] = [];
     req.on("data", (chunk: Buffer) => chunks.push(chunk));
     req.on("end", async () => {
+      if (receiver.redirectTo !== null) {
+        res.writeHead(307, { Location: new URL(req.url!, receiver.redirectTo).toString() }).end();
+        return;
+      }
       const reply = (status: number, body: string, kind = "text/plain") => {
         res.writeHead(status, { "Content-Type": `${kind}; charset=utf-8` }).end(body);
       };
@@ -336,6 +360,8 @@ export async function serveReceiver(): Promise<Receiver> {
     url: `http://127.0.0.1:${port}/hooks?tenant=kestrel`,
     validation: "echo",
     statuses: [],
+    redirectTo: null,
+    dropConnections: false,
     holdNotifications: false,
     tokens: [],
     notifications: [],
@@ -347,6 +373,28 @@ export async function serveReceiver(): Promise<Receiver> {
     },
   };
   return receiver;
+}
+
+/** A JSON body that arrives in two parts: the second waits for `send()`. `reading` settles once the server waits on it. */
+export function slowBody(json: unknown): { stream: ReadableStream<Uint8Array>; reading: Promise<void>; send(): void } {
+  const text = new TextEncoder().encode(JSON.stringify(json));
+  const half = Math.floor(text.length / 2);
+  const reading = latch();
+  const sent = latch();
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      start: (controller) => controller.enqueue(text.slice(0, half)),
+      async pull(controller) {
+        reading.open();
+        await sent.promise;
+        controller.enqueue(text.slice(half));
+        controller.close();
+      },
+    },
+    // Pull only once the server has read the first part.
+    { highWaterMark: 0 },
+  );
+  return { stream, reading: reading.promise, send: sent.open };
 }
 
 export interface FakeWorkspace {
@@ -385,21 +433,31 @@ export function setupFakeWorkspace(): FakeWorkspace {
     get tmp() {
       return tmp;
     },
-    client({ corpusDir, env = "dev", token = "dev-workspace-kestrel", policy = FAST, clock } = {}) {
+    client({
+      corpusDir,
+      env = "dev",
+      token = "dev-workspace-kestrel",
+      controlToken = DEV_CONTROL_TOKEN,
+      sendControl = true,
+      policy = FAST,
+      clock,
+    } = {}) {
       const { app, runtime } = createApp({
         env,
+        controlToken,
         corpusDir: corpusDir ?? corpus!.dir,
         worldPath: corpus!.worldPath,
         policy,
         clock: clock ?? new ManualClock(),
       });
       runtimes.push(runtime);
-      const request = async (method: string, path: string, { json, headers }: RequestOptions = {}) => {
+      const request = async (method: string, path: string, { json, body, headers }: RequestOptions = {}) => {
         const sent = new Headers(headers);
         if (token !== null && !sent.has("authorization")) sent.set("Authorization", `Bearer ${token}`);
+        if (sendControl && !sent.has(CONTROL_HEADER)) sent.set(CONTROL_HEADER, controlToken);
         if (json !== undefined) sent.set("Content-Type", "application/json");
-        const body = json === undefined ? undefined : JSON.stringify(json);
-        return app.fetch(new Request(new URL(path, BASE_URL), { method, headers: sent, body }));
+        const init = { method, headers: sent, body: json === undefined ? body : JSON.stringify(json), duplex: "half" };
+        return app.fetch(new Request(new URL(path, BASE_URL), init));
       };
       return {
         runtime,

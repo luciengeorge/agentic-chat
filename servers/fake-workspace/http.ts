@@ -52,16 +52,26 @@ export async function subscriber(c: Context, rt: Runtime): Promise<string> {
   return afterFaults(c, rt, tokenSite(rt, c.req.header("authorization")));
 }
 
-export async function readBody<S extends z.ZodType>(c: Context, schema: S): Promise<z.output<S>> {
-  let data: unknown;
+/**
+ * The JSON body. A route that looks up a site reads its body first, as FastAPI did: a reset during a
+ * slow upload would otherwise leave the request holding the site the reset replaced.
+ */
+export async function readJson(c: Context): Promise<unknown> {
   try {
-    data = await c.req.json();
+    return await c.req.json();
   } catch {
     throw badRequest("body: not valid JSON");
   }
+}
+
+export function parseBody<S extends z.ZodType>(schema: S, data: unknown): z.output<S> {
   const parsed = schema.safeParse(data);
   if (!parsed.success) throw invalid(parsed.error, "body");
   return parsed.data;
+}
+
+export async function readBody<S extends z.ZodType>(c: Context, schema: S): Promise<z.output<S>> {
+  return parseBody(schema, await readJson(c));
 }
 
 /** The last value of a query parameter, as Starlette reads it. */

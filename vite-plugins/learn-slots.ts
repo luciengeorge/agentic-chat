@@ -1,8 +1,9 @@
+import type { ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Plugin, ViteDevServer } from "vite";
 
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 
@@ -80,8 +81,12 @@ export function findStepDir(root: string, stepId: string, kind: StepKind = "prob
   throw new SlotError(`no ${kind} directory for step ${stepId}`);
 }
 
-/** `AC_ACTIVE_STEP`, else `active_step` in `.ex/state.json`, else none. */
+/** The `AC_ACTIVE_STEP` that means no step, whatever `.ex/state.json` says. The app's own tests set it. */
+export const NO_STEP = "none";
+
+/** `AC_ACTIVE_STEP` (`none` for no step), else `active_step` in `.ex/state.json`, else none. */
 export function readActiveStep(root: string, env: Env = process.env): string | null {
+  if (env.AC_ACTIVE_STEP === NO_STEP) return null;
   if (env.AC_ACTIVE_STEP) return env.AC_ACTIVE_STEP;
   const path = join(root, STATE_FILE);
   if (!existsSync(path)) return null;
@@ -158,9 +163,11 @@ export function createSlotResolver({ root, env = process.env }: { root: string; 
  * and when a slotted file changes: Workflow bundles step code outside Vite and rebuilds it only on
  * a restart, so an edit would otherwise reach the app but not its workflow steps.
  */
-export function learnSlots(options: { env?: Env } = {}): Plugin {
+export function learnSlots(options: { env?: Env; drainMs?: number } = {}): Plugin {
   const env = options.env ?? process.env;
   let resolver: SlotResolver;
+  // Vite reuses an inline plugin across restarts, so the old server's control is still here when it closes.
+  const controls = new Set<SwitchControl>();
 
   return {
     name: "agentic-chat:learn-slots",
@@ -176,8 +183,9 @@ export function learnSlots(options: { env?: Env } = {}): Plugin {
     },
     configureServer(server) {
       if (server.config.mode === "test") return;
-      const restart = () => restartServer(server, resolver.slotRoot);
-      const control = switchControl(server, resolver.root, restart);
+      const control = switchControl(server, resolver, options.drainMs ?? DRAIN_MS);
+      controls.add(control);
+      const { restart } = control;
       const state = join(resolver.root, STATE_FILE);
       const slotted = new Set(resolver.slots.values());
       const onChange = (file: string) => {
@@ -204,6 +212,13 @@ export function learnSlots(options: { env?: Env } = {}): Plugin {
       };
       server.watcher.add([state, ...slotted]);
       server.watcher.on("add", onChange).on("change", onChange).on("unlink", onChange);
+    },
+    closeServer({ reason }) {
+      for (const control of controls) {
+        if (!control.closed()) continue;
+        controls.delete(control);
+        control.unregister(reason);
+      }
     },
   };
 }
@@ -249,21 +264,37 @@ function readSlotRoot(dir: string): string {
  * lands mid-restart reaches neither watcher: the old one ignores it, and the new one isn't
  * listening yet. Workflow may already have bundled the steps without it.
  */
-async function restartServer(server: ViteDevServer, slotRoot: string): Promise<void> {
+async function restartServer(server: ViteDevServer, slotRoot: string, log: (message: string) => void): Promise<void> {
   let before = readSlotRoot(slotRoot);
   for (;;) {
     await server.restart();
     const after = readSlotRoot(slotRoot);
     if (after === before) return;
+    log(`${relative(server.config.root, slotRoot)}/ changed while the server restarted; restarting again`);
     before = after;
   }
 }
 
 export const DEV_SERVER_FILE = ".ex/dev-server.json";
 export const CONTROL_PATH = "/__ex";
+/** How long a pause waits for the requests already admitted to answer. */
+const DRAIN_MS = 15_000;
 
-/** What a running dev server writes to `.ex/dev-server.json`, so `pnpm ex` can find and pause it. */
-export type DevServerEntry = { pid: number; url: string; token: string };
+/**
+ * What a running dev server writes to `.ex/dev-server.json`, so `pnpm ex` can find and pause it. Each
+ * server has its own token, so a new token means a new server: `restarting` while it's being
+ * replaced, `restart-failed` when the replacement didn't start and this one serves on.
+ */
+export type DevServerEntry = {
+  pid: number;
+  url: string;
+  token: string;
+  /** The step it serves. */
+  step: string | null;
+  state: "running" | "restarting" | "restart-failed";
+};
+
+const STATES: readonly DevServerEntry["state"][] = ["running", "restarting", "restart-failed"];
 
 export function isAlive(pid: number): boolean {
   try {
@@ -277,32 +308,77 @@ export function isAlive(pid: number): boolean {
 export function readDevServerEntry(root: string): DevServerEntry | null {
   try {
     const entry = JSON.parse(readFileSync(join(root, DEV_SERVER_FILE), "utf8")) as Partial<DevServerEntry>;
-    const { pid, url, token } = entry;
-    return typeof pid === "number" && typeof url === "string" && typeof token === "string" ? { pid, url, token } : null;
+    const { pid, url, token, step = null, state = "running" } = entry;
+    if (typeof pid !== "number" || typeof url !== "string" || typeof token !== "string") return null;
+    if ((step !== null && typeof step !== "string") || !STATES.includes(state)) return null;
+    return { pid, url, token, step, state };
   } catch {
     return null;
   }
 }
 
+type SwitchControl = {
+  restart(): Promise<void>;
+  /** Whether a pause or a restart is under way, so a file change needs no restart of its own. */
+  switching(): boolean;
+  closed(): boolean;
+  /** Its server closed: mark the entry `restarting` until the next server writes its own, or remove it. */
+  unregister(reason: "restart" | "close"): void;
+};
+
 /**
  * Lets `pnpm ex` stop the dev server taking work while it switches the slotted code, then restart it
  * on the new code (scripts/ex/switch.ts). `POST /__ex/pause` answers every other request with a 503,
  * new workflow runs and the local world's deliveries included, until `POST /__ex/resume` restarts the
- * server. Both need the token from `.ex/dev-server.json`. If the paused `ex` dies, the next request
- * lifts the pause.
+ * server. The pause answers once the requests it let in before have started their answers, or after
+ * `drainMs`, with how many still hadn't: a request that starts a run has started it by then. Both
+ * need the token from `.ex/dev-server.json`. If the paused `ex` dies, the next request restarts the
+ * server.
  */
-function switchControl(server: ViteDevServer, root: string, restart: () => Promise<void>): { switching(): boolean } {
+function switchControl(server: ViteDevServer, resolver: SlotResolver, drainMs: number): SwitchControl {
+  const { root } = resolver;
   const token = randomUUID();
   const registry = join(root, DEV_SERVER_FILE);
+  let url: string | null = null;
   let pausedBy: number | null = null;
   let restarting = false;
+  let closed = false;
+  const admitted = new Set<ServerResponse>();
   const log = (message: string) => server.config.logger.info(`learn-slots: ${message}`, { timestamp: true });
+  const ours = () => readDevServerEntry(root)?.token === token;
 
-  const endSwitch = () => {
-    pausedBy = null;
+  const register = (state: DevServerEntry["state"]) => {
+    if (url === null) return;
+    const entry: DevServerEntry = { pid: process.pid, url, token, step: resolver.step, state };
+    // A reader never sees half a file: `ex` would take that for no dev server at all.
+    const tmp = `${registry}.${process.pid}.tmp`;
+    mkdirSync(dirname(registry), { recursive: true });
+    writeFileSync(tmp, `${JSON.stringify(entry, null, 2)}\n`);
+    renameSync(tmp, registry);
+  };
+
+  const restart = async () => {
     restarting = true;
-    // On success this instance is gone; on failure Vite keeps it, so let it watch again.
-    void restart().finally(() => (restarting = false));
+    register("restarting");
+    try {
+      await restartServer(server, resolver.slotRoot, log);
+    } finally {
+      restarting = false;
+    }
+    // When the new server fails to start, Vite keeps this one and only logs why.
+    if (ours()) register("restart-failed");
+  };
+
+  // The pause holds until the restart is done: this server mustn't take work on files swapped under it.
+  const endSwitch = () => void restart().finally(() => (pausedBy = null));
+
+  /** How many admitted requests haven't started their answer, once all have or `drainMs` is up. */
+  const drain = async () => {
+    const open = () => [...admitted].filter((res) => !res.headersSent).length;
+    const deadline = Date.now() + drainMs;
+    if (open() > 0) log(`waiting for ${open()} request(s) to answer before pausing`);
+    while (open() > 0 && Date.now() < deadline) await new Promise((done) => setTimeout(done, 20));
+    return open();
   };
 
   server.middlewares.use((req, res, next) => {
@@ -315,9 +391,15 @@ function switchControl(server: ViteDevServer, root: string, restart: () => Promi
       if (req.url === `${CONTROL_PATH}/pause`) {
         const pid = Number(req.headers["x-ex-pid"]);
         if (!Number.isInteger(pid) || pid <= 0) return send(400, "x-ex-pid must be the pid of `pnpm ex`\n");
+        // A pause now would be lost with this server; `ex` waits for the next one and pauses that.
+        if (restarting) return send(409, "restarting; pause the next server\n");
         pausedBy = pid;
         log("paused while `pnpm ex` switches steps");
-        return send(200);
+        void drain().then((open) => {
+          res.setHeader("content-type", "application/json");
+          send(200, JSON.stringify({ open }));
+        });
+        return;
       }
       if (req.url === `${CONTROL_PATH}/resume`) {
         log("switch done; restarting");
@@ -326,11 +408,15 @@ function switchControl(server: ViteDevServer, root: string, restart: () => Promi
       }
       return send(404);
     }
-    if (pausedBy !== null && !isAlive(pausedBy)) {
+    if (pausedBy !== null && !restarting && !isAlive(pausedBy)) {
       log("`pnpm ex` exited mid-switch; restarting");
       endSwitch();
     }
-    if (pausedBy === null) return next();
+    if (pausedBy === null) {
+      admitted.add(res);
+      res.once("close", () => admitted.delete(res));
+      return next();
+    }
     res.setHeader("retry-after", "1");
     send(503, "switching steps; retry in a moment\n");
   });
@@ -338,13 +424,19 @@ function switchControl(server: ViteDevServer, root: string, restart: () => Promi
   const { httpServer } = server;
   httpServer?.once("listening", () => {
     const { port } = httpServer.address() as AddressInfo;
-    const entry: DevServerEntry = { pid: process.pid, url: `http://localhost:${port}`, token };
-    mkdirSync(dirname(registry), { recursive: true });
-    writeFileSync(registry, `${JSON.stringify(entry, null, 2)}\n`);
+    url = `http://localhost:${port}`;
+    register("running");
   });
-  httpServer?.once("close", () => {
-    if (readDevServerEntry(root)?.token === token) rmSync(registry, { force: true });
-  });
+  httpServer?.once("close", () => (closed = true));
 
-  return { switching: () => pausedBy !== null || restarting };
+  return {
+    restart,
+    switching: () => pausedBy !== null || restarting,
+    closed: () => closed,
+    unregister(reason) {
+      if (!ours()) return;
+      if (reason === "restart") register("restarting");
+      else rmSync(registry, { force: true });
+    },
+  };
 }

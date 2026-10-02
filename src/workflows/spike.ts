@@ -29,6 +29,9 @@ async function prepare() {
   logger.info("prepared", { greeting });
   return { greeting };
 }
+// The greeting is the learner's slotted code, which throws the same way every time until it's written: retrying
+// only delays the failure.
+prepare.maxRetries = 0;
 
 async function streamChunks(note: string) {
   "use step";

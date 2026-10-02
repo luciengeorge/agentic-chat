@@ -1,21 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { acEnv, assertSafeSecrets, DEV_SECRETS } from "@/lib/auth-env";
+import { assertSafeSecrets, DEV_SECRETS } from "@/lib/auth-env";
 
 const REAL = { BETTER_AUTH_SECRET: "a".repeat(64), TOAST_SECRET: "b".repeat(64) };
-
-describe("acEnv", () => {
-  it("defaults to dev, or to prod in a production build", () => {
-    expect(acEnv({})).toBe("dev");
-    expect(acEnv({ NODE_ENV: "production" })).toBe("prod");
-    expect(acEnv({ NODE_ENV: "production", AC_ENV: "test" })).toBe("test");
-  });
-
-  it("refuses an unknown value", () => {
-    expect(() => acEnv({ AC_ENV: "staging" })).toThrow(/AC_ENV must be one of dev, test, prod/);
-  });
-});
 
 describe("assertSafeSecrets", () => {
   it("refuses the dev secrets in prod", () => {
@@ -29,6 +17,15 @@ describe("assertSafeSecrets", () => {
 
   it("refuses a missing secret in prod", () => {
     expect(() => assertSafeSecrets({ AC_ENV: "prod", TOAST_SECRET: REAL.TOAST_SECRET })).toThrow(/BETTER_AUTH_SECRET/);
+  });
+
+  it("refuses a secret shorter than 32 characters in prod", () => {
+    expect(() => assertSafeSecrets({ AC_ENV: "prod", ...REAL, TOAST_SECRET: "c".repeat(31) })).toThrow(/TOAST_SECRET/);
+    expect(() => assertSafeSecrets({ AC_ENV: "prod", ...REAL, TOAST_SECRET: "c".repeat(32) })).not.toThrow();
+  });
+
+  it("refuses the dev secrets in a production build with no AC_ENV", () => {
+    expect(() => assertSafeSecrets({ ...DEV_SECRETS }, "production")).toThrow(/BETTER_AUTH_SECRET/);
   });
 
   it("accepts real secrets in prod, and the dev ones elsewhere", () => {

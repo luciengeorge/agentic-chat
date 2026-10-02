@@ -1,14 +1,46 @@
 // @vitest-environment node
 
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { parse, stringify } from "yaml";
 
 import type { SeedReport } from "@/db/seed";
 
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
-import { loadWorld } from "@/fixtures/world";
+import { DEFAULT_WORLD_PATH, loadWorld, type World } from "@/fixtures/world";
 import { DEV_SECRETS } from "@/lib/auth-env";
 
 const world = loadWorld();
+
+type UserData = { username: string; name: string; roles?: string[]; enabled?: boolean };
+type WorldData = { id_namespace: string; tenants: Record<string, { domain: string; users: UserData[] }> };
+
+/** world.yaml with `edit` applied, loaded the way the seed loads it. */
+function worldWith(edit: (data: WorldData) => void): World {
+  const data = parse(readFileSync(DEFAULT_WORLD_PATH, "utf8")) as WorldData;
+  edit(data);
+  const dir = mkdtempSync(join(tmpdir(), "world-"));
+  try {
+    writeFileSync(join(dir, "world.yaml"), stringify(data));
+    return loadWorld(join(dir, "world.yaml"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const userIn = (data: WorldData, tenant: string, username: string) =>
+  data.tenants[tenant].users.find((user) => user.username === username)!;
+
+const NO_CHANGES = {
+  usersCreated: [],
+  usersUpdated: [],
+  membershipsCreated: [],
+  rolesUpdated: [],
+  banned: [],
+  unbanned: [],
+};
 
 const passwordFor = (email: string) =>
   Object.values(world.tenants).find((tenant) => email.endsWith(`@${tenant.domain}`))!.password;
@@ -25,20 +57,20 @@ describe.skipIf(!postgresAvailable)("seedWorld", () => {
   };
   let firstRun: SeedReport[];
 
-  const seed = () => modules.seedWorld(world);
+  const seed = (w: World = world) => modules.seedWorld(w);
 
-  function signIn(email: string) {
+  function signIn(email: string, password = passwordFor(email)) {
     return modules.auth.handler(
       new Request("http://localhost:3000/api/auth/sign-in/email", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password: passwordFor(email) }),
+        body: JSON.stringify({ email, password }),
       }),
     );
   }
 
-  async function viewerOf(email: string) {
-    const response = await signIn(email);
+  async function viewerOf(email: string, password?: string) {
+    const response = await signIn(email, password);
     expect(response.status, email).toBe(200);
     const cookie = response.headers
       .getSetCookie()
@@ -126,6 +158,7 @@ describe.skipIf(!postgresAvailable)("seedWorld", () => {
       firstRun.map((report) => ({ ...report, membershipsCreated: [...report.membershipsCreated].sort() })),
     ).toEqual([
       {
+        ...NO_CHANGES,
         tenant: "kestrel",
         organizationCreated: true,
         usersCreated: usernames("kestrel"),
@@ -133,11 +166,11 @@ describe.skipIf(!postgresAvailable)("seedWorld", () => {
         banned: ["peter.hall"],
       },
       {
+        ...NO_CHANGES,
         tenant: "harbour",
         organizationCreated: true,
         usersCreated: usernames("harbour"),
         membershipsCreated: [...usernames("harbour")].sort(),
-        banned: [],
       },
     ]);
   });
@@ -164,13 +197,7 @@ describe.skipIf(!postgresAvailable)("seedWorld", () => {
   it("changes nothing on a second run", async () => {
     const before = await state();
     expect(await seed()).toEqual(
-      ["kestrel", "harbour"].map((tenant) => ({
-        tenant,
-        organizationCreated: false,
-        usersCreated: [],
-        membershipsCreated: [],
-        banned: [],
-      })),
+      ["kestrel", "harbour"].map((tenant) => ({ ...NO_CHANGES, tenant, organizationCreated: false })),
     );
     expect(await state()).toEqual(before);
   });
@@ -184,22 +211,106 @@ describe.skipIf(!postgresAvailable)("seedWorld", () => {
 
     expect(await seed()).toEqual([
       {
+        ...NO_CHANGES,
         tenant: "kestrel",
         organizationCreated: false,
-        usersCreated: [],
         membershipsCreated: ["leo.martin"],
         banned: ["peter.hall"],
       },
       {
+        ...NO_CHANGES,
         tenant: "harbour",
         organizationCreated: false,
         usersCreated: ["fatima.ali"],
         membershipsCreated: ["fatima.ali"],
-        banned: [],
       },
     ]);
     expect(await withoutTimestamps()).toEqual(before);
     expect((await signIn("peter.hall@kestrelpay.example")).status).toBe(403);
+  });
+
+  describe("repairs what the world says differently", () => {
+    const withoutTimestamps = async () => (await state()).map(({ updated_at: _, ...row }) => row);
+
+    it("follows a user's new name, role and enabled flag, and back", async () => {
+      const before = await withoutTimestamps();
+      const changed = worldWith((data) => {
+        Object.assign(userIn(data, "kestrel", "leo.martin"), { name: "Leo Martin-Shaw", roles: ["employee", "admin"] });
+        userIn(data, "kestrel", "peter.hall").enabled = true;
+        userIn(data, "kestrel", "sam.patel").enabled = false;
+      });
+
+      expect(await seed(changed)).toEqual([
+        {
+          ...NO_CHANGES,
+          tenant: "kestrel",
+          organizationCreated: false,
+          usersUpdated: ["leo.martin"],
+          rolesUpdated: ["leo.martin"],
+          banned: ["sam.patel"],
+          unbanned: ["peter.hall"],
+        },
+        { ...NO_CHANGES, tenant: "harbour", organizationCreated: false },
+      ]);
+      const leo = world.userId("kestrel", "leo.martin");
+      expect(
+        await t.sql`SELECT u.name, m.role FROM "user" u JOIN member m ON m.user_id = u.id WHERE u.id = ${leo}`,
+      ).toEqual([{ name: "Leo Martin-Shaw", role: "admin" }]);
+      expect((await signIn("peter.hall@kestrelpay.example")).status).toBe(200);
+      expect((await signIn("sam.patel@kestrelpay.example")).status).toBe(403);
+
+      expect(await seed()).toEqual([
+        {
+          ...NO_CHANGES,
+          tenant: "kestrel",
+          organizationCreated: false,
+          usersUpdated: ["leo.martin"],
+          rolesUpdated: ["leo.martin"],
+          banned: ["peter.hall"],
+          unbanned: ["sam.patel"],
+        },
+        { ...NO_CHANGES, tenant: "harbour", organizationCreated: false },
+      ]);
+      expect(await withoutTimestamps()).toEqual(before);
+      expect((await signIn("peter.hall@kestrelpay.example")).status).toBe(403);
+    });
+
+    it("moves a tenant's users to a new domain, and back", async () => {
+      const before = await withoutTimestamps();
+      const harbour = world.tenant("harbour").users.map((user) => user.username);
+      const moved = worldWith((data) => {
+        data.tenants.harbour.domain = "harbour.example";
+      });
+
+      expect(await seed(moved)).toEqual([
+        { ...NO_CHANGES, tenant: "kestrel", organizationCreated: false },
+        { ...NO_CHANGES, tenant: "harbour", organizationCreated: false, usersUpdated: harbour },
+      ]);
+      const password = moved.tenant("harbour").password;
+      expect((await viewerOf("nina.osei@harbour.example", password)).tenant.slug).toBe("harbour");
+
+      await seed();
+      expect(await withoutTimestamps()).toEqual(before);
+    });
+
+    it("puts back an email changed in the database", async () => {
+      const before = await withoutTimestamps();
+      await t.sql`UPDATE "user" SET email = 'leo@elsewhere.example' WHERE id = ${world.userId("kestrel", "leo.martin")}`;
+      expect((await seed())[0].usersUpdated).toEqual(["leo.martin"]);
+      expect(await withoutTimestamps()).toEqual(before);
+    });
+
+    it("stops at a user whose email has another id than the world's", async () => {
+      const before = await state();
+      const renumbered = worldWith((data) => {
+        data.id_namespace = "00000000-0000-4000-8000-000000000000";
+      });
+      const amara = { email: "amara.okafor@kestrelpay.example", id: world.userId("kestrel", "amara.okafor") };
+      await expect(seed(renumbered)).rejects.toThrow(
+        `${amara.email} has the id ${amara.id} in the database, but the world gives it ${renumbered.userId("kestrel", "amara.okafor")}`,
+      );
+      expect(await state()).toEqual(before);
+    });
   });
 
   it("refuses a user who already belongs to the other tenant", async () => {

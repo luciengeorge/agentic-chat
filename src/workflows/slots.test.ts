@@ -20,8 +20,8 @@ function tempDir(parent: string, prefix: string): string {
 
 // @workflow/vitest bundles the steps once per Vitest run, with the slots active when it starts, so each case runs
 // spike.test.ts in a fresh Vitest, the way `ex test` does. Its bundles go in their own directory inside the repo
-// (the builder resolves `workflow` from there), so they can't overwrite this run's. Returns what the run printed.
-function runSpikeTest(env: Record<string, string>): string {
+// (the builder resolves `workflow` from there), so they can't overwrite this run's.
+function spawnSpikeTest(env: Record<string, string>) {
   const inherited = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => !key.startsWith("VITEST") && key !== "AC_ACTIVE_STEP"),
   );
@@ -39,8 +39,13 @@ function runSpikeTest(env: Record<string, string>): string {
       },
     },
   );
-  const output = `${result.stdout}${result.stderr}`;
-  expect(result.status, output).toBe(0);
+  return { status: result.status, output: `${result.stdout}${result.stderr}` };
+}
+
+/** Runs spike.test.ts as above, expects it to pass, and returns what it printed. */
+function runSpikeTest(env: Record<string, string>): string {
+  const { status, output } = spawnSpikeTest(env);
+  expect(status, output).toBe(0);
   return output;
 }
 
@@ -56,9 +61,21 @@ describe("#learn imports inside workflow steps under @workflow/vitest", () => {
     expect(output).toContain('"greeting":"playground step"');
   }, 60_000);
 
-  // With no AC_ACTIVE_STEP, the slots come from .ex/state.json, which names no step in a fresh checkout or in CI.
+  it("fail the run at the slotted code's first error, without retrying the step", () => {
+    const playground = tempDir(tmpdir(), "playground-");
+    writeFileSync(
+      join(playground, "greeting.ts"),
+      "export const formatGreeting = (name: string): string => {\n  throw new Error(`no greeting for ${name}`);\n};\n",
+    );
+
+    const { status, output } = spawnSpikeTest({ AC_ACTIVE_STEP: "_smoke.1", AC_SLOT_ROOT: playground });
+    expect(status, output).not.toBe(0);
+    expect(output).toContain("failed after 0 retries: no greeting for step");
+  }, 60_000);
+
+  // `none` overrides .ex/state.json, so this holds while a learner has _smoke.1 active on its problem code.
   it("run the reference while no step is active", () => {
-    const output = runSpikeTest({});
+    const output = runSpikeTest({ AC_ACTIVE_STEP: "none" });
     expect(output).toContain('"greeting":"hello step"');
   }, 60_000);
 });

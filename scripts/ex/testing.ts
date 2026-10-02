@@ -1,12 +1,14 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseSync } from "vite";
 
 import type { Step } from "./catalog";
 
-import { isTestFile, isWorkflowTestFile, stepFiles } from "./catalog";
+import { REFERENCE_DIR } from "../../vite-plugins/learn-slots";
+import { codeFiles, isTestFile, isWorkflowTestFile, stepFiles } from "./catalog";
 import { ExError } from "./errors";
 import { run } from "./process";
 import { playground } from "./workspace";
@@ -28,6 +30,58 @@ const TSX = createRequire(import.meta.url).resolve("tsx");
 
 export function targetDir(root: string, step: Step, target: Target): string {
   return target === "playground" ? playground(root) : target === "problem" ? step.problemDir : step.solutionDir;
+}
+
+/** Every module a file imports or re-exports from, by the specifier it's written with. */
+function importSpecifiers(file: string): string[] {
+  const source = readFileSync(file, "utf8");
+  const { module } = parseSync(file, source);
+  const dynamic = module.dynamicImports
+    .map(({ moduleRequest }) => source.slice(moduleRequest.start, moduleRequest.end))
+    .filter((text) => /^(["'`])[^"'`$]*\1$/.test(text))
+    .map((text) => text.slice(1, -1));
+  return [
+    ...module.staticImports.map((entry) => entry.moduleRequest.value),
+    ...module.staticExports.flatMap((entry) =>
+      entry.entries.flatMap((e) => (e.moduleRequest ? [e.moduleRequest.value] : [])),
+    ),
+    ...dynamic,
+  ];
+}
+
+/** The files a specifier can name, without extension: the aliases `@/` and `#/`, `src/`, `/src/` (Vite's root) and relative paths. */
+function candidates(root: string, from: string, specifier: string): string[] {
+  const path = specifier.split("?")[0]!;
+  const found =
+    path.startsWith("@/") || path.startsWith("#/")
+      ? [join(root, "src", path.slice(2))]
+      : path.startsWith("src/")
+        ? [join(root, path)]
+        : path.startsWith("/")
+          ? [path, join(root, path)]
+          : path.startsWith(".")
+            ? [resolve(dirname(from), path)]
+            : [];
+  return found.map((file) => file.replace(/\.[cm]?[jt]sx?$/, "").replace(/\/index$/, ""));
+}
+
+/**
+ * Where code under test imports the reference of a module the step slots, by any path. Its tests
+ * would then grade the reference: a re-export of it passes them all.
+ */
+export function referenceImports(root: string, step: Step, dir: string): string[] {
+  const references = new Map(
+    Object.keys(step.slots).map((module) => [join(root, REFERENCE_DIR, module), module] as const),
+  );
+  return codeFiles(dir).flatMap((name) => {
+    const file = join(dir, name);
+    return importSpecifiers(file).flatMap((specifier) => {
+      const module = candidates(root, file, specifier)
+        .map((path) => references.get(path))
+        .find(Boolean);
+      return module ? [`${relative(root, file)} imports ${specifier}, the reference for ${module}`] : [];
+    });
+  });
 }
 
 type JsonReport = {
@@ -84,6 +138,13 @@ export async function runStepTests(
 ): Promise<StepRun> {
   if (!stepFiles(step.problemDir).some(isTestFile)) {
     throw new ExError(`no *.test.ts in ${relative(root, step.problemDir)}`);
+  }
+  const [cheat, ...more] = referenceImports(root, step, targetDir(root, step, target));
+  if (cheat) {
+    throw new ExError(
+      `${cheat}; a slot has to hold your own code, so the tests grade it and not the reference`,
+      more.join("\n") || null,
+    );
   }
   const tmp = mkdtempSync(join(tmpdir(), "ex-test-"));
   // @workflow/vitest bundles the steps into this dir. It must be inside the repo, where the bundles

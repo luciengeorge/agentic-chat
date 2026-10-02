@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -15,6 +15,7 @@ function fakeCli(runs: Record<string, Status>, { endsBeforeCancel = [] as string
   const calls: string[][] = [];
   const run: Run = async (command, args, { env }) => {
     calls.push(args);
+    seen.push(env ?? {});
     expect(command).toMatch(/node_modules\/\.bin\/workflow$/);
     expect(args.slice(-2)).toEqual(["--backend", "local"]);
     expect(env?.WORKFLOW_LOCAL_DATA_DIR).toBeDefined();
@@ -39,7 +40,12 @@ function fakeCli(runs: Record<string, Status>, { endsBeforeCancel = [] as string
 }
 
 let root: string;
-afterEach(() => rmSync(root, { recursive: true, force: true }));
+/** The environment each workflow CLI call ran with. */
+let seen: NodeJS.ProcessEnv[] = [];
+afterEach(() => {
+  rmSync(root, { recursive: true, force: true });
+  seen = [];
+});
 
 function setup({ data = true } = {}) {
   root = mkdtempSync(join(tmpdir(), "ex-cancel-"));
@@ -56,6 +62,20 @@ describe("cancelLocalRuns", () => {
     expect(await cancelLocalRuns(root, { run, env })).toEqual(["a", "b", "c"]);
     expect(runs).toEqual({ a: "cancelled", b: "cancelled", c: "cancelled", d: "completed" });
     expect(calls.filter((args) => args[0] === "inspect" && args.includes("--cursor"))).toHaveLength(1);
+  });
+
+  it("reads the dev server's .env.local, under the environment it's given", async () => {
+    setup({ data: false });
+    mkdirSync(join(root, "custom-runs"));
+    writeFileSync(join(root, ".env.local"), "AC_ENV=dev\nWORKFLOW_LOCAL_DATA_DIR=custom-runs\n");
+    const { run, calls } = fakeCli({ a: "running" });
+    expect(await cancelLocalRuns(root, { run, env: {} })).toEqual(["a"]);
+    expect(calls.at(-1)).toEqual(["cancel", "a", "--backend", "local"]);
+    expect(seen.at(-1)?.WORKFLOW_LOCAL_DATA_DIR).toBe("custom-runs");
+    // A variable set in the environment wins over the file, as with dotenv-cli.
+    await expect(cancelLocalRuns(root, { run, env: { AC_ENV: "test" } })).rejects.toThrow(
+      new CancelSkipped("AC_ENV is test, not dev"),
+    );
   });
 
   it("is skipped outside dev, and has nothing to do without local run data", async () => {

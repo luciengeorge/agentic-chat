@@ -3,8 +3,11 @@ import viteTsConfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 import { setWorkflowEsbuildPlugins } from "./src/workflows/esbuild-plugins.ts";
-import { learnSlots, learnSlotsEsbuild } from "./vite-plugins/learn-slots.ts";
+import { learnSlots, learnSlotsEsbuild, NO_STEP } from "./vite-plugins/learn-slots.ts";
 
+// The app's own tests run on the reference, never on the step a learner has active in .ex/state.json.
+// `ex test` names its step in AC_ACTIVE_STEP, which this leaves alone.
+process.env.AC_ACTIVE_STEP ||= NO_STEP;
 setWorkflowEsbuildPlugins([learnSlotsEsbuild({ root: import.meta.dirname })]);
 
 export default defineConfig({

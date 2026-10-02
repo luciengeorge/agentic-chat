@@ -21,8 +21,9 @@ import {
 
 import { organization } from "./auth";
 
-// Tenants are better-auth organizations. Every table here is tenant data, with RLS enabled (not
-// forced, so the owning role still bypasses it until section 09 forces it).
+// Tenants are better-auth organizations. Every table here is tenant data, with RLS enabled, not forced. The
+// policy binds only a role that neither owns the table nor has BYPASSRLS: section 09.6's app role. The dev role
+// `ac` is the image's superuser, so it skips RLS even once section 09 forces it.
 const tenantIsolation = () =>
   pgPolicy("tenant_isolation", {
     using: sql`tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid`,

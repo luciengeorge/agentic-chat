@@ -33,8 +33,13 @@ problem (see "Restarting the dev server") and stays.
 runs a step (`streamChunks`) that writes three chunks to `getWritable()`, closes the stream and returns
 `{ greeting, note, chunks }`.
 
-The routes refuse with 404 unless `acEnv()` (from `src/lib/auth-env.ts`) says `dev`. A production build with no
-`AC_ENV` therefore counts as prod and is refused too.
+The routes answer 404 unless `acEnv()` (from `src/lib/env.ts`) says `dev`. A production build settles that when it is
+built: with no `AC_ENV` it counts as prod, whatever `NODE_ENV` says when it runs, so the routes are off.
+`src/server/production-build.test.ts` and a CI step boot a build with nothing set to check it. Until the M0 review
+this line claimed more than the code did: prod detection read `NODE_ENV` at run time, which a bare
+`node .output/server/index.mjs` leaves unset, so that server ran as dev and answered on these routes. In dev
+the two POST routes also refuse a request whose `Origin` is another site's (403) and a body that isn't JSON (415),
+which is what a page elsewhere could send through a plain HTML form.
 
 | Route | Body | Returns |
 | --- | --- | --- |

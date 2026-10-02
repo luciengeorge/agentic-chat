@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/spike/resume")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const refused = devOnly();
+        const refused = devOnly(request);
         if (refused) return refused;
 
         const body = ResumeSchema.safeParse(await request.json().catch(() => ({})));

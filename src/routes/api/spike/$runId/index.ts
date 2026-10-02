@@ -6,8 +6,8 @@ import { devOnly } from "../-dev-only";
 export const Route = createFileRoute("/api/spike/$runId/")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
-        const refused = devOnly();
+      GET: async ({ params, request }) => {
+        const refused = devOnly(request);
         if (refused) return refused;
 
         const run = getRun(params.runId);

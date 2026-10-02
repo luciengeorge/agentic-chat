@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { getToast } from "@/lib/functions/get-toast";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
-import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
 import appCss from "../styles.css?url";
 
 interface RouterContext {
@@ -48,8 +47,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "canonical", href: SITE_URL },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "icon", href: "/favicon.ico" },
     ],
   }),
   notFoundComponent: () => (
@@ -76,20 +74,18 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body className="font-sans antialiased">
         <GlobalLoading />
-        <TanStackQueryProvider>
-          <Toaster closeButton richColors />
-          <main className="isolate flex min-h-svh w-full flex-col">{children}</main>
-          <TanStackDevtools
-            config={{ position: "bottom-right" }}
-            plugins={[
-              {
-                name: "Tanstack Router",
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-              TanStackQueryDevtools,
-            ]}
-          />
-        </TanStackQueryProvider>
+        <Toaster closeButton richColors />
+        <main className="isolate flex min-h-svh w-full flex-col">{children}</main>
+        <TanStackDevtools
+          config={{ position: "bottom-right" }}
+          plugins={[
+            {
+              name: "Tanstack Router",
+              render: <TanStackRouterDevtoolsPanel />,
+            },
+            TanStackQueryDevtools,
+          ]}
+        />
         <Scripts />
       </body>
     </html>

@@ -6,7 +6,7 @@ import type { StepRun } from "./testing";
 
 import { REFERENCE_DIR } from "../../vite-plugins/learn-slots";
 import { isTestFile, loadCatalog, stepFiles } from "./catalog";
-import { runStepTests } from "./testing";
+import { referenceImports, runStepTests } from "./testing";
 
 export type GateResult = {
   step: string;
@@ -40,6 +40,7 @@ export async function checkStep(root: string, step: Step): Promise<GateResult> {
       if (!existsSync(join(dir, file))) reasons.push(`${relative(root, dir)} is missing slot file ${file}`);
     }
   }
+  reasons.push(...[step.problemDir, step.solutionDir].flatMap((dir) => referenceImports(root, step, dir)));
   if (reasons.length > 0) return { step: step.id, passed: false, reasons, problem: null, solution: null };
 
   const problem = await runStepTests(root, step, "problem", { capture: true });

@@ -8,6 +8,8 @@ coverage
 # Secrets
 *.local
 .env
+.env.*
+!.env.example
 
 # Build and framework output
 .nitro

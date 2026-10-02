@@ -378,7 +378,7 @@ Enough for a fresh agent to start without guessing. `docs/m0b-contract.md` still
 - `fixtures/corpus/build/` is committed as built by `python-m0b` (manifest sha256 `8b610412…`): `manifest.json` plus 46 content-addressed blobs, about 14 MB. M0 takes it out of `.gitignore` and drops `inputs.json`, which only the renderer used.
 - Kestrel has 40 documents: 20 pdf, 7 docx, 6 md, 3 handwriting, 2 scan, 1 pdf_mixed, and the 3,000-page generated filing. Harbour has 6: 4 pdf, 1 docx, 1 md.
 - The Python renderer is retired. The sources stay as the readable truth, and `fixtures/corpus/README.md` keeps the trap table. To change a document, re-render it from the `python-m0b` tag.
-- A TS test over the built files keeps M0b's main lesson: every identifier is whole in each PDF's text layer, and each trap still holds in the built file (the source can be right while the PDF is wrong).
+- M0b's main lesson stays guarded at the tag: the renderer's tests at `python-m0b` check that every identifier is whole in each PDF's text layer and that each trap still holds in the built file (the source can be right while the PDF is wrong). The build is committed as it passed them, and any re-render happens at that tag, so M0 has no TS test over the built PDFs.
 - `world.yaml` is unchanged. Ids are `uuid5(id_namespace, "<tenant>:<kind>:<name>")`, so the manifest, fake-workspace and the database agree without a lookup table.
 
 **Provider interface (sketch)**

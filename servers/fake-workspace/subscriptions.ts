@@ -4,18 +4,20 @@ import type { Hono } from "hono";
 import type { Runtime } from "./app";
 
 import { SubscriptionRenewalSchema, SubscriptionRequestSchema, subscriptionJson } from "./delivery";
-import { readBody, subscriber } from "./http";
+import { parseBody, readJson, subscriber } from "./http";
 
 export function subscriptionRoutes(app: Hono, rt: Runtime): void {
   app.post("/v1.0/subscriptions", async (c) => {
+    const data = await readJson(c);
     const site = await subscriber(c, rt);
-    const request = await readBody(c, SubscriptionRequestSchema);
+    const request = parseBody(SubscriptionRequestSchema, data);
     return c.json(subscriptionJson(await rt.notifier.subscribe(site, request)), 201);
   });
 
   app.patch("/v1.0/subscriptions/:id", async (c) => {
+    const data = await readJson(c);
     const site = await subscriber(c, rt);
-    const { expirationDateTime } = await readBody(c, SubscriptionRenewalSchema);
+    const { expirationDateTime } = parseBody(SubscriptionRenewalSchema, data);
     return c.json(subscriptionJson(rt.notifier.renew(site, c.req.param("id"), expirationDateTime)));
   });
 

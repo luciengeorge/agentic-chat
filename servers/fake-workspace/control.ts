@@ -1,6 +1,10 @@
 /**
  * The control API (`/_control/...`): dev only, no bearer token. Tests and the lab panel use it to
  * reset state, inject faults, pin the clock, change items and watch webhook deliveries.
+ *
+ * Every request carries the `x-workspace-control` header. A web page can't send a custom header to
+ * another origin without a CORS preflight, which this server never answers, so a page open in the
+ * browser can't post a form here. A request from a page that isn't on this machine is refused too.
  */
 import type { Context, Hono } from "hono";
 
@@ -15,7 +19,7 @@ import { deliveryJson } from "./delivery";
 import { driveItem } from "./drive";
 import { GraphError, notFound, notReady } from "./errors";
 import { FaultSpecSchema } from "./faults";
-import { readBody } from "./http";
+import { parseBody, readBody, readJson } from "./http";
 
 const base64 = z.base64().transform((text) => new Uint8Array(Buffer.from(text, "base64")));
 
@@ -30,9 +34,28 @@ const MoveSchema = z.object({ parent_id: z.string(), name: z.string().nullish().
 const RenameSchema = z.object({ name: z.string() });
 const ClockSchema = z.object({ now: awareDatetime.nullable() });
 
+export const CONTROL_HEADER = "x-workspace-control";
+/** What `FAKE_WORKSPACE_CONTROL_TOKEN` defaults to, as in `.env.example`. Public, like the dev bearer tokens. */
+export const DEV_CONTROL_TOKEN = "dev-workspace-control";
+
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+function fromThisMachine(origin: string): boolean {
+  const hostname = URL.parse(origin)?.hostname;
+  return hostname !== undefined && LOOPBACK.has(hostname);
+}
+
 export function controlRoutes(app: Hono, rt: Runtime): void {
-  app.use("/_control/*", async (_, next) => {
+  app.use("/_control/*", async (c, next) => {
     if (rt.env !== "dev") throw new GraphError(403, "accessDenied", "The control API only runs when AC_ENV=dev.");
+    const origin = c.req.header("origin");
+    if (origin !== undefined && !fromThisMachine(origin)) {
+      throw new GraphError(403, "accessDenied", `The control API refuses requests from ${origin}.`);
+    }
+    if (c.req.header(CONTROL_HEADER) !== rt.controlToken) {
+      const message = `The control API needs the ${CONTROL_HEADER} header, set to FAKE_WORKSPACE_CONTROL_TOKEN.`;
+      throw new GraphError(403, "accessDenied", message);
+    }
     await next();
   });
 
@@ -92,32 +115,36 @@ export function controlRoutes(app: Hono, rt: Runtime): void {
   const items = "/_control/sites/:site/items";
 
   app.post(items, async (c) => {
+    const data = await readJson(c);
     const site = controlSite(c);
-    const body = await readBody(c, NewFileSchema);
+    const body = parseBody(NewFileSchema, data);
     const item = site.createFile(body.parent_id, body.name, body.content_base64, body.mime_type, stamp(rt.clock));
     changed(site);
     return c.json(driveItem(site, item), 201);
   });
 
   app.put(`${items}/:itemId/content`, async (c) => {
+    const data = await readJson(c);
     const site = controlSite(c);
-    const body = await readBody(c, UploadSchema);
+    const body = parseBody(UploadSchema, data);
     const item = site.upload(c.req.param("itemId"), body.content_base64, body.mime_type, stamp(rt.clock));
     changed(site);
     return c.json(driveItem(site, item));
   });
 
   app.post(`${items}/:itemId/move`, async (c) => {
+    const data = await readJson(c);
     const site = controlSite(c);
-    const body = await readBody(c, MoveSchema);
+    const body = parseBody(MoveSchema, data);
     const item = site.move(c.req.param("itemId"), body.parent_id, body.name, stamp(rt.clock));
     changed(site);
     return c.json(driveItem(site, item));
   });
 
   app.post(`${items}/:itemId/rename`, async (c) => {
+    const data = await readJson(c);
     const site = controlSite(c);
-    const { name } = await readBody(c, RenameSchema);
+    const { name } = parseBody(RenameSchema, data);
     const item = site.rename(c.req.param("itemId"), name, stamp(rt.clock));
     changed(site);
     return c.json(driveItem(site, item));
@@ -131,8 +158,9 @@ export function controlRoutes(app: Hono, rt: Runtime): void {
   });
 
   app.put(`${items}/:itemId/sharing`, async (c) => {
+    const data = await readJson(c);
     const site = controlSite(c);
-    const sharing = await readBody(c, SharingSchema);
+    const sharing = parseBody(SharingSchema, data);
     const item = site.setSharing(c.req.param("itemId"), sharing);
     changed(site);
     return c.json(driveItem(site, item));

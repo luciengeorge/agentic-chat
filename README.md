@@ -114,8 +114,13 @@ restarts the server. Every `ex` command takes `--json` for output a script can r
 
 ## Environment variables
 
-[`.env.example`](./.env.example) lists them all, with the dev values. The secrets in it are public on purpose: with
-`AC_ENV=prod` the app refuses to start on them. No model keys are needed yet.
+[`.env.example`](./.env.example) lists them all, with the dev values. Every process loads `.env.local` first: the app,
+fake-workspace, `pnpm ex` and the `db:` scripts. A variable already set in your shell wins over the file.
+
+`AC_ENV` says which environment a process runs in: `dev`, `test` or `prod`. Leave it out and you get prod, except
+under the dev server (dev) and Vitest (test). So a production build that forgets it still runs as prod. The secrets in
+`.env.example` are public on purpose: in prod the app refuses to start on them, or on any secret shorter than 32
+characters. No model keys are needed yet.
 
 ## Scripts
 
@@ -123,11 +128,11 @@ restarts the server. Every `ex` command takes `--json` for output a script can r
 pnpm dev              # the app on :3000 (loads .env.local)
 pnpm fake-workspace   # fake-workspace on :8100, restarting on change
 pnpm build            # production build into .output/
-pnpm start            # run the production build
+pnpm start            # run the production build, as prod (it reads no .env.local: set its variables yourself)
 pnpm test             # vitest (the database tests skip when ParadeDB is down; AC_REQUIRE_POSTGRES=1 fails instead)
 pnpm typecheck        # tsgo --noEmit
-pnpm lint             # oxfmt + oxlint on the code (autofix)
-pnpm lint:check       # CI: the same without writing
+pnpm lint             # format the code with oxfmt, then lint it with oxlint (lint problems are reported, not fixed)
+pnpm lint:check       # CI: the same, without writing the formatting
 pnpm format:check     # oxfmt over the whole repo
 pnpm db:up            # ParadeDB in Docker Compose
 pnpm db:migrate       # apply the migrations in src/db/migrations

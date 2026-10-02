@@ -1,5 +1,5 @@
 import { defineRelationsPart, sql } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, uuid, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: uuid("id")
@@ -87,20 +87,16 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const organization = pgTable(
-  "organization",
-  {
-    id: uuid("id")
-      .default(sql`pg_catalog.gen_random_uuid()`)
-      .primaryKey(),
-    name: text("name").notNull(),
-    slug: text("slug").notNull().unique(),
-    logo: text("logo"),
-    createdAt: timestamp("created_at").notNull(),
-    metadata: text("metadata"),
-  },
-  (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
-);
+export const organization = pgTable("organization", {
+  id: uuid("id")
+    .default(sql`pg_catalog.gen_random_uuid()`)
+    .primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  logo: text("logo"),
+  createdAt: timestamp("created_at").notNull(),
+  metadata: text("metadata"),
+});
 
 export const member = pgTable(
   "member",
