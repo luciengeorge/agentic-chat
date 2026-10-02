@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/spike/")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const refused = devOnly();
+        const refused = devOnly(request);
         if (refused) return refused;
 
         const body = StartSchema.safeParse(await request.json().catch(() => ({})));

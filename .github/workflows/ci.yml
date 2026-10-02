@@ -50,4 +50,22 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm build
+      # src/server/production-build.test.ts makes the same checks; this runs them on the artifact CI built.
+      # env -i drops the job's AC_ENV=test: a deploy that sets nothing must come up as prod.
+      - name: The production build fails closed
+        run: |
+          run=(timeout 60 env -i PATH="$PATH" PORT=3001 WORKFLOW_LOCAL_DATA_DIR="$RUNNER_TEMP/world")
+          if "${run[@]}" BETTER_AUTH_SECRET=dev-better-auth-secret-not-for-production \
+            TOAST_SECRET=dev-toast-secret-not-for-production-use node .output/server/index.mjs > refused.log 2>&1; then
+            cat refused.log; echo "it started on the dev secrets"; exit 1
+          fi
+          grep -q "BETTER_AUTH_SECRET must be set to a real secret" refused.log || { cat refused.log; exit 1; }
+          "${run[@]}" BETTER_AUTH_SECRET="$(openssl rand -hex 32)" TOAST_SECRET="$(openssl rand -hex 32)" \
+            DATABASE_URL="$DATABASE_URL" node .output/server/index.mjs > served.log 2>&1 &
+          server=$!
+          for _ in $(seq 100); do curl -s -o /dev/null http://localhost:3001/ && break; sleep 0.2; done
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{}' http://localhost:3001/api/spike)
+          kill "$server"
+          test "$status" = 404 || { cat served.log; echo "POST /api/spike answered $status, not 404"; exit 1; }
       - run: pnpm ex gate

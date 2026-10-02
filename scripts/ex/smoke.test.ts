@@ -12,6 +12,7 @@ import type { Runtime } from "../../servers/fake-workspace/app";
 import type { Fetch, SmokeTargets } from "./smoke";
 
 import { DEFAULT_CORPUS_DIR, createApp } from "../../servers/fake-workspace/app";
+import { CONTROL_HEADER, DEV_CONTROL_TOKEN } from "../../servers/fake-workspace/control";
 import { checkBannedUser, checkFakeWorkspace, checkParadeDb, checkSignIn, checkSpikeWorkflow } from "./smoke";
 import { refused } from "./test-repo";
 
@@ -234,7 +235,7 @@ describe("checkFakeWorkspace", () => {
     const finance = world.groupId("kestrel", "/Kestrel/Finance");
     const shared = await fetch(`${WORKSPACE_URL}/_control/sites/kestrel/items/${memo}/sharing`, {
       method: "PUT",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", [CONTROL_HEADER]: DEV_CONTROL_TOKEN },
       body: JSON.stringify({
         inherit: true,
         grants: [{ principal_type: "group", principal_id: finance, principal_name: "/Kestrel/Finance", role: "read" }],

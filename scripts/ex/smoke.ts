@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { parseEnv } from "node:util";
 import postgres from "postgres";
 
 import { loadWorld } from "@/fixtures/world";
 
 import { TOKEN_PREFIX } from "../../servers/fake-workspace/corpus";
+import { localEnv } from "./env";
 import { runGate } from "./gate";
 
 export type CheckResult = { name: string; passed: boolean; detail: string | null; duration_s: number };
@@ -48,8 +48,7 @@ const REQUEST_TIMEOUT_MS = 30_000;
  * dotenv-cli reads it for them), then the dev defaults from docs/m0-contract.md.
  */
 export function smokeTargets(root: string, env: NodeJS.ProcessEnv = process.env): SmokeTargets {
-  const file = join(root, ".env.local");
-  const vars = { ...(existsSync(file) ? parseEnv(readFileSync(file, "utf8")) : {}), ...env };
+  const vars = localEnv(root, env);
   return {
     databaseUrl: vars.DATABASE_URL || "postgres://ac:ac@localhost:5432/ac",
     appUrl: vars.BETTER_AUTH_URL || "http://localhost:3000",

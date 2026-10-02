@@ -27,7 +27,8 @@ const securityHeaders = {
 };
 
 export default defineNitroConfig({
-  plugins: ["./src/workflows/start-world.ts", "./src/server/plugins/refuse-dev-secrets.ts"],
+  // The secrets first: a server that must not run stops before the world recovers any run.
+  plugins: ["./src/server/plugins/refuse-dev-secrets.ts", "./src/workflows/start-world.ts"],
   routeRules: {
     "/**": {
       headers: securityHeaders,

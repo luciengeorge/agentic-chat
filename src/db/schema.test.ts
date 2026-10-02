@@ -160,6 +160,22 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     expect(error).toMatchObject({ code: "42501", message: expect.stringContaining("row-level security") });
   });
 
+  // Why the comment in schema/app.ts says what binds: forcing RLS reaches a table's owner, never a superuser.
+  it("shows the dev role every tenant's rows, even with RLS forced, since it bypasses RLS", async () => {
+    let names: string[] = [];
+    await attempt(async (sql) => {
+      await principal(sql, kestrel, "user", "leo.martin");
+      await principal(sql, harbour, "user", "nina.osei");
+      await sql`ALTER TABLE principals FORCE ROW LEVEL SECURITY`;
+      await sql`SELECT set_config('app.tenant_id', ${kestrel}, true)`;
+      names = (await sql`SELECT name FROM principals ORDER BY name`).map((row) => row.name);
+    });
+    expect(names).toEqual(["leo.martin", "nina.osei"]);
+    expect(await t.sql`SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user`).toEqual([
+      { rolsuper: true, rolbypassrls: true },
+    ]);
+  });
+
   // Each child row is Harbour's and points at exactly one Kestrel parent.
   const CROSS_TENANT_FKS: [string, (sql: Tx, own: Parents, other: Parents) => Promise<unknown>][] = [
     [

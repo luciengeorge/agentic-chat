@@ -5,7 +5,7 @@ import { DEFAULT_WORLD_PATH } from "@/fixtures/world";
 import { createLogger } from "@/lib/logger";
 
 import { Clock } from "./clock";
-import { controlRoutes } from "./control";
+import { DEV_CONTROL_TOKEN, controlRoutes } from "./control";
 import { CorpusError, Workspace } from "./corpus";
 import { DEFAULT_POLICY, type DeliveryPolicy, Notifier } from "./delivery";
 import { directoryRoutes } from "./directory";
@@ -23,6 +23,8 @@ export type AppEnv = "dev" | "test" | "prod";
 
 export interface Runtime {
   readonly env: AppEnv;
+  /** What the control API's `x-workspace-control` header must carry. */
+  readonly controlToken: string;
   readonly clock: Clock;
   readonly workspace: Workspace;
   readonly faults: Faults;
@@ -31,6 +33,7 @@ export interface Runtime {
 
 export interface AppOptions {
   env?: AppEnv;
+  controlToken?: string;
   corpusDir?: string;
   worldPath?: string;
   policy?: DeliveryPolicy;
@@ -42,6 +45,7 @@ export function createApp(options: AppOptions = {}): { app: Hono; runtime: Runti
   const clock = options.clock ?? new Clock();
   const runtime: Runtime = {
     env: options.env ?? "dev",
+    controlToken: options.controlToken ?? DEV_CONTROL_TOKEN,
     clock,
     workspace: new Workspace(options.corpusDir ?? DEFAULT_CORPUS_DIR, options.worldPath ?? DEFAULT_WORLD_PATH),
     faults: new Faults(clock),

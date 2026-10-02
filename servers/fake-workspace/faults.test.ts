@@ -140,6 +140,18 @@ describe("latency", () => {
     expect((await response.json()).error.code).toBe("serviceNotReady");
   });
 
+  it("held across a reset meets none of the faults it cleared", async () => {
+    const clock = new ManualClock({ gated: true });
+    const client = fw.client({ clock });
+    await addFault(client, { kind: "latency", latency_ms: 100, path_prefix: ITEMS });
+    await addFault(client, { kind: "throttle", path_prefix: ITEMS });
+    const waiting = client.get(`${ITEMS}/root`);
+    await until(() => clock.waits.length > 0);
+    expect((await client.post("/_control/reset")).status).toBe(200);
+    clock.open();
+    expect((await waiting).status).toBe(200);
+  });
+
   /** The reset loads a corpus without Kestrel's site, so Kestrel's token opens nothing. */
   it("held across a reset answers as a fresh request", async () => {
     const clock = new ManualClock({ gated: true });

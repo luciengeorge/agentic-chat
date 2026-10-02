@@ -1,9 +1,11 @@
 // @vitest-environment node
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { Clock } from "./clock";
 import { type DeliveryPolicy, DEFAULT_POLICY, Notifier, SubscriptionRequestSchema } from "./delivery";
-import { type Client, FAST, ManualClock, type Receiver, WAIT, setupFakeWorkspace, until } from "./testing";
+import { type Client, FAST, ManualClock, type Receiver, WAIT, setupFakeWorkspace, slowBody, until } from "./testing";
 
 const NOW = "2026-10-01T12:00:00Z";
 const EXPIRES = "2026-10-03T12:00:00Z";
@@ -96,6 +98,16 @@ describe("the handshake", () => {
     expect(receiver.tokens).toHaveLength(1);
     await rename(client, "Heron.pdf");
     expect(await deliveries(client)).toEqual([]);
+  });
+
+  it("fails on a redirect, which Graph doesn't follow", async () => {
+    const receiver = await fw.receiver();
+    const target = await fw.receiver();
+    receiver.redirectTo = new URL(target.url).origin;
+    const response = await fw.client().post("/v1.0/subscriptions", { json: request(receiver) });
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("must respond with 200 OK");
+    expect(target.tokens).toEqual([]);
   });
 
   it("fails on an unreachable endpoint", async () => {
@@ -191,11 +203,23 @@ describe("notifications", () => {
     ]);
   });
 
+  it("aren't redirected", async () => {
+    const client = fw.client();
+    const receiver = await fw.receiver();
+    const target = await fw.receiver();
+    await subscribe(client, receiver);
+    receiver.redirectTo = new URL(target.url).origin;
+    await rename(client, "one.pdf");
+    const [delivery] = await deliveries(client);
+    expect([delivery!.state, delivery!.attempts.map((a) => a.status)]).toEqual(["failed", [307, 307, 307]]);
+    expect(target.notifications).toEqual([]);
+  });
+
   it("to an unreachable endpoint are logged", async () => {
     const client = fw.client();
     const gone = await fw.receiver();
     await subscribe(client, gone);
-    await gone.close();
+    gone.dropConnections = true;
     await rename(client, "one.pdf");
     const [delivery] = await deliveries(client);
     expect(delivery!.state).toBe("failed");
@@ -316,6 +340,27 @@ describe("resets", () => {
     } finally {
       await notifier.close();
     }
+  });
+
+  /** The reset loads a corpus without Kestrel's site, so Kestrel's token opens nothing. */
+  it("authorise a request whose body arrives after one as a fresh request", async () => {
+    const client = fw.client();
+    const receiver = await fw.receiver();
+    const body = slowBody(request(receiver));
+    const pending = client.post("/v1.0/subscriptions", {
+      body: body.stream,
+      headers: { "Content-Type": "application/json" },
+    });
+    await body.reading;
+    const manifest = join(fw.corpus.dir, "manifest.json");
+    const data = JSON.parse(readFileSync(manifest, "utf8"));
+    delete data.sites.kestrel;
+    writeFileSync(manifest, JSON.stringify(data));
+    expect((await client.post("/_control/reset")).status).toBe(200);
+    body.send();
+    const response = await pending;
+    expect(response.status, await response.clone().text()).toBe(401);
+    expect(receiver.tokens).toEqual([]);
   });
 });
 

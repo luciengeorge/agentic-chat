@@ -1,14 +1,15 @@
 // @vitest-environment node
 import type { AddressInfo } from "node:net";
-import type { ViteDevServer } from "vite";
+import type { Plugin, ViteDevServer } from "vite";
 
 import { spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer as createNetServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
-import { createServer } from "vite";
+import { createLogger, createServer } from "vite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { pauseDevServer } from "../scripts/ex/dev-server";
@@ -17,6 +18,7 @@ import { envWithoutVitest, makeRepo, readme } from "../scripts/ex/test-repo";
 import {
   createSlotResolver,
   DEV_SERVER_FILE,
+  type DevServerEntry,
   learnSlots,
   learnSlotsEsbuild,
   readDevServerEntry,
@@ -94,6 +96,13 @@ describe("createSlotResolver", () => {
     expect(() => createSlotResolver({ root, env: { AC_ACTIVE_STEP: "_s.2" } })).toThrow(
       "no problem directory for step _s.2",
     );
+  });
+
+  it("serves the reference under AC_ACTIVE_STEP=none, whatever .ex/state.json says", () => {
+    const root = repo({ ".ex/state.json": '{"active_step": "_s.1", "passed": []}' });
+    const resolver = createSlotResolver({ root, env: { AC_ACTIVE_STEP: "none" } });
+    expect(resolver.step).toBeNull();
+    expect(resolver.resolve("#learn/_sample/greeting")).toBe(join(root, "src/core/_sample/greeting.ts"));
   });
 
   it("loads slots from AC_SLOT_ROOT", () => {
@@ -186,15 +195,16 @@ test("slots", () => {
 
 describe("the dev server", () => {
   async function devServer(root: string, env: Record<string, string> = {}) {
+    const logger = createLogger("silent");
     const server = await createServer({
       root,
       configFile: false,
-      logLevel: "silent",
+      customLogger: { ...logger, info: vi.fn() },
       mode: "development",
       plugins: [learnSlots({ env })],
       server: { middlewareMode: true, ws: false },
     });
-    return { server, restart: vi.spyOn(server, "restart").mockResolvedValue() };
+    return { server, restart: vi.spyOn(server, "restart").mockResolvedValue(), info: server.config.logger.info };
   }
 
   it("restarts when .ex/state.json names a different step", async () => {
@@ -227,7 +237,7 @@ describe("the dev server", () => {
 
   it("restarts again when you edit a slotted file while it restarts", async () => {
     const root = repo();
-    const { server, restart } = await devServer(root, { AC_ACTIVE_STEP: "_s.1" });
+    const { server, restart, info } = await devServer(root, { AC_ACTIVE_STEP: "_s.1" });
     try {
       const greeting = join(root, "playground/greeting.ts");
       const seen: string[] = [];
@@ -243,6 +253,10 @@ describe("the dev server", () => {
       await writeUntilWatched(server, greeting, "first");
       await vi.waitFor(() => expect(seen).toContain("mid-restart"));
       expect(seen[0]).toBe("first");
+      expect(info).toHaveBeenCalledWith(
+        "learn-slots: playground/ changed while the server restarted; restarting again",
+        expect.anything(),
+      );
     } finally {
       await server.close();
     }
@@ -250,87 +264,292 @@ describe("the dev server", () => {
 });
 
 describe("pausing the dev server for a switch", () => {
-  async function listen(root: string) {
+  const state = (root: string) => join(root, ".ex/state.json");
+  const status = async (url: string) => (await fetch(`${url}/`)).status;
+
+  async function listen(root: string, { env = {}, drainMs, plugins = [] }: ListenOptions = {}) {
     const server = await createServer({
       root,
       configFile: false,
       logLevel: "silent",
       mode: "development",
-      plugins: [learnSlots({ env: {} })],
+      plugins: [learnSlots({ env, drainMs }), ...plugins],
       server: { port: 0, ws: false },
     });
     await server.listen();
-    const restart = vi.spyOn(server, "restart").mockResolvedValue();
-    const entry = readDevServerEntry(root)!;
-    const status = async () => (await fetch(`${entry.url}/`)).status;
-    return { server, restart, entry, status };
+    servers.push(server);
+    return { server, entry: readDevServerEntry(root)! };
+  }
+
+  type ListenOptions = { env?: Record<string, string>; drainMs?: number; plugins?: Plugin[] };
+  let servers: ViteDevServer[] = [];
+  afterEach(async () => {
+    // A restarted server is the same object, so this closes whichever server runs now.
+    for (const server of servers) await server.close();
+    servers = [];
+  });
+
+  /** A route that answers only once `answer()` is called. */
+  function slowRoute() {
+    let answer = () => {};
+    const answered = new Promise<void>((done) => (answer = done));
+    let arrive = () => {};
+    const arrived = new Promise<void>((done) => (arrive = done));
+    const events: string[] = [];
+    const plugin: Plugin = {
+      name: "slow-route",
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          if (req.url !== "/slow") return next();
+          arrive();
+          await answered;
+          events.push("slow answered");
+          res.end("slow");
+        });
+      },
+    };
+    return { plugin, events, arrived, answer };
   }
 
   it("registers itself, refuses work while paused, and restarts on the new code when resumed", async () => {
     const root = repo();
-    const { server, restart, entry, status } = await listen(root);
-    try {
-      expect(entry).toEqual({
-        pid: process.pid,
-        url: expect.stringMatching(/^http:\/\/localhost:\d+$/),
-        token: expect.any(String),
-      });
-      expect(await status()).not.toBe(503);
-      const forged = await fetch(`${entry.url}/__ex/pause`, {
-        method: "POST",
-        headers: { "x-ex-token": "forged", "x-ex-pid": String(process.pid) },
-      });
-      expect(forged.status).toBe(403);
-      expect(await status()).not.toBe(503);
+    const { server, entry } = await listen(root);
+    expect(entry).toEqual({
+      pid: process.pid,
+      url: expect.stringMatching(/^http:\/\/localhost:\d+$/),
+      token: expect.any(String),
+      step: null,
+      state: "running",
+    });
+    expect(await status(entry.url)).not.toBe(503);
+    const forged = await fetch(`${entry.url}/__ex/pause`, {
+      method: "POST",
+      headers: { "x-ex-token": "forged", "x-ex-pid": String(process.pid) },
+    });
+    expect(forged.status).toBe(403);
+    expect(await status(entry.url)).not.toBe(503);
 
-      const resume = await pauseDevServer(root);
-      expect(await status()).toBe(503);
-      // The switch writes the new step while paused; the restart waits for the resume.
-      await writeUntilWatched(server, join(root, ".ex/state.json"), '{"active_step": "_s.1", "passed": []}');
-      expect(restart).not.toHaveBeenCalled();
+    const paused = await pauseDevServer(root);
+    expect(paused).toMatchObject({ open: 0 });
+    const refused = await fetch(`${entry.url}/`);
+    expect([refused.status, refused.headers.get("retry-after")]).toEqual([503, "1"]);
+    // The switch writes the new step while paused; the restart waits for the resume.
+    await writeUntilWatched(server, state(root), '{"active_step": "_s.1", "passed": []}');
+    expect(readDevServerEntry(root)).toEqual(entry);
 
-      await resume!();
-      await vi.waitFor(() => expect(restart).toHaveBeenCalled());
-      expect(await status()).not.toBe(503);
-    } finally {
-      await server.close();
-    }
+    await paused!.restart();
+    // It resolves once the new server is up, on the new step.
+    const next = readDevServerEntry(root)!;
+    expect(next).toMatchObject({ pid: process.pid, step: "_s.1", state: "running" });
+    expect(next.token).not.toBe(entry.token);
+    expect(await status(next.url)).not.toBe(503);
+    await server.close();
     expect(existsSync(join(root, DEV_SERVER_FILE))).toBe(false);
   });
 
-  it("lifts the pause once the ex that paused it has exited", async () => {
+  it("waits out a restart under way, and pauses the server that replaces it", async () => {
     const root = repo();
-    const { server, restart, entry, status } = await listen(root);
+    let release = () => {};
+    const released = new Promise<void>((done) => (release = done));
+    let began = () => {};
+    const restarting = new Promise<void>((done) => (began = done));
+    let creations = 0;
+    // A restart creates the next server before it closes this one; this holds that creation until
+    // the test lets it go.
+    const slowRestart: Plugin = {
+      name: "slow-restart",
+      async config() {
+        if (creations++ === 0) return;
+        began();
+        await released;
+      },
+    };
+    const { server, entry } = await listen(root, { plugins: [slowRestart] });
+    await writeUntilWatched(server, state(root), '{"active_step": "_s.1", "passed": []}');
+    await restarting;
+
+    let settled = false;
+    const pausing = pauseDevServer(root, { pollMs: 10 }).finally(() => (settled = true));
+    await new Promise((done) => setTimeout(done, 200));
+    expect(settled).toBe(false);
+    release();
+    const paused = await pausing;
+    const next = readDevServerEntry(root)!;
+    expect(next).toMatchObject({ step: "_s.1", state: "running" });
+    expect(next.token).not.toBe(entry.token);
+    expect(paused).toMatchObject({ open: 0 });
+    expect(await status(next.url)).toBe(503);
+  });
+
+  it("answers the pause once the requests it let in have answered", async () => {
+    const root = repo();
+    const slow = slowRoute();
+    const { entry } = await listen(root, { plugins: [slow.plugin] });
+    const request = fetch(`${entry.url}/slow`).then((response) => response.text());
+    await slow.arrived;
+
+    const pausing = pauseDevServer(root).then((paused) => {
+      slow.events.push("paused");
+      return paused;
+    });
+    await new Promise((done) => setTimeout(done, 200));
+    expect(slow.events).toEqual([]);
+    slow.answer();
+    expect(await request).toBe("slow");
+    expect(await pausing).toMatchObject({ open: 0 });
+    expect(slow.events).toEqual(["slow answered", "paused"]);
+  });
+
+  it("stops waiting for a request after a while, and says how many it left", async () => {
+    const root = repo();
+    const slow = slowRoute();
+    const { entry } = await listen(root, { drainMs: 100, plugins: [slow.plugin] });
+    const request = fetch(`${entry.url}/slow`).then((response) => response.text());
+    await slow.arrived;
     try {
-      const gone = spawnSync(process.execPath, ["-e", ""]).pid;
-      const paused = await fetch(`${entry.url}/__ex/pause`, {
-        method: "POST",
-        headers: { "x-ex-token": entry.token, "x-ex-pid": String(gone) },
-      });
-      expect(paused.status).toBe(200);
-      expect(await status()).not.toBe(503);
-      expect(restart).toHaveBeenCalledOnce();
+      expect(await pauseDevServer(root)).toMatchObject({ open: 1 });
     } finally {
-      await server.close();
+      slow.answer();
+      await request;
     }
   });
 
-  it("forgets a dev server that was killed or no longer answers", async () => {
+  it("fails the restart when the new server serves another step", async () => {
     const root = repo();
+    await listen(root, { env: { AC_ACTIVE_STEP: "_s.1" } });
+    const paused = await pauseDevServer(root);
+    await expect(paused!.restart()).rejects.toMatchObject({
+      message: "the dev server restarted on _s.1, not no step",
+      detail: "is AC_ACTIVE_STEP set where `pnpm dev` runs?",
+    });
+  });
+
+  it("fails the restart when the new server doesn't start, and the old one serves on", async () => {
+    const root = repo();
+    const { entry } = await listen(root);
+    const paused = await pauseDevServer(root);
+    // The new server's config throws: _s.9 has no problem directory.
+    mkdirSync(join(root, ".ex"), { recursive: true });
+    writeFileSync(state(root), '{"active_step": "_s.9", "passed": []}');
+    await expect(paused!.restart()).rejects.toMatchObject({
+      message: `couldn't restart the dev server at ${entry.url}`,
+      detail: "the new server didn't start, so it serves the old code; its terminal shows why",
+    });
+    expect(readDevServerEntry(root)).toEqual({ ...entry, state: "restart-failed" });
+    expect(await status(entry.url)).not.toBe(503);
+  });
+
+  it("answers the control paths it doesn't know, and a bad pause, without pausing", async () => {
+    const root = repo();
+    const { entry } = await listen(root);
+    const headers = { "x-ex-token": entry.token };
+    expect((await fetch(`${entry.url}/__ex/pause`, { headers })).status).toBe(403);
+    const bad = await fetch(`${entry.url}/__ex/pause`, { method: "POST", headers: { ...headers, "x-ex-pid": "ex" } });
+    expect([bad.status, await bad.text()]).toEqual([400, "x-ex-pid must be the pid of `pnpm ex`\n"]);
+    expect((await fetch(`${entry.url}/__ex/stop`, { method: "POST", headers })).status).toBe(404);
+    expect(await status(entry.url)).not.toBe(503);
+  });
+
+  it("restarts once the ex that paused it has exited", async () => {
+    const root = repo();
+    const { entry } = await listen(root);
+    const gone = spawnSync(process.execPath, ["-e", ""]).pid;
+    const paused = await fetch(`${entry.url}/__ex/pause`, {
+      method: "POST",
+      headers: { "x-ex-token": entry.token, "x-ex-pid": String(gone) },
+    });
+    expect(paused.status).toBe(200);
+    // That request finds the pause orphaned and starts the restart; the next server takes no pause over.
+    expect(await status(entry.url)).toBe(503);
+    await vi.waitFor(() => expect(readDevServerEntry(root)).toMatchObject({ state: "running" }));
+    const next = readDevServerEntry(root)!;
+    expect(next.token).not.toBe(entry.token);
+    expect(await status(next.url)).not.toBe(503);
+  });
+
+  it("refuses work until the restart after a switch is done, so nothing runs on swapped files", async () => {
+    const root = repo();
+    let release = () => {};
+    const released = new Promise<void>((done) => (release = done));
+    let creations = 0;
+    const slowRestart: Plugin = {
+      name: "slow-restart",
+      async config() {
+        if (creations++ > 0) await released;
+      },
+    };
+    const { entry } = await listen(root, { plugins: [slowRestart] });
+    const paused = await pauseDevServer(root);
+    const restarting = paused!.restart();
+    await vi.waitFor(() => expect(readDevServerEntry(root)?.state).toBe("restarting"));
+    expect(await status(entry.url)).toBe(503);
+    release();
+    await restarting;
+    expect(await status(readDevServerEntry(root)!.url)).not.toBe(503);
+  });
+});
+
+describe("pauseDevServer", () => {
+  const register = (root: string, entry: Omit<DevServerEntry, "token" | "step" | "state">) => {
+    mkdirSync(join(root, ".ex"), { recursive: true });
+    const full: DevServerEntry = { token: "t", step: null, state: "running", ...entry };
+    writeFileSync(join(root, DEV_SERVER_FILE), JSON.stringify(full));
+  };
+
+  async function closedPort(): Promise<number> {
     const closed = createNetServer().listen(0);
     await once(closed, "listening");
     const { port } = closed.address() as AddressInfo;
     closed.close();
-    const register = (pid: number) => {
-      mkdirSync(join(root, ".ex"), { recursive: true });
-      writeFileSync(join(root, DEV_SERVER_FILE), JSON.stringify({ pid, url: `http://localhost:${port}`, token: "t" }));
-    };
+    return port;
+  }
+
+  /** A stand-in dev server on a free port, answering the control paths with `answers`. */
+  async function fakeDevServer(answers: Record<string, [number, string]>) {
+    const server = createHttpServer((req, res) => {
+      const [status, body] = answers[req.url!] ?? [404, ""];
+      res.writeHead(status).end(body);
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    cleanups.push(() => server.close());
+    return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  }
+
+  it("forgets a dev server that was killed or no longer answers", async () => {
+    const root = repo();
+    const port = await closedPort();
     expect(await pauseDevServer(root)).toBeNull();
-    register(spawnSync(process.execPath, ["-e", ""]).pid);
+    register(root, { pid: spawnSync(process.execPath, ["-e", ""]).pid, url: `http://localhost:${port}` });
     expect(await pauseDevServer(root)).toBeNull();
     expect(existsSync(join(root, DEV_SERVER_FILE))).toBe(false);
-    register(process.pid);
-    expect(await pauseDevServer(root)).toBeNull();
+    register(root, { pid: process.pid, url: `http://localhost:${port}` });
+    expect(await pauseDevServer(root, { pollMs: 10, refusedMs: 50 })).toBeNull();
     expect(existsSync(join(root, DEV_SERVER_FILE))).toBe(false);
+  });
+
+  it("keeps a dev server that refuses connections for a moment, as one does while it restarts", async () => {
+    const root = repo();
+    register(root, { pid: process.pid, url: `http://localhost:${await closedPort()}` });
+    const url = await fakeDevServer({ "/__ex/pause": [200, '{"open":0}'] });
+    setTimeout(() => register(root, { pid: process.pid, url }), 100);
+    expect(await pauseDevServer(root, { pollMs: 10 })).toMatchObject({ open: 0 });
+  });
+
+  it("reports a dev server that answers the pause or the resume with an error", async () => {
+    const root = repo();
+    const answers: Record<string, [number, string]> = { "/__ex/pause": [500, "boom\n"], "/__ex/resume": [500, ""] };
+    const url = await fakeDevServer(answers);
+    register(root, { pid: process.pid, url });
+    await expect(pauseDevServer(root)).rejects.toMatchObject({
+      message: `couldn't pause the dev server at ${url}`,
+      detail: "pause answered 500 boom",
+    });
+    answers["/__ex/pause"] = [200, '{"open":0}'];
+    const paused = await pauseDevServer(root);
+    await expect(paused!.restart()).rejects.toMatchObject({
+      message: `couldn't restart the dev server at ${url}`,
+      detail: "resume answered 500; it restarts on its next request",
+    });
   });
 });

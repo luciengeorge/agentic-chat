@@ -41,6 +41,8 @@ type SwitchEvent = { event: "pause" | "cancel" | "restart"; active: string | nul
 class FakeSwitch implements SlotSwitch {
   events: SwitchEvent[] = [];
   devServer = true;
+  /** Requests still open when the pause stopped waiting. */
+  open = 0;
   errors: Partial<Record<SwitchEvent["event"], Error>> = {};
   constructor(private readonly root: string) {}
 
@@ -57,7 +59,7 @@ class FakeSwitch implements SlotSwitch {
   async pauseDevServer() {
     if (!this.devServer) return null;
     this.record("pause");
-    return async () => this.record("restart");
+    return { open: this.open, restart: async () => this.record("restart") };
   }
 
   async cancelOpenRuns(): Promise<string[]> {
@@ -217,14 +219,26 @@ describe("start, reset and solution", () => {
 
   it("keeps the switch, and says so, when the restart fails", async () => {
     const { ex, slotSwitch, root } = setup();
-    slotSwitch.errors.restart = new ExError("couldn't restart the dev server at http://localhost:3000", "fetch failed");
+    slotSwitch.errors.restart = new ExError(
+      "couldn't restart the dev server at http://localhost:3000",
+      "no new server after 60 s; its terminal shows why",
+    );
     expect(await ex(["start", "_smoke.1"])).toMatchObject({
       restarted: [],
       skipped: [
-        "restart: couldn't restart the dev server at http://localhost:3000: fetch failed; it restarts on its next request",
+        "restart: couldn't restart the dev server at http://localhost:3000: no new server after 60 s; its terminal shows why",
       ],
     });
     expect(readState(root).activeStep).toBe("_smoke.1");
+  });
+
+  it("goes ahead, and says so, when requests were still open after the pause's wait", async () => {
+    const { ex, slotSwitch } = setup();
+    slotSwitch.open = 2;
+    expect(await ex(["start", "_smoke.1"])).toMatchObject({
+      restarted: ["dev server"],
+      skipped: ["drain: 2 request(s) hadn't answered when the pause stopped waiting; a run one starts isn't cancelled"],
+    });
   });
 
   it("goes ahead, and says so, when cancelling is skipped", async () => {
@@ -318,13 +332,25 @@ describe("test", SPAWNS_VITEST, () => {
   });
 
   it("grades the playground, and marks the step passed", async () => {
-    const { ex } = setup();
+    const { ex, write } = setup();
     expect(await ex(["test", "_smoke.1"], { ok: false })).toEqual({
       error: "step _smoke.1 isn't active (active: none)",
       detail: "run `pnpm ex start _smoke.1` first",
     });
     await ex(["start", "_smoke.1"]);
     const status = async () => (await ex(["list", "--all"])).sections[1].steps[0].status;
+    expect(await status()).toBe("active");
+    // The problem code, then wrong code of your own: both fail.
+    expect(await ex(["test", "_smoke.1"], { ok: false })).toMatchObject({
+      target: "playground",
+      passed: false,
+      tests: [{ outcome: "failed", message: "Error: not written: x" }],
+    });
+    write("playground/greeting.ts", "export const formatGreeting = (name: string) => `hi ${name}`;\n");
+    expect(await ex(["test", "_smoke.1"], { ok: false })).toMatchObject({
+      passed: false,
+      tests: [{ outcome: "failed", message: expect.stringContaining("expected 'hi x' to be 'hello x'") }],
+    });
     expect(await status()).toBe("active");
     await ex(["solution", "_smoke.1"]);
     expect(await ex(["test", "_smoke.1"])).toMatchObject({ target: "playground", passed: true });
@@ -374,6 +400,36 @@ test("runs in node, with its own workflow root", () => {
     expect(existsSync(readFileSync(path("workflow-root.txt"), "utf8"))).toBe(false);
   });
 
+  it.each([
+    "@/core/_sample/greeting",
+    "#/core/_sample/greeting",
+    "src/core/_sample/greeting",
+    "/src/core/_sample/greeting.ts",
+    "../src/core/_sample/greeting.ts",
+    "../src/core/_sample/greeting.js",
+  ])("refuses a playground that passes on the reference, imported as %s", async (specifier) => {
+    const { ex, write, root } = setup();
+    await ex(["start", "_smoke.1"]);
+    write("playground/greeting.ts", `export { formatGreeting } from "${specifier}";\n`);
+    expect(await ex(["test", "_smoke.1"], { ok: false })).toEqual({
+      error:
+        `playground/greeting.ts imports ${specifier}, the reference for _sample/greeting; ` +
+        "a slot has to hold your own code, so the tests grade it and not the reference",
+      detail: null,
+    });
+    expect(readState(root).passed).toEqual([]);
+  });
+
+  it("refuses the reference behind another playground file, or behind a dynamic import", async () => {
+    const { ex, write } = setup();
+    await ex(["start", "_smoke.1"]);
+    write("playground/greeting.ts", 'export { formatGreeting } from "./helper";\n');
+    write("playground/helper.ts", 'export const { formatGreeting } = await import("../src/core/_sample/greeting");\n');
+    expect((await ex(["test", "_smoke.1"], { ok: false })).error).toMatch(
+      /^playground\/helper\.ts imports \.\.\/src\/core\/_sample\/greeting, the reference for _sample\/greeting; /,
+    );
+  });
+
   it("refuses a step with no tests and a bad target", async () => {
     const { ex } = setup();
     expect((await ex(["test", "00.1"], { ok: false })).error).toBe("00.1 is a guided step; it has no tests");
@@ -414,6 +470,19 @@ describe("gate", SPAWNS_VITEST, () => {
     expect(out.steps[0].problem.tests).toEqual([
       expect.objectContaining({ nodeid: `${PROBLEM}/greeting.test.ts`, outcome: "error" }),
     ]);
+  });
+
+  it("fails without running anything when the solution passes on the reference", async () => {
+    const { ex, write } = setup();
+    write(`${SOLUTION}/greeting.ts`, 'export { formatGreeting } from "../../../src/core/_sample/greeting";\n');
+    const out = await ex(["gate"], { ok: false });
+    expect(out.steps[0]).toMatchObject({
+      reasons: [
+        `${SOLUTION}/greeting.ts imports ../../../src/core/_sample/greeting, the reference for _sample/greeting`,
+      ],
+      problem: null,
+      solution: null,
+    });
   });
 
   it("fails without running anything when the solution dir holds tests", async () => {

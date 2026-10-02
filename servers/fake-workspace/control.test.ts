@@ -3,7 +3,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { type Client, buildCorpus, setupFakeWorkspace } from "./testing";
+import { CONTROL_HEADER, DEV_CONTROL_TOKEN } from "./control";
+import { type Client, buildCorpus, setupFakeWorkspace, slowBody } from "./testing";
 
 const CONTROL = "/_control/sites/kestrel/items";
 const SITE = "/v1.0/sites/kestrel/drive";
@@ -55,6 +56,55 @@ it("the control API is dev only", async () => {
   expect((await client.get(`${SITE}/root`)).status).toBe(200);
 });
 
+describe("the control header", () => {
+  /** What a web page can send without a preflight: a form post, with no custom header. */
+  const formPost = (client: Client, headers: Record<string, string> = {}) =>
+    client.request("POST", "/_control/reset", {
+      body: "reset=1",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", ...headers },
+    });
+
+  it("is required, so a form post can't reach the control API", async () => {
+    const client = fw.client({ sendControl: false });
+    const control = { [CONTROL_HEADER]: DEV_CONTROL_TOKEN };
+    const created = await client.post(CONTROL, { json: { ...NEW_FILE, name: "x.md" }, headers: control });
+    expect(created.status).toBe(201);
+    const { id } = await created.json();
+    const refused: Record<string, string>[] = [{}, { Origin: "http://localhost:3000" }, { [CONTROL_HEADER]: "guess" }];
+    for (const headers of refused) {
+      const response = await formPost(client, headers);
+      expect(response.status).toBe(403);
+      const { error } = await response.json();
+      expect(error).toEqual({
+        code: "accessDenied",
+        message: "The control API needs the x-workspace-control header, set to FAKE_WORKSPACE_CONTROL_TOKEN.",
+      });
+    }
+    expect((await client.get(`${SITE}/items/${id}`)).status).toBe(200);
+    expect((await formPost(client, control)).status).toBe(200);
+    expect((await client.get(`${SITE}/items/${id}`)).status).toBe(404);
+  });
+
+  it("isn't enough from a page on another machine", async () => {
+    const client = fw.client();
+    for (const origin of ["http://evil.example", "http://127.0.0.1.evil.example:8100", "null"]) {
+      const response = await formPost(client, { Origin: origin });
+      expect(response.status).toBe(403);
+      expect((await response.json()).error.message).toBe(`The control API refuses requests from ${origin}.`);
+    }
+    for (const origin of ["http://localhost:3000", "http://127.0.0.1:8100", "http://[::1]:8100"]) {
+      expect((await formPost(client, { Origin: origin })).status).toBe(200);
+    }
+  });
+
+  it("carries the app's own token", async () => {
+    const client = fw.client({ controlToken: "mine" });
+    expect((await client.post("/_control/reset")).status).toBe(200);
+    const defaulted = await client.post("/_control/reset", { headers: { [CONTROL_HEADER]: DEV_CONTROL_TOKEN } });
+    expect(defaulted.status).toBe(403);
+  });
+});
+
 describe("reset", () => {
   it("restores the manifest and clears the rest", async () => {
     const client = fw.client();
@@ -73,7 +123,8 @@ describe("reset", () => {
     await client.post(`${CONTROL}/${memo}/rename`, { json: { name: "Heron.pdf" } });
     await client.delete(`${CONTROL}/${fw.corpus.id("kestrel", "/HR")}`);
     const created = await (await client.post(CONTROL, { json: { ...NEW_FILE, name: "x.md" } })).json();
-    await client.post("/_control/faults", { json: { kind: "throttle", after_requests: 100 } });
+    // It would throttle the next Graph request, the snapshot's first.
+    await client.post("/_control/faults", { json: { kind: "throttle" } });
     await client.post("/_control/flush");
     expect((await (await client.get("/_control/deliveries")).json()).value).not.toEqual([]);
 
@@ -83,13 +134,31 @@ describe("reset", () => {
     expect(await snapshot(client)).toEqual(before);
     expect((await client.get(`${SITE}/items/${created.id}`)).status).toBe(404);
     expect((await (await client.get("/_control/deliveries")).json()).value).toEqual([]);
-    await client.post(`${CONTROL}/${memo}/rename`, { json: { name: "Heron.pdf" } });
-    await client.post("/_control/flush");
-    expect((await (await client.get("/_control/deliveries")).json()).value).toEqual([]);
     for (let i = 0; i < 3; i++) expect((await client.get(`${SITE}/root`)).status).toBe(200);
     // The clock is unpinned again: new timestamps come from the real clock.
+    await client.post(`${CONTROL}/${memo}/rename`, { json: { name: "Heron.pdf" } });
     const renamed = await (await client.get(`${SITE}/items/${memo}`)).json();
     expect(renamed.lastModifiedDateTime).not.toMatch(/^2026-10-01T12:00/);
+    // The subscription is gone too: a change at a time it would still be live notifies nobody.
+    await client.post("/_control/clock", { json: { now: "2026-10-01T12:00:00Z" } });
+    await client.post(`${CONTROL}/${memo}/rename`, { json: { name: "Heron 2.pdf" } });
+    await client.post("/_control/flush");
+    expect((await (await client.get("/_control/deliveries")).json()).value).toEqual([]);
+  });
+
+  it("a mutation whose body arrives after one lands on the drive it loaded", async () => {
+    const client = fw.client();
+    const memo = fw.corpus.id("kestrel", "/Exec/Project Heron memo.pdf");
+    const body = slowBody({ name: "Heron.pdf" });
+    const renaming = client.post(`${CONTROL}/${memo}/rename`, {
+      body: body.stream,
+      headers: { "Content-Type": "application/json" },
+    });
+    await body.reading;
+    expect((await client.post("/_control/reset")).status).toBe(200);
+    body.send();
+    expect((await renaming).status).toBe(200);
+    expect((await (await client.get(`${SITE}/items/${memo}`)).json()).name).toBe("Heron.pdf");
   });
 
   it("loads a corpus built after start", async () => {

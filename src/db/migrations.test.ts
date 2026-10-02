@@ -44,6 +44,12 @@ describe.skipIf(!postgresAvailable)("migrations", () => {
     expect(rows.map((row) => row.extname).sort()).toEqual(["pg_search", "vector"]);
   });
 
+  it("index the organization slug once", async () => {
+    const rows = await migrated.sql`
+      SELECT indexname FROM pg_indexes WHERE tablename = 'organization' AND indexdef LIKE '%(slug)'`;
+    expect(rows.map((row) => row.indexname)).toEqual(["organization_slug_key"]);
+  });
+
   it("leave nothing in the schema for drizzle-kit generate to add", async () => {
     const latest = JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, migrationDirs.at(-1)!, "snapshot.json"), "utf8"));
     expect(await generateMigration(latest, await generateDrizzleJson(schema))).toEqual([]);

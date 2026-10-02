@@ -7,7 +7,8 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import * as authSchema from "@/db/schema/auth";
-import { acEnv, assertSafeSecrets } from "@/lib/auth-env";
+import { assertSafeSecrets } from "@/lib/auth-env";
+import { acEnv } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 
 assertSafeSecrets();
@@ -21,6 +22,26 @@ async function organizationOf(userId: string) {
     .where(eq(authSchema.member.userId, userId))
     .limit(1);
   return row?.id ?? null;
+}
+
+async function slugOf(organizationId: string) {
+  const [row] = await db
+    .select({ slug: authSchema.organization.slug })
+    .from(authSchema.organization)
+    .where(eq(authSchema.organization.id, organizationId));
+  return row?.slug;
+}
+
+// A removed member keeps no session, as a banned user keeps none (the admin plugin's banUser ends them too).
+async function endSessions(userId: string): Promise<void> {
+  const { internalAdapter } = await auth.$context;
+  await internalAdapter.deleteUserSessions(userId);
+}
+
+// Membership comes from the seed (later, the directory sync), so nobody joins by invitation. better-auth has no
+// switch for that, and `disabledPaths` would close only the HTTP routes, not `auth.api`.
+async function refuseInvitations() {
+  throw new APIError("BAD_REQUEST", { message: "Invitations are off: membership comes from the directory" });
 }
 
 // There's no mail transport yet. Dev prints the link; anywhere else refuses rather than drop it.
@@ -61,6 +82,15 @@ export const auth = betterAuth({
         beforeAddMember: async ({ user }) => {
           if (await organizationOf(user.id)) {
             throw new APIError("BAD_REQUEST", { message: "A user can belong to one organization only" });
+          }
+        },
+        afterRemoveMember: ({ user }) => endSessions(user.id),
+        beforeCreateInvitation: refuseInvitations,
+        beforeAcceptInvitation: refuseInvitations,
+        // The seed and `ex smoke` find a tenant by its slug.
+        beforeUpdateOrganization: async ({ organization, member }) => {
+          if (organization.slug !== undefined && organization.slug !== (await slugOf(member.organizationId))) {
+            throw new APIError("BAD_REQUEST", { message: "An organization's slug can't change" });
           }
         },
       },

@@ -10,20 +10,20 @@
     "dev": "dotenv -e .env.local -- vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node .output/server/index.mjs",
+    "start": "NODE_ENV=production node .output/server/index.mjs",
     "test": "vitest run",
     "lint": "oxfmt src scripts vite-plugins servers && oxlint src scripts vite-plugins servers",
     "lint:check": "oxfmt --check src scripts vite-plugins servers && oxlint src scripts vite-plugins servers",
     "format:check": "oxfmt --check .",
     "format": "oxfmt .",
     "typecheck": "tsgo --noEmit",
-    "ex": "tsx scripts/ex.ts",
+    "ex": "dotenv -e .env.local -- tsx scripts/ex.ts",
     "db:up": "docker compose up --wait",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
     "db:seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
     "auth:generate": "dotenv -e .env.local -- auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts --yes",
-    "fake-workspace": "tsx watch servers/fake-workspace/main.ts"
+    "fake-workspace": "dotenv -e .env.local -- tsx watch servers/fake-workspace/main.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.83",

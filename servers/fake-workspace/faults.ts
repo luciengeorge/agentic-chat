@@ -33,7 +33,7 @@ interface Fault {
 }
 
 export class Faults {
-  private faults: Fault[] = [];
+  private readonly faults: Fault[] = [];
 
   constructor(private readonly clock: Clock) {}
 
@@ -41,8 +41,9 @@ export class Faults {
     this.faults.push({ spec, seen: 0, fired: 0 });
   }
 
+  /** Empties the list in place, so a request held in a latency fault meets none of the others after its wait. */
   clear(): void {
-    this.faults = [];
+    this.faults.length = 0;
   }
 
   /**
