@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { Fetch } from "./smoke";
+
 const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const PLUGIN = join(REPO, "vite-plugins/learn-slots.ts");
 
@@ -47,3 +49,9 @@ export function envWithoutVitest(extra: Record<string, string> = {}): NodeJS.Pro
     ...extra,
   };
 }
+
+/** What `fetch` throws when nothing listens on the port. */
+export const refused: Fetch = async () => {
+  const cause = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
+  throw new TypeError("fetch failed", { cause });
+};

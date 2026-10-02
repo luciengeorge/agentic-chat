@@ -9,7 +9,7 @@ import { main } from "./cli";
 import { ExError } from "./errors";
 import { readState } from "./state";
 import { CancelSkipped } from "./switch";
-import { makeRepo, readme, VITEST_CONFIG } from "./test-repo";
+import { makeRepo, readme, refused, VITEST_CONFIG } from "./test-repo";
 
 const GREETING = { title: "Greeting", type: "graded", slots: { "_sample/greeting": "greeting.ts" } };
 const FILES = {
@@ -66,6 +66,15 @@ class FakeSwitch implements SlotSwitch {
   }
 }
 
+/** A stack with nothing running, so the smoke checks fail fast instead of finding the real one. */
+const STACK_DOWN = {
+  databaseUrl: "postgres://ac:ac@127.0.0.1:1/ac",
+  appUrl: "http://localhost:3000",
+  workspaceUrl: "http://localhost:8100",
+  corpusDir: "fixtures/corpus/build",
+  fetch: refused,
+};
+
 // These run a step's tests, each in one or two fresh Vitest processes: about a second each here, a
 // few on a small CI runner.
 const SPAWNS_VITEST = { timeout: 15_000 };
@@ -92,6 +101,7 @@ function setup() {
       root,
       io: { out: (text) => (out += `${text}\n`), err: (text) => (err += `${text}\n`) },
       slotSwitch,
+      smoke: STACK_DOWN,
     });
     expect(code === 0, `exit ${code}\n${out}${err}`).toBe(ok);
     return json ? JSON.parse(out) : { out, err };
@@ -449,20 +459,46 @@ describe("gate", SPAWNS_VITEST, () => {
 });
 
 describe("smoke", SPAWNS_VITEST, () => {
-  it("reports every check, and the unintegrated ones fail", async () => {
+  const app = "failed (ECONNREFUSED); is `pnpm dev` running?";
+
+  it("reports each check on its own, and wants the gate to cover _smoke.2", async () => {
     const { ex } = setup();
     const out = await ex(["smoke"], { ok: false });
     expect(out.passed).toBe(false);
-    expect(out.checks).toHaveLength(6);
-    for (const check of out.checks.slice(0, 5)) {
-      expect(check).toEqual({
-        name: expect.any(String),
-        passed: false,
-        detail: "not implemented until integration",
-        duration_s: expect.any(Number),
-      });
-    }
-    expect(out.checks[5]).toMatchObject({ name: "gate on _smoke.1", passed: true, detail: null });
+    expect(out.checks.map((check: { duration_s: unknown }) => check.duration_s)).toEqual(
+      Array(6).fill(expect.any(Number)),
+    );
+    expect(out.checks.map(({ name, passed, detail }: Record<string, unknown>) => [name, passed, detail])).toEqual([
+      ["paradedb extensions and queries", false, "nothing answers at 127.0.0.1:1; `pnpm ex up` starts ParadeDB"],
+      ["sign in and /api/me", false, `POST http://localhost:3000/api/auth/sign-in/email ${app}`],
+      ["banned user refused", false, `POST http://localhost:3000/api/auth/sign-in/email ${app}`],
+      [
+        "fake-workspace sharing and directory",
+        false,
+        "GET http://localhost:8100/health failed (ECONNREFUSED); is `pnpm fake-workspace` running?",
+      ],
+      ["spike workflow", false, `POST http://localhost:3000/api/spike ${app}`],
+      ["ex gate", false, "the gate didn't check _smoke.2"],
+    ]);
+  });
+
+  it("passes the gate check when every graded step passes, _smoke.1 and _smoke.2 among them", async () => {
+    const { ex, path } = setup();
+    cpSync(path(PROBLEM), path("exercises/_smoke/02.problem.greeting-again"), { recursive: true });
+    cpSync(path(SOLUTION), path("exercises/_smoke/02.solution.greeting-again"), { recursive: true });
+    const out = await ex(["smoke"], { ok: false });
+    expect(out.checks[5]).toMatchObject({ name: "ex gate", passed: true, detail: "passed _smoke.1, _smoke.2" });
+  });
+
+  it("fails the gate check when a graded step fails the gate", async () => {
+    const { ex, path } = setup();
+    cpSync(path(`${SOLUTION}/greeting.ts`), path(`${PROBLEM}/greeting.ts`));
+    const out = await ex(["smoke"], { ok: false });
+    expect(out.checks[5]).toMatchObject({
+      name: "ex gate",
+      passed: false,
+      detail: "_smoke.1: problem tests pass; they grade nothing",
+    });
   });
 });
 

@@ -24,21 +24,26 @@ AI:            Vercel AI SDK 7 (ai, @ai-sdk/openai, @ai-sdk/react)
 UI:            shadcn/ui (Base UI variant), Tailwind v4, hugeicons
 Forms:         TanStack Form + Zod
 Data fetching: TanStack Query
-Analytics:     Vercel Analytics + Speed Insights, Google Analytics (production only)
+Database:      ParadeDB (Postgres + pg_search + pgvector) through Drizzle 1.0 rc
+Auth:          better-auth (email and password; organizations are the tenants)
+Workflows:     Vercel Workflow 5 (local world in .workflow-data/)
 Tooling:       oxlint + oxfmt + tsgo (no eslint/prettier/tsc), Vitest
 Hosting:       Vercel
-Planned:       ParadeDB + Drizzle, better-auth, Vercel Workflow (see PLAN.md)
 ```
 
 ## Folder layout
 
 ```
 src/
+  core/                  # the modules the exercises teach, imported as #learn/<area>/<module>
+  db/                    # Drizzle schema, migrations, client, seed
+  fixtures/world.ts      # loads and validates fixtures/world.yaml
+  workflows/             # Vercel Workflow code (see docs/workflow-notes.md)
   components/
     ui/                  # shadcn: add via `pnpm dlx shadcn@latest add <name>`
     global-loading.tsx   # progress bar for route loads
   hooks/                 # use-toast: shows server toasts with sonner
-  integrations/          # provider components (TanStack Query, Google Analytics)
+  integrations/          # provider components (TanStack Query)
   lib/
     logger.ts            # structured logger, redacts sensitive keys
     toast.ts             # toast schema; toast-session.server.ts keeps it in a cookie
@@ -49,12 +54,18 @@ src/
     index.tsx            # landing page
   routeTree.gen.ts       # NEVER edit: TanStack Router codegen
   test/setup.ts          # Vitest setup
+servers/fake-workspace/  # the stand-in SharePoint, on :8100
+scripts/                 # `pnpm ex` (scripts/ex/) and the seed
+exercises/               # the course: sections, steps, their tests
+vite-plugins/            # learn-slots: resolves #learn/* to the active step's playground files
+patches/                 # the @workflow/builders patch (see docs/workflow-notes.md)
 fixtures/
   world.yaml             # tenants, people, groups, folders, sharing, facts
   corpus/                # markdown sources and the committed build (see its README)
-docs/                    # interview prep and the Python milestones' contracts, kept as history
+docs/                    # m0-contract.md, workflow-notes.md; interview prep and the Python contracts as history
+compose.yaml             # ParadeDB
 nitro.config.ts          # security headers (CSP, COOP, HSTS, etc.)
-vite.config.ts           # vite + tanstack-start + react-compiler
+vite.config.ts           # vite + workflow + learn-slots + tanstack-start + react-compiler
 ```
 
 ## Conventions
@@ -159,12 +170,16 @@ sentence length, no em dashes, and no "not X, but Y".
 - `pnpm-lock.yaml`: managed by pnpm
 - `fixtures/corpus/build/**`: the committed corpus, content-addressed. Re-render it from the `python-m0b` tag (see
   `fixtures/corpus/README.md`)
-- `docs/**`: history
+- `docs/interview-prep/**`, `docs/m0a-contract.md`, `docs/m0b-contract.md`: history
 
 ## Scripts to know
 
 ```bash
+pnpm ex up            # ParadeDB in Compose, then db:migrate and db:seed
 pnpm dev              # dev server on :3000 (loads .env.local)
+pnpm fake-workspace   # fake-workspace on :8100
+pnpm ex smoke         # check the running stack end to end
+pnpm ex gate          # every graded step fails on its problem code and passes on its solution
 pnpm build            # production build into .output/
 pnpm start            # run the production build
 pnpm test             # vitest

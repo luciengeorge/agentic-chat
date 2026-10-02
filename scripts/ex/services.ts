@@ -7,6 +7,7 @@ import { ExError } from "./errors";
 import { run as defaultRun } from "./process";
 
 export const COMPOSE_FILE = "compose.yaml";
+export const ENV_FILE = ".env.local";
 // The processes that hold a published port on the host for a container.
 const DOCKER_LISTENERS = ["orbstack", "com.docker", "docker", "vpnkit"];
 
@@ -112,4 +113,35 @@ export async function preflight(
       clashes.map((c) => ({ port: c.port, service: ports.get(c.port), process: c.process, pid: c.pid })),
     );
   }
+}
+
+async function packageScript(root: string, name: string, { capture, run }: { capture: boolean; run: Run }) {
+  const result = await run("pnpm", ["--silent", name], { cwd: root, capture });
+  if (result.code !== 0) {
+    throw new ExError(`pnpm ${name} failed`, capture ? `${result.stdout}${result.stderr}`.trim() || null : null);
+  }
+  return result.stdout;
+}
+
+/**
+ * `ex up`: ParadeDB in Compose, then the migrations and the seed through `pnpm db:migrate` and
+ * `pnpm db:seed`, which read `.env.local`. Each step is safe to repeat. The app and fake-workspace
+ * run on the host, started by hand.
+ */
+export async function up(
+  root: string,
+  {
+    capture,
+    run = defaultRun,
+    listeners,
+  }: { capture: boolean; run?: Run; listeners?: (ports: Set<number>) => Promise<Listener[]> },
+): Promise<{ services: ServiceStatus[]; seed: string[] }> {
+  if (!existsSync(join(root, ENV_FILE))) {
+    throw new ExError(`${ENV_FILE} is missing`, `copy the dev values: cp .env.example ${ENV_FILE}`);
+  }
+  await preflight(root, { run, listeners });
+  await compose(root, ["up", "--detach", "--wait"], { capture, run });
+  await packageScript(root, "db:migrate", { capture, run });
+  const seed = await packageScript(root, "db:seed", { capture, run });
+  return { services: await status(root, run), seed: seed.split("\n").filter(Boolean) };
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Run } from "./process";
 
-import { parseLsof, parsePs, preflight } from "./services";
+import { parseLsof, parsePs, preflight, up } from "./services";
 import { makeRepo } from "./test-repo";
 
 describe("parsePs", () => {
@@ -41,6 +41,78 @@ describe("preflight", () => {
       });
       const docker = async () => [{ port: 5432, process: "OrbStack Helper", pid: 9 }];
       await expect(preflight(root, { run, listeners: docker })).resolves.toBeUndefined();
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe("up", () => {
+  const config = JSON.stringify({ services: { paradedb: { ports: [{ published: "5432", target: 5432 }] } } });
+  const ps = JSON.stringify({ Service: "paradedb", State: "running", Health: "healthy" });
+
+  /** Records each command; `pnpm <failing>` exits 1. */
+  function fakeRun(failing?: string) {
+    const calls: string[] = [];
+    const run: Run = async (command, args) => {
+      const line = [command, ...args.filter((arg) => !arg.includes("/"))].join(" ");
+      calls.push(line);
+      if (line.endsWith("config --format json")) return { code: 0, stdout: config, stderr: "" };
+      if (line.endsWith("ps --all --format json")) return { code: 0, stdout: ps, stderr: "" };
+      if (failing && line === `pnpm --silent ${failing}`) return { code: 1, stdout: "", stderr: "boom" };
+      return {
+        code: 0,
+        stdout: line.endsWith("db:seed") ? "kestrel: already seeded\nharbour: already seeded\n" : "",
+        stderr: "",
+      };
+    };
+    return { calls, run };
+  }
+  const listeners = async () => [];
+
+  it("starts Compose, then migrates and seeds through the package scripts", async () => {
+    const { root, cleanup } = makeRepo({ "compose.yaml": "services: {}\n", ".env.local": "AC_ENV=dev\n" });
+    try {
+      const { calls, run } = fakeRun();
+      expect(await up(root, { capture: true, run, listeners })).toEqual({
+        services: [{ name: "paradedb", state: "running", health: "healthy" }],
+        seed: ["kestrel: already seeded", "harbour: already seeded"],
+      });
+      expect(calls).toEqual([
+        "docker compose -f config --format json",
+        "docker compose -f up --detach --wait",
+        "pnpm --silent db:migrate",
+        "pnpm --silent db:seed",
+        "docker compose -f ps --all --format json",
+      ]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("stops at the first step that fails", async () => {
+    const { root, cleanup } = makeRepo({ "compose.yaml": "services: {}\n", ".env.local": "AC_ENV=dev\n" });
+    try {
+      const { calls, run } = fakeRun("db:migrate");
+      await expect(up(root, { capture: true, run, listeners })).rejects.toMatchObject({
+        message: "pnpm db:migrate failed",
+        detail: "boom",
+      });
+      expect(calls.at(-1)).toBe("pnpm --silent db:migrate");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("refuses before starting anything without .env.local", async () => {
+    const { root, cleanup } = makeRepo({ "compose.yaml": "services: {}\n" });
+    try {
+      const { calls, run } = fakeRun();
+      await expect(up(root, { capture: true, run, listeners })).rejects.toMatchObject({
+        message: ".env.local is missing",
+        detail: "copy the dev values: cp .env.example .env.local",
+      });
+      expect(calls).toEqual([]);
     } finally {
       cleanup();
     }
