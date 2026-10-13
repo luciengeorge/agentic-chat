@@ -165,7 +165,7 @@ Mid-afternoon, with M0b ready to merge, Lucien changed course: "the main goal is
 **How the plan changed while it was drafted.** The first draft had hand-built BM25 in the app compared against ParadeDB, and a local bge reranker (transformers.js) next to Cohere. The approved plan uses pg_search in the app and Cohere alone; the local reranker moved to section 21.
 
 **Things the research turned up** (each one is in `PLAN.md`):
-- `@paradedb/drizzle-paradedb@0.5.0` pins `drizzle-orm@1.0.0-rc.4`, and better-auth 1.7.7's Drizzle adapter accepts `>=1.0.0-rc.1 <2.0.0`, so the two fit.
+- `@paradedb/drizzle-paradedb` (0.5.0, now 0.6.0) pins `drizzle-orm@1.0.0-rc.4`, and better-auth 1.7.7's Drizzle adapter accepts `>=1.0.0-rc.1 <2.0.0`, so the two fit.
 - better-auth's CLI is now `auth`; `@better-auth/cli` is deprecated.
 - Vercel Workflow issue #4442 breaks the dev server on nitro `3.0.260903-beta`. The fix is merged but not yet released.
 - Issue #1003: native modules inside workflow steps fail on Vercel with TanStack Start.
@@ -187,7 +187,9 @@ Several choices superseded on 30 Sep came back: Drizzle, better-auth, ParadeDB a
 - **One owner for the live stack.** Only one agent runs or restarts the shared Compose stack and dev servers at a time; announce before touching it.
 - **One dev server per `.workflow-data/`.** Each dev server has its own in-memory queue, and at boot it re-enqueues every open run it finds on disk. Two servers on the same directory (say one on 3000 and a test server on 3010) would both process the same runs. Give a second server its own `WORKFLOW_LOCAL_DATA_DIR`.
 - **`.workflow-data/` is disposable.** It is Workflow's local world: runs, events, hooks and streams as JSON files. With the dev server stopped, deleting it just forgets every local run.
-- **The `@workflow/builders` patch.** `patches/@workflow__builders@5.0.1.patch` lets `learnSlots()` reach Workflow's step bundles. On every `workflow` upgrade, `pnpm install` fails until the patch is re-made (`pnpm patch @workflow/builders@<version>`) or dropped, if upstream has added an esbuild plugin option by then. `docs/workflow-notes.md` (b) explains it.
+- **Bumping the ParadeDB image doesn't update the installed extension.** After changing the tag in `compose.yaml`, run `ALTER EXTENSION pg_search UPDATE` in `ac` and in `template1` (the test databases are copied from it), or queries fail with errors such as `function paradedb.ctid_is_valid(tid) does not exist`. A fresh volume needs nothing.
+- **Vitest's module cache and slots.** Vitest 5.0.4 caches transformed modules on disk by default, and the cache can't tell a slotted run from a reference run. `learnSlots()` turns it off; keep it off.
+- **The `@workflow/builders` patch.** `patches/@workflow__builders@5.0.4.patch` lets `learnSlots()` reach Workflow's step bundles. On every `workflow` upgrade, `pnpm install` fails until the patch is re-made (`pnpm patch @workflow/builders@<version>`) or dropped, if upstream has added an esbuild plugin option by then. `docs/workflow-notes.md` (b) explains it.
 - **The shared vault.** Other agents write to the same daily note at the same time. Append rather than rewriting, and `git add` only your own paths.
 - **Private GitHub repos return 404** in the in-app browser, which isn't signed in.
 - **Model gotcha (from poof):** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly. His `CLAUDE.md` lists `gpt-6-luna` and `gpt-6-sol` (for Codex), and `gpt-6-luna` is pinned as the default: it's the cheapest tier, and its reasoning default is medium.
