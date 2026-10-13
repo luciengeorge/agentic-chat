@@ -1,13 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { ToastSchema } from "../toast";
-import { clearToast, readToast } from "../toast-session.server";
+import { clearToast, hasToastCookie, readToast } from "../toast-session.server";
 
 export const getToast = createServerFn({ method: "GET" }).handler(async () => {
   const result = ToastSchema.safeParse(await readToast());
   const toast = result.success ? result.data : null;
 
-  if (toast) {
+  // Read once: a valid toast is cleared after showing, and a bad one (wrong seal or shape) so it isn't re-read.
+  if (hasToastCookie()) {
     clearToast();
   }
 

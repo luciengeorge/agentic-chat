@@ -107,21 +107,26 @@ function firstMessage(text: string | undefined): string | null {
   return (stack === -1 ? lines : lines.slice(0, stack)).join("\n").trim() || null;
 }
 
-/** Vitest's JSON report, one entry per test, plus one `error` entry per file that failed outside a test. */
+/**
+ * Vitest's JSON report, one entry per test, plus one `error` entry per file that failed outside a test.
+ * Sorted by nodeid: with projects, Vitest lists files in whatever order the projects finish.
+ */
 export function parseReport(root: string, report: JsonReport): TestResult[] {
-  return report.testResults.flatMap((file) => {
-    const path = relative(root, file.name);
-    const tests = file.assertionResults.map((test): TestResult => ({
-      nodeid: [path, ...test.ancestorTitles, test.title].join(" > "),
-      outcome: test.status === "passed" ? "passed" : test.status === "failed" ? "failed" : "skipped",
-      duration_s: Math.round((test.duration ?? 0) * 10) / 10_000,
-      message: test.status === "failed" ? firstMessage(test.failureMessages[0]) : null,
-    }));
-    if (file.status === "failed" && file.message) {
-      tests.push({ nodeid: path, outcome: "error", duration_s: 0, message: firstMessage(file.message) });
-    }
-    return tests;
-  });
+  return report.testResults
+    .flatMap((file) => {
+      const path = relative(root, file.name);
+      const tests = file.assertionResults.map((test): TestResult => ({
+        nodeid: [path, ...test.ancestorTitles, test.title].join(" > "),
+        outcome: test.status === "passed" ? "passed" : test.status === "failed" ? "failed" : "skipped",
+        duration_s: Math.round((test.duration ?? 0) * 10) / 10_000,
+        message: test.status === "failed" ? firstMessage(test.failureMessages[0]) : null,
+      }));
+      if (file.status === "failed" && file.message) {
+        tests.push({ nodeid: path, outcome: "error", duration_s: 0, message: firstMessage(file.message) });
+      }
+      return tests;
+    })
+    .sort((a, b) => (a.nodeid < b.nodeid ? -1 : a.nodeid > b.nodeid ? 1 : 0));
 }
 
 /**
