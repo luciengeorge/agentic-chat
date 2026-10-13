@@ -23,10 +23,12 @@
     "db:migrate": "dotenv -e .env.local -- tsx src/db/migrate-main.ts",
     "db:seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
     "sync": "dotenv -e .env.local -- tsx src/db/request-sync.ts",
+    "db:embed": "dotenv -e .env.local -- tsx src/db/embed-main.ts",
     "auth:generate": "dotenv -e .env.local -- auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts --yes",
     "fake-workspace": "dotenv -e .env.local -- tsx watch servers/fake-workspace/main.ts"
   },
   "dependencies": {
+    "@ai-sdk/cohere": "4.0.60",
     "@ai-sdk/openai": "^4.0.93",
     "@ai-sdk/react": "^4.0.142",
     "@base-ui/react": "^1.9.0",

@@ -1,22 +1,7 @@
 import { defineNitroConfig } from "nitro/config";
 
+// Pages get their Content-Security-Policy from the root route, with a nonce per response (src/lib/csp.ts).
 const securityHeaders = {
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "frame-src 'self' https://vercel.live",
-    "object-src 'none'",
-    "img-src 'self' data: blob: https:",
-    "font-src 'self' data: https://fonts.gstatic.com https:",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "script-src 'self' 'unsafe-inline' https://vercel.live",
-    "connect-src 'self' https: wss:",
-    "worker-src 'self' blob:",
-    "media-src 'self' blob: data: https:",
-    "upgrade-insecure-requests",
-  ].join("; "),
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Resource-Policy": "same-origin",
   "Permissions-Policy": "camera=(), geolocation=(), microphone=(), browsing-topics=(), interest-cohort=()",
@@ -46,6 +31,8 @@ export default defineNitroConfig({
       headers: {
         "Cache-Control": "no-store",
         ...securityHeaders,
+        // API responses are data, never documents that run code.
+        "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
       },
     },
   },

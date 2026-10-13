@@ -1,3 +1,4 @@
+import { indexing, tokenizer } from "@paradedb/drizzle-paradedb";
 import { sql } from "drizzle-orm";
 import {
   bigint,
@@ -5,6 +6,7 @@ import {
   bytea,
   check,
   date,
+  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -262,6 +264,19 @@ export const chunks = pgTable(
   },
   (t) => [
     unique("chunks_document_id_document_version_ordinal_key").on(t.documentId, t.documentVersion, t.ordinal),
+    // Vector search (section 06): cosine, as the embeddings are compared by `<=>`.
+    index("chunks_embedding_hnsw_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+    // Lexical search (section 07). The text is split on Unicode word boundaries, stemmed and stripped of English
+    // stopwords, so "KPC-2026-0142" becomes kpc, 2026, 0142. tenant_id and document_id ride along so the ACL
+    // pre-filter (`document_id = ANY(...)`) and the RLS policy are answered inside the index.
+    indexing
+      .paradedbIndex("chunks_bm25_idx")
+      .on(
+        t.id,
+        indexing.paradedbField(t.text, tokenizer.unicodeWords({ stemmer: "english", stopwords_language: "english" })),
+        t.tenantId,
+        t.documentId,
+      ),
     check(
       "chunks_pages_check",
       sql`(page_start IS NULL) = (page_end IS NULL) AND (page_end IS NULL OR page_end >= page_start)`,
@@ -366,6 +381,29 @@ export const retrievalAudit = pgTable(
       foreignColumns: [principals.tenantId, principals.id],
     }),
     index("retrieval_audit_user_idx").on(t.userId),
+    tenantIsolation(),
+  ],
+);
+
+/** A token bucket per user and bucket name (section 11). `tokens` is what was left at `refilled_at`; a request
+ * refills it for the time since, then spends one, in a single upsert. */
+export const rateLimitBuckets = pgTable(
+  "rate_limit_buckets",
+  {
+    tenantId: tenantId(),
+    userId: uuid("user_id").notNull(),
+    bucket: text("bucket").notNull(),
+    tokens: doublePrecision("tokens").notNull(),
+    refilledAt: timestamp("refilled_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    primaryKey({ name: "rate_limit_buckets_pkey", columns: [t.tenantId, t.userId, t.bucket] }),
+    check("rate_limit_buckets_tokens_check", sql`tokens >= 0`),
+    foreignKey({
+      name: "rate_limit_buckets_tenant_id_user_id_fkey",
+      columns: [t.tenantId, t.userId],
+      foreignColumns: [principals.tenantId, principals.id],
+    }).onDelete("cascade"),
     tenantIsolation(),
   ],
 );
