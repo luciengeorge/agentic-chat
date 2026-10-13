@@ -102,6 +102,16 @@ export function retrieve(viewer: Viewer, query: string, options?: { k?: number }
 - Section 12: a chat page with `useChat`, conversations and messages persisted (idempotency keys), citations that open the cited document at its page.
 - Tests and live proof: a made-up citation is rejected; an empty retrieval abstains; the rate limit returns 429; live (needs the key and lane C), `leo.martin` asks about expenses and gets a cited answer from policy v2, and asking about the Heron deal gets an abstention.
 
+## Wave 3: integration + golden set (one lane)
+
+The lane owns `fixtures/golden/**`, `src/core/eval/**`, `scripts/eval.ts`, a new `ex smoke` check, and integration fixes anywhere (each named in its report).
+
+- **The golden set** (`fixtures/golden/questions.yaml`): about 40 questions, each with the asking user (a world username), the relevant documents and pages (labels are document path plus page, never chunk ids, which change when chunking changes), and the expected outcome (`answer` or `abstain`). Cover every trap in `fixtures/corpus/README.md`: identifiers (KPC-, KP-, SKUs), the Q3 tables, the expenses conflict (v2 wins, v1 still retrievable), the scanned invoice and the MSA signature page, the filing's deep pages, Heron for a non-exec (abstain) and for an exec (answer), tom.whitfield's partial view (the plan's deal structure, never the £86m headline), the restricted NDA, Harbour's policy for a Harbour user, and peter.hall (nothing). Read the source documents to write the answers; every label is checked against the corpus.
+- **Metrics** (`src/core/eval/`): recall@k, MRR and NDCG@10 over the labels, by hand (section 18 rebuilds them), plus answer checks: an `answer` case must cite a labelled document, an `abstain` case must abstain.
+- **The bar.** Hard gates: zero permission leaks (no chunk a user can't read in any retrieval, answer or citation), zero cross-tenant results, every `abstain` case abstains. Scores: recall@10 at least 0.85 and MRR at least 0.6 over the `answer` cases. If a score misses, report the failing questions and why; don't tune retrieval in this wave without saying so.
+- **`pnpm eval`** runs the set against the live stack with real models and writes a dated report to `fixtures/golden/reports/` (committed: the baseline M2 and section 18 compare against). Retrieval-only mode for cheap reruns.
+- **A ninth `ex smoke` check, "answer":** one golden question end to end through `/api/chat`, cited, and one abstention.
+
 ## Settled during the build
 
 (Lanes add what they decide here.)
