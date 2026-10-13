@@ -1,36 +1,26 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-*.egg-info/
-dist/
-build/
-
-# Node
-node_modules/
-.pnpm-store/
-.output/
-.vinxi/
-.nitro/
-.tanstack/
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
 *.tsbuildinfo
-coverage/
-
-# Workshop state
-playground/
-.ex/
 
 # Secrets
+*.local
 .env
 .env.*
 !.env.example
 
-# Editors and OS
-.DS_Store
-.idea/
-.vscode/
-*.swp
+# Build and framework output
+.nitro
+.tanstack
+.output
+.vinxi
+.vercel
+# Vercel Workflow's local world (runs, events, hooks, streams)
+.workflow-data
+
+# Workshop state
+playground/
+.ex/
+/.swc

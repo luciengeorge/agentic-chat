@@ -1,8 +1,8 @@
 # agentic-chat: plan
 
-A hands-on workshop for building a production-grade AI application: a small version of Cohere's North. You build every layer yourself, one step at a time, against a finished reference app that runs the whole way through.
+A hands-on workshop for building a production-grade AI application: a small version of Cohere's North. You build the AI layers yourself, one step at a time, against a finished reference app that runs the whole way through.
 
-Status: **planning.** Agreed 2026-09-30; revised the same day for a Python backend, a "no shortcuts" rule, and an independent review (see `HANDOFF.md`). **M0a done** (2026-09-30): `ex up` then `ex smoke` pass; see `HANDOFF.md` §6. Next: M0b.
+Status: **restarting on TypeScript** (1 Oct 2026, branch `ts-restart`). The Python stack got as far as M0b and is tagged: `python-m0a` (merged to `main`) and `python-m0b` (reviewed, not merged). `HANDOFF.md` §6 to §8 tells that story. Next: M0, below.
 
 ## Why this exists
 
@@ -18,190 +18,209 @@ So retrieval is covered properly, and agents (sections 13 to 17) get the most de
 - a conversation that receives two messages at once and stays consistent
 - context rebuilt from stored state each turn, and compacted when it grows
 
-## The rule: production tools, built by hand first
+## The rule: build it small by hand, then adopt the production tool
 
-Every layer uses what a production team would run. For the tools below, you build a small version yourself first, so you know what the tool does for you. Infrastructure with no hand-built pass (Postgres, Keycloak, Redis, Grafana) is adopted directly.
+Lucien, on the restart: "the main goal is for me to learn everything about agent orchastration, parsing, vector searching, bm25, reranking, etc. so instead of building everything from scratch, let's use a framework i am familiar with." So the app sits on his own stack, and the hand-built passes go where the learning is.
 
 | You build by hand | Then adopt | Section |
 |---|---|---|
-| A thin HTTP client for the Responses API | The official `openai` SDK, behind our own interface | 01 |
-| A parser: text layer, OCR with confidences, tables | docling | 03 |
-| A Postgres job queue (`SKIP LOCKED`, visibility timeout, retries) | Temporal activities | 05 |
-| BM25 over an inverted index | OpenSearch | 07 |
-| A gateway: JWT check, routing, request ids, token bucket | Envoy + its global rate limit service | 11 |
-| A durable agent runtime: checkpoints, resume, idempotent effects | Temporal workflows | 15 |
-| The agent loop and run state | Compared against an agent framework, then kept hand-written | 16 |
-| Retrieval and faithfulness metrics | Compared against ragas | 18 |
+| A thin client for OpenAI's Responses API, with streaming | The AI SDK (`ai` + `@ai-sdk/openai`), behind our own interface | 01 |
+| A parser: text layer with positions, OCR with confidences, tables | docling, compared side by side | 03 |
+| A Postgres job queue (`SKIP LOCKED`, visibility timeout, retries) | Vercel Workflow steps | 05 |
+| BM25 as one small TS function | pg_search's BM25 index | 07 |
+| A durable agent runtime: checkpoints, resume, idempotent effects | Vercel Workflow | 15 |
+| The agent loop and run state | Compared with the AI SDK's `WorkflowAgent`. The reference keeps ours, so every part stays visible | 16 |
+| Retrieval and faithfulness metrics | Compared with autoevals' RAG scorers | 18 |
+
+Postgres, better-auth and Cohere's reranker are adopted directly. The rate limiter (section 11) is a token bucket in Postgres that we write and keep.
+
+## Terms
+
+Every term is defined here once; READMEs define them again where they first appear.
+
+| Term | Meaning |
+|---|---|
+| ACL | Access control list: who may read a document |
+| Tenant | One customer organisation. Here: Kestrel Pay and Harbour Health |
+| RLS | Row-level security: a Postgres policy that hides rows from other tenants |
+| Embedding | A list of numbers that stands for a text's meaning. Similar texts get nearby vectors |
+| pgvector | The Postgres extension that stores embeddings and finds nearest neighbours |
+| HNSW, ANN | The graph index pgvector uses for approximate nearest-neighbour (ANN) search: much faster than checking every row, and nearly as accurate |
+| BM25 | The standard keyword-ranking formula. A document scores higher when the query's words appear often in it (term frequency), when those words are rare across all documents (inverse document frequency, IDF), and it corrects for long documents (length normalisation) |
+| pg_search | ParadeDB's Postgres extension that adds a BM25 index |
+| RRF | Reciprocal rank fusion: merge ranked lists by giving each document `1 / (60 + rank)` from each list and summing. It uses ranks only, so BM25 and vector scores never need a common scale |
+| Reranker | A model that reads the query and one candidate together and scores the match (a cross-encoder: "the librarian who opens each book"). Slower than embeddings, more accurate, so it runs on the top few dozen only |
+| OCR | Optical character recognition: reading text out of an image |
+| docling | IBM's open-source document converter. It turns PDF and DOCX files into structured text, with tables, OCR and page numbers |
+| SSE | Server-sent events: one-way streaming from server to browser over plain HTTP |
+| Durable execution | Code whose progress is saved after each step, so a crash resumes where it stopped |
+| Workflow, step, hook | Vercel Workflow's terms. A workflow (`"use workflow"`) is a function replayed from its saved event log. A step (`"use step"`) is a unit of work whose result is saved, and which retries on failure. A hook pauses a workflow until something outside resumes it, such as an approval |
+| Outbox | A row written in the same transaction as your data, which a relay later turns into a workflow start, so the two can't drift apart |
+| Idempotency key | An id sent with a request so that a retry of it has no extra effect |
+| `SKIP LOCKED` | A Postgres clause that lets several workers take different rows from a queue without waiting on each other |
+| Server function, server route | TanStack Start's terms. A server function is a typed call from a component to the server. A server route is a plain HTTP handler; we use them for streams, webhooks and workflow starts |
+| HyDE | Hypothetical document embeddings: embed a model-written guess at the answer, then search with that |
+| recall@k, MRR, NDCG | Ranking metrics. recall@k: the share of the right chunks found in the top k. MRR: 1 divided by the rank of the first right answer, averaged. NDCG: rewards right answers near the top, scaled so a perfect ranking scores 1 |
+| OpenTelemetry | The open standard for traces, metrics and logs |
 
 ## What we're building
 
 A permissioned assistant and agent platform for **Kestrel Pay**, a fictional 600-person fintech. Employees ask questions over the company's documents and get cited answers; agents take actions with approvals; automations run on triggers.
 
-The seeded corpus contains the traps on purpose:
+The corpus (built in M0b, kept as is) contains the traps on purpose:
 
 | Trap | What it tests |
 |---|---|
-| An M&A memo only execs can see | Permission leaks (09) |
+| The Project Heron M&A memo, shared with `/Kestrel/Exec` only | Permission leaks (09) |
 | Scanned and handwritten PDFs | OCR and confidence thresholds (03) |
 | A table-heavy quarterly report | Table-aware chunking (04) |
 | Two versions of the expenses policy | Conflicting sources (10) |
-| A document carrying a prompt injection | Agent safety (17) |
+| A partner pack with hidden text telling an assistant to send the Heron memo outside | Agent safety (17) |
 | Contract numbers, error codes, SKUs | Why lexical search exists (07) |
 | A 3,000-page regulatory filing | Fan-out ingestion (05) |
+| Harbour's expenses policy, worded like Kestrel's with different limits | Tenant isolation (09) |
 
-**Keycloak** plays the customer's identity provider and directory (like Entra ID): login, users, nested groups, roles. **fake-workspace** plays their SharePoint: folders shared with Keycloak groups, pagination, 429s with `Retry-After`, change webhooks, deletes, moves, permission changes. It's deterministic, so tests can trigger any edge case. A real GitHub connector comes later.
+A second, small tenant, **Harbour Health** (6 documents, a handful of users), exists only to prove isolation: nothing of theirs may reach a Kestrel user, and the reverse.
+
+**fake-workspace** plays the customer's Microsoft 365. Its SharePoint-style drive has folders shared with groups, pagination, 429s with `Retry-After`, change webhooks, deletes, moves and permission changes. Its Entra-style directory lists users and nested groups. It's deterministic, so tests can trigger any edge case. better-auth handles login inside the app; the directory says who is in which group. A real GitHub connector comes later.
 
 ## Architecture
 
 ```
-                 browser
-                    │  httpOnly session cookie (no tokens in the browser)
-      ┌─────────────▼─────────────┐          ┌───────────┐
-      │ web  TanStack Start (BFF) │◄── OIDC ─►│ Keycloak  │  users, nested groups
-      └─────────────┬─────────────┘          └─────▲─────┘
-                    │ bearer JWT, fetch streaming    │ JWKS
-      ┌─────────────▼─────────────┐                  │
-      │ gateway  Envoy            │──────────────────┘  JWT check, routing, timeouts,
-      └─────────────┬─────────────┘                     rate limits (Redis)
-                    │
-      ┌─────────────▼─────────────┐   rows + outbox in one transaction
-      │ api  FastAPI              │──────────────┐
-      │  chat (streams in-request)│              ▼
-      │  retrieval · runs · admin │     ┌────────────────┐
-      └──┬────────┬───────▲───────┘     │ relay          │ outbox → Temporal
-         │        │       │ run tokens  └───────┬────────┘
-  reranker   OpenSearch   │ (Redis Streams)     ▼
-                          │             ┌────────────────┐
-                          │             │ Temporal       │
-                          │             └───────┬────────┘
-                          │                     ▼
-                  ┌───────┴───────────────────────────────────────┐
-                  │ workers (Python, Temporal)                    │
-                  │  sync          crawl, delta, webhooks, ACLs   │
-                  │  ingest        split, parse, chunk, embed     │
-                  │  agents        runs, approvals, timeouts      │
-                  │  automations   schedules and triggers         │
-                  └───────────────────────────────────────────────┘
-
-  postgres + pgvector · redis · minio · grafana (traces, metrics, logs) · fake-workspace
+                         browser
+                            │  httpOnly session cookie (better-auth)
+      ┌─────────────────────▼──────────────────────┐
+      │ app   TanStack Start on Nitro              │
+      │   pages + server functions                 │
+      │   server routes: chat streams, webhooks,   │
+      │     workflow starts, the outbox relay      │
+      │   workflows: "use workflow", "use step"    │◄──► Workflow world: files on disk
+      │   src/core: parse, chunk, embed, search,   │     locally, Vercel's in the cloud
+      │     rerank, ACLs, agents                   │
+      └────┬────────────────┬────────────────┬─────┘
+           │                │                │
+     ┌─────▼──────┐   ┌─────▼──────┐   ┌─────▼────────────────────┐
+     │ ParadeDB   │   │ OpenAI     │   │ fake-workspace           │
+     │ Postgres 18│   │ Cohere     │   │  drive + directory       │
+     │ pg_search  │   │  (rerank)  │   │ docling-serve (sect. 03) │
+     │ pgvector   │   └────────────┘   │  both local only         │
+     └────────────┘                    └──────────────────────────┘
 ```
 
-**The state rule.** The api holds no state. Long work runs as Temporal workflows in workers. Product state (conversations, messages, run records, the run event log) lives in Postgres; execution state lives in Temporal's history; the workflow id is the run id. Kill any process at any moment and nothing is lost.
+**The state rule.** The app holds no state between requests. Product state lives in Postgres: documents, ACLs, conversations, messages, run records and the run event log. Execution state (which steps of a workflow finished, and what they returned) lives in Workflow's event log, and each run row stores its workflow run id. Steps pass ids, never large payloads, because every step's input and output is stored. Kill the dev server at any moment and nothing is lost.
 
-## Design seams (decided after review)
+## Design seams (decided)
 
-These are where the pieces meet, and where a naive build breaks. Each is a decision, not an open item.
+These are where the pieces meet, and where a naive build breaks.
 
-**Slots vs Temporal.** Temporal's Python sandbox re-imports workflow modules on every run and forbids I/O inside them, workers register workflows at start, and changing code under an in-flight run breaks replay. So slots resolve **once, at process start**: `AC_ACTIVE_STEP` is read by a meta-path finder installed before any app import, and playground imports inside workflow code go through `workflow.unsafe.imports_passed_through()`. So a step switch (`ex start`, `ex reset`, `ex solution`) stops the api, workers and relay, terminates the open runs in the dev namespace, swaps the playground files, and only then starts the services again. If termination fails while Temporal is up, or the workers are running while Temporal is unreachable, the switch fails and nothing changes. Between switches the apps run under watchfiles, which restarts them when `playground/` changes.
+**Slots.** The app imports each learnable module as `#learn/<module>` (say, `#learn/search/bm25`). A small Vite plugin resolves that to `playground/<module>` when the active step declares that slot, and to `src/core/<module>` otherwise. The dev server, the workflow bundles and Vitest all resolve through it, so your code runs wherever the reference would. `ex start` writes the active step to `.ex/active-step.json`, and the plugin restarts the dev server when that file changes. Workflow replays a run's code from its event log, so a code change under a run that is still open can break the replay. So `ex start`, `ex reset` and `ex solution` cancel the open local runs before they swap files.
 
-**Grading with a fake model.** Your prompts, tool schemas and ordering will differ from the reference, so recordings keyed by a request hash can't grade your code. Two tools instead:
-- **Scripted fakes** grade steps: `FakeChatModel(turns=[...])` returns scripted outputs, and each test asserts only what matters about the request (the tool was offered, the context contained the chunk).
-- **Cassettes**, VCR-style, keyed by test id and call index with the body ignored, replay real API traffic for reference evals and demos. `ex record` refreshes them. They store the raw SSE event stream, for sections 01 and 10.
+**Grading with a fake model.** Your prompts, tool schemas and ordering will differ from the reference, so recordings keyed by the request can't grade your code.
+- Steps use the AI SDK's mock language model as a **scripted fake**: it returns scripted turns, and each test asserts only what matters about the request (the tool was offered, the context held the chunk).
+- **Cassettes** store raw SSE streams, keyed by test id and call index with the body ignored. They test the hand-written client in section 01 and replay real traffic for reference evals and demos. `ex record` refreshes them.
 
-**Streaming.** Plain chat turns (section 10) stream in-request from the api. Agent runs call the model inside worker activities, and tokens must never enter workflow history. So an activity writes tokens to a **Redis Stream** (`XADD run:{id}`), and the api's SSE endpoint reads from it. The Postgres event log holds step-level events only. The api never uses LISTEN/NOTIFY, because Neon's pooled endpoint (PgBouncer in transaction mode) doesn't support it. Pooled connections set psycopg's `prepare_threshold=None`; workers and the relay use direct connections.
+**Streaming.** Plain chat turns (section 10) stream in-request from a server route with the AI SDK. Agent runs (from section 15) stream through the workflow's `getWritable()`: steps write tokens and step events to it, and a server route hands the run's stream to the browser, which can reconnect after a reload. Tokens never go into step results, since those are stored. The Postgres event log holds step-level events only. In section 14, before Workflow arrives, a run streams by tailing its event log from the last `seq` sent.
 
-**Two records, one truth.** Section 14 is Postgres-only: the event log has a unique `(run_id, seq)`, runs have a `version` column for optimistic concurrency, and messages carry client idempotency keys. Section 15 adds Temporal and owns the consistency between them: events are written inside activities with deterministic event ids, so a retried activity inserts nothing twice, and the step covers the case where the activity finished but its event insert failed.
+**Two records, one truth.** Section 14 is Postgres-only: the event log has a unique `(run_id, seq)`, runs have a `version` column for optimistic concurrency, and messages carry client idempotency keys. Section 15 adds Workflow and owns the consistency between the two records. Steps write their events with ids derived from the `stepId`, so a retried step inserts nothing twice, and any outside side effect uses the same `stepId` as its idempotency key.
 
-**Outbox semantics (section 05).** The relay delivers at least once. A workflow's id is derived from its outbox row, starts use `WorkflowIdConflictPolicy`, and messages into a live conversation use `signal_with_start`. Signals carry ids, and workflows dedupe them. Per-conversation ordering comes from partitioning the relay (`FOR UPDATE SKIP LOCKED`), with one owner per partition at a time: each batch takes the partition's transaction-scoped advisory lock first, because SKIP LOCKED alone would let a second relay publish a later row for a key while the first still holds an earlier one. Rows fail one at a time. A failed start counts an attempt and holds back later rows for its key; after a bounded number of attempts (at once, for an unknown kind) the row is marked failed and skipped, so one poison row can't block the partition. Only per-row errors count as attempts: Temporal being down or overloaded rolls the batch back with nothing counted, so an outage never dead-letters good rows. The lock is keyed on the partition number alone, so every relay must run with the same `AC_RELAY_PARTITIONS`. The step also teaches the other valid shape, **Temporal-first** (start the workflow, which writes the row in its first activity; Temporal's own recommendation), and when each fits: outbox when the write must commit with other data, such as a webhook receipt and its dedupe key; Temporal-first when the workflow owns the lifecycle.
+**Outbox semantics (section 05).** Workflow's `start()` is a separate call, so it can't commit with our own writes.
+- The write and an `outbox` row commit in one transaction. A relay, a server route that drains the outbox with `FOR UPDATE SKIP LOCKED`, calls `start()`. The request that wrote the row kicks the relay after commit; a cron run of it is the safety net.
+- The relay delivers at least once, so a workflow's first step claims its outbox row by id. A duplicate start finds the row claimed and stops.
+- These carry over from M0a's relay: per-key ordering (one owner per partition at a time, through a transaction-scoped advisory lock), bounded attempts before a row is marked failed and skipped, and an outage that rolls back the batch without counting attempts.
+- The step also teaches the other valid shape, **workflow-first**: start the workflow, and let its first step write the row. Use the outbox when the write must commit with other data, such as a webhook receipt and its dedupe key. Use workflow-first when the workflow owns the lifecycle.
+- Messages into a live conversation go through a hook whose token comes from the conversation id. Payloads carry ids, and the workflow dedupes them.
 
-**ACLs across two stores (section 09).**
-- Postgres `document_acl` is the **only** authorisation decision point. The ACL fields in OpenSearch and on pgvector rows are recall pre-filters, so a stale index can over-fetch but never leak.
-- On an ACL change, Postgres updates first, then OpenSearch runs `update_by_query`.
-- Keycloak has no webhooks, so directory sync is a full pull through the admin API plus admin-events polling. `/groups/{id}/children` is paginated, and `/users/{id}/groups` returns direct membership only, so we compute the nested closure ourselves (a member of `Finance/AP` is also in `Finance`).
-- Until login lands in section 11, sections 09 and 10 use a dev-only identity header that is refused outside dev.
+**ACLs in one database (section 09).**
+- Postgres `document_acl`, joined through `group_closure`, is the **only** authorisation decision point. BM25 and vector search run in the same database, so the ACL check sits in the same SQL statement as the search.
+- Any ACL copy kept next to an index for speed is a recall pre-filter only. A stale copy can over-fetch; it can never leak.
+- Directory sync pulls `/users`, `/groups` and each group's direct `/members` from fake-workspace, and builds the closure itself (a member of `Finance/AP` is also in `Finance`). A test checks the result against `/transitiveMembers`.
+- Login works from M0, so sections 09 and 10 use real sessions.
 
-**Login and SSE (section 11).** The web app is a **backend-for-frontend**: TanStack Start's server holds the tokens and the browser holds only an httpOnly session cookie (the pattern the IETF's browser-apps guidance recommends). The BFF calls Envoy with a bearer token and streams with `fetch` + ReadableStream; `EventSource` can't send headers. Envoy's `jwt_authn` validates at request start only. SSE routes need `timeout: 0s`, a raised `stream_idle_timeout`, and a 15-second heartbeat. Rate-limit descriptors come from JWT claims through dynamic metadata. The api trusts the claims Envoy forwards in `x-jwt-payload`, so it must be reachable only through Envoy: locally it publishes no port, and in the cloud it sits on the private network only. It still takes the tenant from the verified issuer, never from a claim alone. Authenticating the Envoy to api hop (mTLS, or a signed internal header) is a hardening option for later.
+**The server boundary (section 11).** better-auth keeps the session in an httpOnly cookie, so the browser never holds a token.
+- Every server function and server route goes through one middleware. It loads the session, takes the tenant from the session's active organisation (never from the request), and opens each transaction with `SET LOCAL app.tenant_id`, which the RLS policies read.
+- A user belongs to exactly one organisation: `allowUserToCreateOrganization: false`, a `beforeAddMember` hook that refuses a second membership, and a session-create hook that sets `activeOrganizationId`.
+- Streams are plain `Response`s with a `ReadableStream`. Long ones send a heartbeat every 15 seconds and stop work when the client aborts.
 
-**Local reranker.** TEI has no official Apple-silicon image. Locally, a small FastAPI + sentence-transformers service exposes TEI's `/rerank` schema. TEI itself runs in CI and the cloud. Same interface, so section 08 doesn't change.
+**Workflow in practice.**
+- Workflows start from server routes. `start()` from a `createServerFn` is unverified.
+- Native modules inside steps fail on Vercel with TanStack Start (workflow issue #1003). So steps use pure-JS or WASM packages, and work that needs a native module (rasterising a page for OCR, say) runs in a server route that the step calls.
+- The local world (files on disk) and the Vercel world differ, so section 22 tests hooks and streams on a Vercel preview.
+- **Known risk:** workflow issue #4442 breaks the dev server on nitro `3.0.260903-beta`. The fix is merged; wait for `workflow` 5.0.1 or pin. The M0 spike settles it.
 
 ## Decisions
 
 | Area | Choice | Why | Rejected |
 |---|---|---|---|
-| Backend language | Python 3.13, uv workspaces | What most AI backends use; the best libraries | TypeScript (kept for web and workshop) |
-| Web | TanStack Start as a BFF + Router + Query, shadcn (Base UI), Tailwind | Lucien's stack; keeps tokens out of the browser | Tokens in browser storage |
-| API | FastAPI, pydantic v2, async throughout | The standard Python API framework; OpenAPI built in | Flask, Django |
-| API contract | FastAPI's OpenAPI → generated TS client (openapi-typescript + openapi-fetch) | Types cross the language boundary without hand-written DTOs | |
-| Gateway | Envoy with the global rate limit service on Redis | Industry standard, self-hostable | Managed gateways |
-| Identity | Keycloak (OIDC, auth code + PKCE) | The common self-hosted enterprise IdP; doubles as the directory | Rolling our own; better-auth (TypeScript only) |
-| Database | Postgres + pgvector: container locally, Neon in the cloud | Source of truth and the only authorisation point | |
-| Vector types | `vector`, `halfvec` (fp16), `bit` (binary) with rescoring; `hnsw.iterative_scan` for filtered search | pgvector's real types; iterative scan is the fix for filtered-ANN recall | int8 (pgvector has no int8 type) |
-| ORM + migrations | SQLAlchemy 2.0 async, Alembic, psycopg 3, pgvector-python | The Python standard | SQLModel |
-| Lexical search | OpenSearch, kept in sync through the outbox; aliases for reindex cutover | What enterprise search runs on | pg_search / lakebase_text (host-specific); Postgres full-text (not BM25) |
-| Background work | Temporal for everything: sync, ingestion, agent runs, schedules | Durable steps, retry policies, timers, signals, updates, visibility | Celery, Procrastinate, plain queues |
-| DB write → workflow | Transactional outbox + relay (Temporal-first also taught) | A row and its workflow start can never diverge | Dual writes |
-| Token streaming | Redis Streams from activities to the api | Tokens stay out of workflow history; works through Neon's pooler | LISTEN/NOTIFY; polling the event log |
-| Cache + rate limits | Redis (Valkey) | Rate limits, principal cache, embedding cache, token streams | |
-| Files | MinIO locally, S3 in the cloud | S3 API everywhere | |
-| Models | OpenAI Responses API via the official SDK behind our interface | Lucien's choice | LangChain, LlamaIndex, OpenAI Agents SDK and Agents API as the main path |
-| Chat model | `gpt-6-luna`, the cheapest tier ($0.10 in / $0.50 out per 1M tokens, reasoning default medium); ids in `ac_models/config.py`; reasoning effort always explicit | | |
-| Embeddings | `text-embedding-3-small` | Its `dimensions` parameter gives the truncation exercise | |
-| Reranker | bge-reranker: a sentence-transformers service locally, TEI in CI and cloud | Models run in their own serving layer, never inside the api | Loading models into api processes |
-| Parsing | docling in the pipeline; pdfplumber + pytesseract + python-docx for the hand-built version | Build to understand, then use the production parser | |
-| Tokens | tiktoken | | |
-| Observability | OpenTelemetry with GenAI conventions → Grafana (Tempo, Loki, Prometheus); structlog JSON logs | All three signals, one container in dev | Traces only |
-| Tests | pytest + pytest-asyncio with scripted fakes; Temporal's time-skipping test environment; Vitest for web | Free, fast, repeatable; the only way to test "waits days" | Live API calls in tests |
-| Code quality | ruff, pyright (strict); oxlint, oxfmt, tsgo on the TypeScript side | | |
-| CI | GitHub Actions: lint, types, tests, the step quality gate | | |
-| Images | Multi-stage Dockerfiles, non-root | | |
+| Stack | One TanStack Start app on Nitro, from Lucien's `tanstack-starter-template` (its packages updated first): Vite 8, React 19, AI SDK 7, shadcn on Base UI, Tailwind 4, zod, pnpm | His stack, so the effort goes into the AI work | The Python backend (tagged) |
+| Repo shape | A single app; learnable modules in `src/core/` | Nothing is published or deployed separately, so a monorepo adds build wiring for no gain | A pnpm monorepo |
+| Template extras | Convex, Sentry, PostHog, Resend + react-email and Polar removed. Dev auth emails go to the console; seeded users are marked verified | "none of those are needed" | |
+| Database | ParadeDB everywhere: `paradedb/paradedb:0.26.1-pg18` (Postgres 18, pg_search 0.26.1, pgvector) | BM25, vectors and the ACL decision in one database, with the same image locally and in the cloud | Neon (it retired pg_search on 21 Sep 2026, and its replacement, lakebase_text, exists only on Neon); OpenSearch |
+| ORM + migrations | Drizzle: `drizzle-orm@1.0.0-rc.4` pinned exactly, `@paradedb/drizzle-paradedb@0.6.0`, the `postgres` (postgres.js) driver, drizzle-kit migrations; set up per [ParadeDB's Drizzle guide](https://www.paradedb.com/docs/start/configure-your-environment#drizzle) | ParadeDB's package pins that release candidate | Prisma |
+| Lexical search | pg_search BM25, after the hand-built version in 07 | Real BM25 inside Postgres, updated in the same transaction as the rows | Postgres full-text search (not BM25); OpenSearch |
+| Vector types | `vector`, `halfvec` (fp16), `bit` (binary) with rescoring; `hnsw.iterative_scan` for filtered search | pgvector's real types; iterative scan is the fix for filtered-search recall | int8 (pgvector has no int8 type) |
+| Hybrid | RRF over the BM25 and vector lists | Ranks only, so no score tuning | Blending raw scores |
+| Auth | better-auth 1.7.7, Drizzle adapter, organization plugin as tenants (`kestrel`, `harbour`), one organisation per user; its CLI is now `auth` (`@better-auth/cli` is deprecated) | Sessions inside the app, no identity server to run. Its adapter accepts `drizzle-orm >=1.0.0-rc.1 <2.0.0` | Keycloak + Envoy |
+| Directory | fake-workspace's Graph-style `/users`, `/groups`, members and transitive members | Plays the customer's Entra ID | Keycloak |
+| Durable execution | Vercel Workflow (`workflow` 5.x): steps, hooks, `sleep`, streams via `getWritable()`, `RetryableError` and `FatalError`, `stepId` for idempotency, `@ai-sdk/workflow`'s `WorkflowAgent` | Durable steps that run locally and on Vercel with no service to host | Temporal |
+| Models | AI SDK 7 + `@ai-sdk/openai`, behind our interface | Lucien knows it; one API across providers | LangChain, LlamaIndex |
+| Chat model | `gpt-6-luna`, the cheapest tier ($0.10 in / $0.50 out per 1M tokens); ids in one config file; reasoning effort always explicit | | |
+| Embeddings | `text-embedding-3-small` (1,536 dimensions) | Its `dimensions` parameter gives the truncation exercise | |
+| Reranker | Cohere `rerank-v4.0-pro` or `-fast`, through the AI SDK's `rerank()` and `@ai-sdk/cohere` | A hosted cross-encoder; OpenAI has no reranker | Self-hosting TEI or bge (section 21 covers the local path) |
+| Parsing, by hand | unpdf or pdfjs-dist for the text layer with positions; tesseract.js 7 for OCR with per-word confidences (rasterise first); mammoth for DOCX | Pure JS or WASM, so they run inside workflow steps | |
+| Parsing, compared | docling, through `docling-serve-cpu` in local Docker (about 4.4 GB; async API; JSON with per-item `prov[{page_no, bbox}]`) | The production converter to measure ours against | |
+| Tokens | gpt-tokenizer | Pure TS, with OpenAI's encodings | |
+| Tests | Vitest; the AI SDK's mock model as the scripted fake | Free, fast, repeatable | Live model calls in tests |
+| Code quality | oxlint, oxfmt, tsgo | | |
+| Observability | OpenTelemetry with the GenAI conventions, from section 19 (the AI SDK emits the spans); grafana/otel-lgtm locally | | Sentry |
+| CI | GitHub Actions: lint, types, tests against a ParadeDB service container, the step gate | | |
+| Hosting | Vercel for the app and workflows; ParadeDB self-hosted on Railway or Fly, or ParadeDB Cloud (private preview), picked at section 22 | | Neon |
 
-**Model gotcha, carried over from poof:** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly, or agents run with reasoning off and nothing errors. `gpt-6-luna` defaults to medium, and so does the `gpt-5.6-luna` docs page as of 2026-09-30. Effort is still a required argument in our interface.
+**Model gotcha, carried over from poof:** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly, or agents run with reasoning off and nothing errors. `gpt-6-luna` defaults to medium; effort is still a required argument in our interface.
 
 ## Deployment profiles
 
-The same images run two ways.
-
-| | Local / on-prem (default while learning) | Cloud |
+| | Local (default while learning) | Cloud |
 |---|---|---|
-| web | TanStack Start dev server | Vercel |
-| Backend services (api, workers, relay, reranker, Keycloak, Envoy) | Docker Compose | Container platform: Fly or Railway, same images |
-| Postgres | brew `postgresql@18` + `pgvector` on the host (CI: pgvector container) | Neon: direct connection for workers and relay, pooled for api |
-| Temporal | Dev server in Compose | Temporal Cloud or self-hosted |
-| OpenSearch | Container | Managed (AWS OpenSearch) or self-hosted |
-| Reranker | sentence-transformers service | TEI |
-| Files | MinIO | S3 |
-| Observability | grafana/otel-lgtm container | Grafana Cloud |
-| Models | OpenAI; local models in section 21 | OpenAI |
-
-OCR is CPU-heavy and only ever runs in workers, never inside a request. The full stack runs at once on Lucien's 32 GB Mac; Compose profiles still split infra from apps.
+| App and workflows | `pnpm dev`; Workflow's local world | Vercel; Vercel's world |
+| Postgres | ParadeDB in the repo's Compose, port 5432 | The same image on Railway or Fly, or ParadeDB Cloud (section 22) |
+| fake-workspace | A Node process, port 8100 | Not deployed |
+| docling-serve | Compose, port 5001, started only for section 03 | Not deployed |
+| Models | OpenAI and Cohere; local models in section 21 | OpenAI and Cohere |
+| Observability | grafana/otel-lgtm in Compose, from section 19 | Grafana Cloud |
 
 ## Repo layout
 
 ```
 agentic-chat/
   PLAN.md  HANDOFF.md  README.md
-  pyproject.toml           uv workspace
-  package.json             pnpm workspace (web, workshop)
-  apps/
-    web/                   TanStack Start BFF: chat, citations, run timeline, approvals, admin
-    workshop/              TanStack Start, local only: steps, diffs, tests, labs
-    api/                   FastAPI
-    workers/               Temporal workers: sync, ingest, agents, automations
-    relay/                 outbox → Temporal
-    reranker/              sentence-transformers service with TEI's /rerank schema
-    fake_workspace/        the customer's drive (service name: fake-workspace)
-  packages/                Python libraries
-    core/                  settings, logging, tracing, shared types
-    db/                    SQLAlchemy models, Alembic migrations
-    models/                provider interface, OpenAI, fakes, cassettes, local
-    ingest/                connectors, parsers, chunkers
-    retrieval/             lexical, dense, RRF, rerank, ACL filter, query rewriting
-    identity/              directory sync, principal resolution
-    agents/                loop, tool registry, run store, workflows
-    evals/                 metrics, judges, runner
-  exercises/               00.tour … 22.ship
-  playground/              the active step's working copy (git-ignored)
+  package.json  vite.config.ts  drizzle.config.ts  compose.yaml
+  src/                       the app
+    routes/                  pages and server routes (streams, webhooks, workflow starts)
+    server/                  server functions, auth, the boundary middleware
+    workflows/               "use workflow" and "use step" files
+    components/  lib/
+    core/                    the learnable modules; slots resolve here by default
+      providers/  parsing/  chunking/  embeddings/
+      search/                BM25 (hand-built and pg_search), vectors, RRF
+      rerank/  acl/  agents/
+    db/
+      schema/  migrations/   Drizzle
+  servers/
+    fake-workspace/          Graph-style drive and directory, port 8100
+  exercises/                 00.tour … 22.ship
+  playground/                the active step's working copy (git-ignored)
   fixtures/
-    corpus/                generators + seeds for Kestrel's documents
-    directory/             Keycloak realm export
-    golden/                eval questions with labelled chunks
-    cassettes/             recorded model traffic
-  infra/
-    compose.yaml  envoy/  keycloak/  opensearch/  temporal/  VERSIONS.md
+    world.yaml               tenants, people, groups, folders, sharing, facts
+    corpus/sources/          the markdown sources (kept; the renderer is retired)
+    corpus/build/            the built corpus, committed: manifest.json + blobs/ (about 14 MB)
+    golden/                  eval questions with labelled chunks
+    cassettes/               recorded model traffic
   scripts/
-    ex                     step CLI (Python); every command supports --json
+    ex.ts                    the step CLI; every command takes --json
+    slots.ts                 the Vite plugin behind #learn/<module>
   docs/
-    interview-prep/        the Spotify and Cohere prep material this curriculum draws on
+    interview-prep/          the Spotify and Cohere prep this curriculum draws on
+    m0a-contract.md  m0b-contract.md   the Python milestones' contracts, kept as history
 ```
 
 ## How the workshop works
@@ -212,21 +231,23 @@ Each step lives in a folder, laid out like Epic React's workshops:
 exercises/09.acls/
   README.mdx                     section intro
   01.problem.principals/
-    README.mdx                   the task, in product voice; every term defined on first use
-    principals.py                inline hints
-    test_principals.py           what "done" means
+    README.mdx                   the task, in product voice; every term defined on first use;
+                                 frontmatter lists the step's type and its slots
+    principals.ts                inline hints
+    principals.test.ts           what "done" means
   01.solution.principals/
+    principals.ts
   02.problem.over-fetch/ …
   FINISHED.mdx                   recap and what to notice
 ```
 
-**Slots.** The finished app imports each learnable piece through a slot, resolved at process start (see Design seams). `ex start 09.2` copies the step's problem files, but not its tests, into `playground/`, sets the active step, and restarts what needs restarting. It refuses to discard playground changes to another step unless you pass `--force`. So:
+**Slots** (see Design seams). `ex start 09.1` copies the step's problem files, but not its tests, into `playground/`, sets the active step, and restarts the dev server. It refuses to discard playground changes to another step unless you pass `--force`. So:
 
 - a step folder holds only the files it touches, and a slip in section 4 never blocks section 9
 - the tests stay in the problem dir and import through the slot, so they grade your playground copy, and nothing you edit can change them
-- the whole stack keeps running, so you also see your code work in the app, the traces and the labs
+- the app keeps running, so you also see your code work in the app and its labs
 
-Commands: `ex up`, `ex down`, `ex list`, `ex start <step>`, `ex test <step>`, `ex reset <step>`, `ex diff <step>`, `ex solution <step>`, `ex record`, `ex fixtures`, `ex gate`, `ex smoke`. Every command takes `--json`; the workshop app shells out to `ex` and reads that output, so the logic lives in one place.
+Commands (run as `pnpm ex <command>`): `up`, `down`, `list`, `start <step>`, `test <step>`, `reset <step>`, `diff <step>`, `solution <step>`, `seed`, `record`, `gate`, `smoke`. Every command takes `--json`, so the workshop UI can shell out to `ex` later and the logic lives in one place.
 
 **Hints in the code:**
 
@@ -243,130 +264,151 @@ Commands: `ex up`, `ex down`, `ex list`, `ex start <step>`, `ex test <step>`, `e
 **Step types.** Every step is tagged in its README frontmatter:
 - `graded` (most steps): tests decide when you're done.
 - `guided`: a walkthrough or comparison with no pass/fail. Steps 00.1, 00.2, 03.5, 16.6, 18.5, 19.2, and 22.1 to 22.4.
-- `lab`: done when an observable result appears in the lab panel.
+- `lab`: done when an observable result appears in the app.
 
-Section 12 is graded with Vitest instead of pytest.
+**Quality gate.** CI runs every `graded` step's tests from the problem dir, twice. Against the problem code they must fail; against the solution code they must pass. That catches a step whose tests grade nothing. A solution dir holding a `*.test.ts` fails the gate, so there is one copy of each test to trust.
 
-**Quality gate.** CI runs every `graded` step's tests both ways: against the problem code they must fail, and against the solution code they must pass. That catches a step whose tests grade nothing. Tests live only in the problem dir (a solution dir with `test_*.py` fails the gate), so there is one copy to trust.
-
-**The workshop app** (`apps/workshop`, local only) shows the step list with progress, the README and hints, your files with a diff against the solution, a test runner that streams results, an "open in editor" link, and a **lab panel** per section, wired to the running stack.
+**Order of work.** Exercises and their Vitest tests come first. The reference app is the lab: each section's lab is a page in the app, wired to live data. The workshop UI (step list, README and hints, a diff against the solution, a streaming test runner) comes after the exercises.
 
 ## Curriculum (107 steps)
 
 Linear, RAG first, for three reasons:
 
 - **Dependencies:** data flows connectors → parse → chunk → index → retrieve → answer → act, so agents get real tools that fail in real ways.
-- **Temporal ramp:** you meet Temporal on simpler ingestion workflows in 05 before the agent workflows in 15.
-- **Whole system first:** the tour (00) and the always-running app give you the end-to-end view before any layer is drilled.
+- **A Workflow ramp:** you meet Workflow on simple ingestion in 05, well before the agent runs in 15.
+- **Whole system first:** the tour (00) and the always-running app show the end-to-end view before any layer is drilled.
 
 Slots are independent, so another order is possible later if wanted.
 
 | # | Section | Steps | You build | Lab |
 |---|---|---|---|---|
-| 00 | Tour | 2 | Run the stack; follow one question through every service in Grafana | Trace viewer |
-| 01 | Model primitives | 4 | Provider interface; a hand-written Responses API client with streaming; the tool-call wire format; structured output and token counting | Request inspector |
+| 00 | Tour | 2 | Run the app; follow one question from the route through search, rerank and the model call, then one workflow run step by step | Workflow's run viewer |
+| 01 | Model primitives | 4 | Provider interface; a hand-written Responses API client with streaming; the tool-call wire format; the AI SDK behind the interface, with structured output (zod) and token counting | Request inspector |
 | 02 | Connectors | 5 | Connector interface; full crawl with pagination; 429 and `Retry-After` backoff; delta sync and webhooks; deletes and moves | fake-workspace control panel |
-| 03 | Parsing | 5 | Text layer vs OCR detection; OCR confidences and a review queue; tables to markdown; page mapping; swap in docling and compare | Parsed-page viewer |
+| 03 | Parsing | 5 | Text layer vs OCR detection; OCR confidences and a review queue; tables to markdown; page mapping; docling compared | Parsed-page viewer |
 | 04 | Chunking | 4 | Token-based sizing; overlap; structure-aware; table-aware | Chunks drawn over the source |
-| 05 | Background work | 5 | A Postgres job queue by hand; ingestion as Temporal activities with retry policies and heartbeats; the outbox and relay (and Temporal-first); fan-out with child workflows; separate task queues for incremental vs backfill | Temporal UI + queue board |
-| 06 | Embeddings + vectors | 5 | Batch embedding; pgvector and HNSW (M, ef_search, iterative scan); exact vs ANN recall; dimension truncation; `halfvec` and `bit` with rescoring, plus sizing | Recall vs latency chart |
-| 07 | Lexical + hybrid | 5 | BM25 by hand; the OpenSearch index, mappings and analyzers; keeping it in sync; reindex with alias cutover (and dual-index for an embedding model change); RRF | Rankings side by side |
-| 08 | Rerank + query | 4 | Cross-encoder rerank and rerank depth; query rewriting and expansion; HyDE; document-level routing | Rankings with rerank deltas |
-| 09 | Identity + ACLs | 6 | Directory sync from Keycloak with the nested closure; principal cache and invalidation; ACL stamping, with Postgres as the decision point; the over-fetch filter; ACL sync loop and audit log; tenant isolation (row-level security, which needs the app on a non-owner role, since the table owner bypasses RLS unless it is forced, plus the tenant set per transaction with `SET LOCAL` and an explicit cross-tenant role for the relay; tenant-scoped OpenSearch queries, workflow-id prefixes and per-tenant task queues, per-tenant rate limits and budgets) | User and tenant switcher |
-| 10 | Generation + citations | 4 | Prompt assembly and token budget; grounding and abstention; SSE streaming; the citation validator | Prompt inspector |
-| 11 | Login + gateway | 5 | OIDC login through the BFF; a gateway by hand (JWT via JWKS, routing, request ids); a token bucket on Redis; Envoy with the global rate limit service; SSE through the BFF and Envoy | Request log |
-| 12 | Frontend | 4 | The generated OpenAPI client; streaming chat; citation to page viewer; run timeline and approval inbox | The app itself |
-| **13** | **Agents: the loop** | **6** | Tool calls by hand; a typed tool registry (pydantic); per-run caps and budgets; errors fed back to the model; parallel calls; per-user token budgets and a kill switch | Run stepper |
-| **14** | **Agents: state** | **6** | Run state machine; the event log with `(run_id, seq)` and optimistic concurrency; rebuilding context from events; streaming step events and tokens (Redis Streams); concurrent messages with idempotency keys; compaction and memory | Live event log |
-| **15** | **Agents: durability** | **6** | Checkpoints and resume by hand; idempotent side effects; the run as a Temporal workflow, and two records kept consistent; approvals as signals and updates that wait days (graded with time-skipping); timeouts and cancellation, with heartbeats to cancel a live model call; determinism, versioning and continue-as-new | Kill-the-worker button |
-| **16** | **Agents: orchestration** | **6** | Workflows vs agents; routing; an orchestrator with sub-agents as child workflows; automations on schedules and triggers; fan-out with backpressure; the same agent in a framework, compared | Run tree |
-| 17 | Safety | 4 | Authorisation as the acting user; the poisoned document; plan-then-execute with an action allowlist; guardrails at the gateway | Red-team runner |
-| 18 | Evals | 5 | Golden set; recall@k, MRR and NDCG; claim decomposition; judge calibration; agent task evals in CI, compared with ragas | Eval dashboard |
-| 19 | Observability | 4 | GenAI spans; metrics and dashboards; cost per request; conversation log fan-out | Grafana |
+| 05 | Background work | 5 | A Postgres job queue by hand; ingestion as Workflow steps, with `RetryableError`, `FatalError` and retry limits; the outbox and relay (and workflow-first); fan-out over the 3,000-page filing; keeping a backfill from starving incremental sync | Run viewer + queue board |
+| 06 | Embeddings + vectors | 5 | Batch embedding; pgvector and HNSW (`m`, `ef_search`, iterative scan); exact vs ANN recall; dimension truncation; `halfvec` and `bit` with rescoring, plus sizing | Recall vs latency chart |
+| 07 | Lexical + hybrid | 5 | BM25 by hand in one small function; the pg_search index, its tokenizers and scoring; contract numbers and error codes, where BM25 beats vectors; changing a tokenizer or an embedding model without downtime; RRF | Rankings side by side |
+| 08 | Rerank + query | 4 | Cohere rerank via `rerank()`, and rerank depth; query rewriting and expansion; HyDE; document-level routing | Rankings with rerank deltas |
+| 09 | Identity + ACLs | 6 | Directory sync with the closure; principal cache and invalidation; ACL stamping, with Postgres as the decision point; the over-fetch filter; the ACL sync loop and the audit log; tenant isolation (see below) | User and tenant switcher |
+| 10 | Generation + citations | 4 | Prompt assembly and token budget; grounding and abstention; streaming with the AI SDK; the citation validator | Prompt inspector |
+| 11 | Auth + API boundary | 5 | better-auth sessions, with organisations as tenants; one middleware for every server function and route; input validation with zod, and why the tenant never comes from the client; a token bucket in Postgres; streaming through the boundary (aborts, heartbeats) | Request log |
+| 12 | Frontend | 4 | Server functions in components; streaming chat with `useChat`; citation to page viewer; run timeline and approval inbox | The app itself |
+| **13** | **Agents: the loop** | **6** | Tool calls by hand; a typed tool registry (zod); per-run caps and budgets; errors fed back to the model; parallel calls; per-user token budgets and a kill switch | Run stepper |
+| **14** | **Agents: state** | **6** | Run state machine; the event log with `(run_id, seq)` and optimistic concurrency; rebuilding context from events; streaming step events and tokens; concurrent messages with idempotency keys; compaction and memory | Live event log |
+| **15** | **Agents: durability** | **6** | Checkpoints and resume by hand, on the section 05 queue; idempotent side effects; the run as a Vercel Workflow, with the two records kept consistent; approvals as hooks that wait days; timeouts and cancellation, aborting a live model call; determinism and versioning (what a workflow function may not do, and code changes under open runs) | Kill-the-server button |
+| **16** | **Agents: orchestration** | **6** | Workflows vs agents; routing; an orchestrator with sub-agents as child workflows; automations on schedules and triggers; fan-out with backpressure; the same agent with `WorkflowAgent`, compared | Run tree |
+| 17 | Safety | 4 | Authorisation as the acting user; the poisoned document; plan-then-execute with an action allowlist; guardrails at the server boundary | Red-team runner |
+| 18 | Evals | 5 | Golden set; recall@k, MRR and NDCG; claim decomposition; judge calibration; agent task evals in CI, compared with autoevals | Eval dashboard |
+| 19 | Observability | 4 | OpenTelemetry GenAI spans; metrics and dashboards; cost per request; conversation log fan-out | Grafana |
 | 20 | Debugging drills | 5 | Find the fault: stale ACLs, embedding version mismatch, rerank failing open, a poison message, the 2am schedule | Symptom dashboard |
-| 21 | Air-gapped | 3 | Local models; egress blocked on the network; vendored dependencies and images | Egress monitor |
-| 22 | Ship it | 4 | web to Vercel; backend images to the container platform; Neon, managed Temporal and OpenSearch, secrets, migrations; CI/CD | |
+| 21 | Air-gapped | 3 | Local models, including a local reranker; egress blocked on the network; vendored dependencies and images | Egress monitor |
+| 22 | Ship it | 4 | The app and workflows to Vercel; ParadeDB in the cloud, secrets and migrations; hooks and streams tested on a Vercel preview; CI/CD | |
+
+**09.6, tenant isolation.** RLS needs the app on a non-owner role, since a table owner bypasses RLS unless it is forced. The tenant is set per transaction with `SET LOCAL`, and background jobs that cross tenants get their own explicit role. The app role needs SELECT on `acl_version_seq` to read the audit's high-water mark, since USAGE alone is refused. Rate limits and budgets are per tenant.
+
+**21, the local reranker.** It uses transformers.js, called directly: `AutoModelForSequenceClassification`, then a sigmoid over the logit. Never the pipeline API, which scores every document 1.0.
 
 Section 20 is practice for the debugging-round format: each drill ships a broken system and a symptom, and you find the cause.
 
 ## Build plan
 
-Exercises are carved out of a working app. The agent reference is written **before** any exercises, so the run and event schema is settled before dozens of steps depend on it.
+Exercises are carved out of a working app. The agent reference is written **before** any exercises, so the run and event schema settles before dozens of steps depend on it.
 
 | Milestone | Delivers | Done when |
 |---|---|---|
-| **M0a Infra + tooling** | uv and pnpm workspaces; Compose with every service; Envoy + Keycloak realm; the `ex` CLI with slots; scripted fakes and cassettes; CI; a workshop app shell that lists steps via `ex list --json` | `ex up` then `ex smoke` passes (see appendix) |
-| **M0b Data** | Schema and migrations; fixture generators (corpus, realm); fake-workspace | `ex fixtures` builds the corpus deterministically; fake-workspace serves it with ACLs |
-| **M1 Reference: RAG** | The finished implementation behind sections 01 to 12, plus the golden set | A question is answered end to end, cited, with ACLs enforced, and the M&A memo never reaches the intern |
-| **M2 Reference: agents** | The runtime behind 13 to 17 | A run survives a killed worker mid-tool-call with the side effect happening once; an approval resumes a paused run |
-| **M3 Exercises 00 to 12** | Steps, tests, READMEs, labs; the full workshop app | The quality gate passes for every graded step |
+| **M0 Foundations** | The template, stripped of Convex and the extras; the Python tree removed (it lives on in the tags); Drizzle + ParadeDB with the schema; better-auth with organisations; seeding from `world.yaml`; corpus and world kept; fake-workspace ported, with its directory; the Workflow spike; the `ex` CLI, slots and the gate; CI | `ex smoke` passes: `leo.martin` logs in and sees `kestrel`; fake-workspace shows the Heron memo shared with `/Kestrel/Exec` only; a pg_search BM25 query and a pgvector query run; the spike workflow survives a hook resume and a sleep; the gate passes on one sample step (see the appendix) |
+| **M1 Reference: RAG** | The finished implementation behind sections 01 to 12, plus the golden set | A question is answered end to end, cited, with ACLs enforced, and the Heron memo never reaches the intern (`leo.martin`) |
+| **M2 Reference: agents** | The runtime behind 13 to 17 | A run survives a killed dev server mid-tool-call with the side effect happening once; an approval resumes a paused run |
+| **M3 Exercises 00 to 12** | Steps, tests, READMEs, labs | The quality gate passes for every graded step |
 | **M4 Exercises 13 to 17** | Steps, tests, READMEs, labs | The quality gate passes |
-| **M5 The rest** | Evals, observability, drills, air-gapped, ship | The quality gate passes for all graded steps |
+| **M5 The rest** | Evals, observability, drills, air-gapped, ship; the workshop UI | The quality gate passes for all graded steps |
 
 ## To verify while scaffolding
 
-These can change details, not the architecture:
+These may change details. None of them changes the architecture.
 
-- Python 3.13 vs 3.14 for docling and torch
-- pytesseract quality on the synthetic handwriting
-- Temporal dev server in Compose, and the worker restart on `ex start`
-- Keycloak version and its admin API pagination; Envoy `jwt_authn` with two providers (one per realm)
-- Pin exact versions of every image and package in `infra/VERSIONS.md`
+- **Workflow #4442:** settled. `workflow` 5.0.1 carries the fix, and the spike runs on it with nitro `3.0.260903-beta` (`docs/workflow-notes.md`).
+- **`start()` from a server function:** verified. It works from a `createServerFn` as well as from a server route (`docs/workflow-notes.md` (a)). Server routes stay the home for starts that hand back a stream.
+- **The ORM trio:** verified. `drizzle-orm@1.0.0-rc.4`, better-auth 1.7.7's Drizzle adapter and `@paradedb/drizzle-paradedb@0.6.0` work together on ParadeDB: migrations, uuid ids for the auth tables, and `auth.api.createUser` and `addMember` called with no headers (`src/db/*.test.ts`, `src/lib/auth.test.ts`).
+- **docling-serve:** the exact `docling-serve-cpu` image tag, pinned.
+- **Cohere:** the rerank model id (`rerank-v4.0-pro` or `rerank-v4.0-fast`) as `@ai-sdk/cohere` takes it.
+- **Slots and Workflow:** answered. Workflow bundles steps with esbuild, outside Vite, so a `pnpm patch` of `@workflow/builders` lets `learnSlots()` reach them. **The patch has to be re-made or dropped on every `workflow` upgrade:** `pnpm install` fails when it no longer applies. Re-make it with `pnpm patch @workflow/builders@<version>`, or drop it once upstream has an esbuild plugin option (`docs/workflow-notes.md` (b)).
+- **Two copies of shared modules in dev:** steps load once from Workflow's bundle and once from Vite's module graph. So a module that both steps and routes import loads twice, and anything it creates at module scope exists twice. That matters for M1's database pool: keep start-up side effects out of shared modules, or accept two pools in dev.
+- **Testing waits:** answered. `@workflow/vitest` runs workflows in-process, `waitForHook` and `waitForSleep` find where a run waits, and `wakeUp` ends a sleep at once. **A `RetryableError`'s `retryAfter` can't be skipped** (neither `wakeUp` nor fake timers reach it), so code that sets one takes the delay as data, and tests pass a small value.
+- Pin the exact version of every image and package.
 
 ## Appendix: M0 spec
 
-Enough for a fresh agent to start without guessing. Versions are pinned at scaffold time.
+Enough for a fresh agent to start without guessing. `docs/m0b-contract.md` still holds where it describes behaviour (the schema rules, fake-workspace's API); this appendix says what changes for TypeScript.
 
-**Services and local ports**
+**Services and local ports.** All bind to 127.0.0.1.
 
-| Service | Port | Service | Port |
-|---|---|---|---|
-| web | 3000 | postgres | 5432 |
-| workshop | 3100 | redis | 6379 |
-| envoy | 8080 (admin 9901) | minio | 9000 (console 9001) |
-| api | 8000 (Compose network only) | opensearch | 9200 |
-| fake-workspace | 8100 | temporal | 7233 (UI 8233) |
-| reranker | 8200 | keycloak | 8081 |
-| grafana | 3001 (OTLP 4317/4318) | | |
+| Service | Port | How it runs |
+|---|---|---|
+| app (TanStack Start dev server, with Workflow's local world) | 3000 | `pnpm dev` |
+| fake-workspace | 8100 | `pnpm fake-workspace` (a Node process that restarts on change) |
+| ParadeDB, `paradedb/paradedb:0.26.1-pg18` | 5432 | `compose.yaml`; the dev role and password live there and in `.env.example` |
+| docling-serve (`docling-serve-cpu`) | 5001 | `compose.yaml`, behind a profile, so it starts only for section 03 |
 
-Published ports bind to 127.0.0.1 only. The api publishes none: it trusts Envoy's `x-jwt-payload`.
+`ex up` refuses to start if a process outside Docker holds 5432, then starts Compose, applies the migrations and seeds the world. The app and fake-workspace are started by hand.
 
-**Schema (initial entities)**
-- Tenancy: `tenants`; `tenant_id` on every table from the first migration, with row-level security policies (enforced from section 09)
-- Identity: `principals` (users and groups mirrored from Keycloak), `group_members` (direct), `group_closure` (computed)
-- Content: `documents` (source, external_id, version, content_hash, status, valid_from/valid_to), `document_acl` (principal, allow/deny, acl_version), `chunks` (document, ordinal, text, page range, section, token count, embedding, embedding_model_version)
-- Sync and ingest: `sync_state` (connector cursor or delta token), `outbox` (id, kind, payload, partition_key, created_at, published_at, attempts, last_error, failed_at)
-- Conversation: `conversations`, `messages` (unique idempotency key)
-- Runs: `runs` (status, version, workflow_id, budget), `run_events` (run_id, seq unique, type, payload), `approvals`
-- Audit: `retrieval_audit` (user, query hash, returned ids, denied ids, acl_version, timestamp)
+**Schema** (ported from M0b's migration `0002`; the rules in `docs/m0b-contract.md` "Schema" and "Settled during the build" carry over):
+- **Auth** (better-auth, generated by the `auth` CLI, ids as uuids): `user`, `session`, `account`, `verification`, `organization` (the tenants), `member`, `invitation`. The app reaches these only through better-auth, so they have no RLS.
+- **Every app table** has `tenant_id` referencing `organization(id)`, with RLS enabled and the same policy (forced from section 09). Child tables reference parents through **composite tenant FKs**, `(tenant_id, parent_id) → parent(tenant_id, id)`, so a row can't point into another tenant.
+- **Identity:** `principals` (users and groups mirrored from the directory; unique `(tenant_id, kind, external_id)`), `group_members` (direct only), `group_closure` (computed; no self rows, so depth starts at 1; member index `(member_id, group_id) INCLUDE (tenant_id)`; a cycle must be skipped).
+- **Content:** `documents` (source, external_id, version, content_hash, status, valid_from/valid_to, acl_version), `document_acl` (principal, allow/deny, acl_version), `chunks` (document, version, ordinal, text, page_start and page_end both set or both null, section, token count, `embedding vector(1536)`, embedding_model_version). No HNSW or BM25 index yet: sections 06 and 07 build them.
+- **`acl_version_seq`:** one global sequence, cache 1. Every ACL change on a document takes `nextval`, and its `document_acl` rows carry the same value, so the values order ACL changes across all documents. Group-membership and `enabled` changes don't advance it.
+- **Sync and ingest:** `sync_state` (connector cursor or delta token), `outbox` (id, kind, payload, partition_key, created_at, published_at, attempts, last_error, failed_at).
+- **Conversation:** `conversations`, `messages` (unique `(conversation_id, seq)` and `(conversation_id, idempotency_key)`; `content` must be a JSON object or array).
+- **Audit:** `retrieval_audit` (user, query hash, returned ids, denied ids, acl_version, created_at). Its `acl_version` is the sequence's high-water mark, read **after** the retrieval query in the same transaction (or anywhere inside one REPEATABLE READ snapshot). Read before it under READ COMMITTED, the stale-ACL drill would excuse a real leak.
+- **Not in M0:** `runs`, `run_events`, `approvals`. The agent reference (M2) settles them.
+- A raw SQL update or upsert sets `updated_at` itself; Drizzle's `$onUpdate` runs only through the ORM. A drift test fails when the TS schema and the migrations disagree.
 
-**Corpus spec.** About 40 documents across Finance, HR, Legal, Engineering, Sales and Exec. The generators and seeds are committed; the documents themselves are built by `ex fixtures`.
-- Native PDFs are rendered from markdown.
-- Scanned PDFs are rasterised and noised with Pillow.
-- Handwriting uses a handwriting font, rasterised.
-- The DOCX files are built with python-docx.
-- The 3,000-page filing is generated programmatically.
-- Every trap in the table above maps to one named document, and the expenses policy exists in two dated versions.
-- A second, small tenant (**Harbour Health**, about 5 documents and 5 users) exists only to prove isolation: nothing of theirs may ever reach a Kestrel user, and vice versa.
+**Auth and seeding.** `pnpm db:seed` (which `ex up` runs) reads `world.yaml` and, for each tenant, creates the organisation, then each user with `auth.api.createUser` (email `username@domain`, the tenant's dev password, verified) and `addMember`, with no request headers. It is idempotent. Directory principals aren't seeded: section 09's sync builds them from fake-workspace. In dev, verification and reset emails print to the console.
 
-**Realm spec.** About 30 users with personas, among them an intern, the CFO, a finance analyst, a platform engineer and an HR partner.
-- Group tree: Kestrel → Finance (AP, FP&A), Engineering (Platform, Payments), HR, Legal, Exec.
-- Roles: admin and employee.
-- One Keycloak realm per tenant (`kestrel`, `harbour`), like each customer bringing its own IdP; Envoy trusts both issuers. Shipped as realm exports in `fixtures/directory/`.
+**fake-workspace** (`servers/fake-workspace/`, a TS port of the Python service). Its behaviour is `docs/m0b-contract.md` "fake-workspace" plus "Settled during the build": the Graph-style site API, delta with 410 `resyncRequired`, subscriptions and webhooks, the dev-only control API, keyset paging, eTags that change with effective sharing, and subscription ids that are never reused. Port its tests along with it. New here, the directory, scoped by the same bearer tokens (`dev-workspace-kestrel`, `dev-workspace-harbour`):
+- `GET /v1.0/users`: `id` (the world's id), `userPrincipalName`, `displayName`, `jobTitle`, `accountEnabled`
+- `GET /v1.0/groups`: `id`, `displayName` (the group's path)
+- `GET /v1.0/groups/{id}/members` (direct) and `GET /v1.0/groups/{id}/transitiveMembers` (nested)
+- all paged with `$top` and `@odata.nextLink`
+
+**Corpus.**
+- `fixtures/corpus/build/` is committed as built by `python-m0b` (manifest sha256 `8b610412…`): `manifest.json` plus 46 content-addressed blobs, about 14 MB. M0 takes it out of `.gitignore` and drops `inputs.json`, which only the renderer used.
+- Kestrel has 40 documents: 20 pdf, 7 docx, 6 md, 3 handwriting, 2 scan, 1 pdf_mixed, and the 3,000-page generated filing. Harbour has 6: 4 pdf, 1 docx, 1 md.
+- The Python renderer is retired. The sources stay as the readable truth, and `fixtures/corpus/README.md` keeps the trap table. To change a document, re-render it from the `python-m0b` tag.
+- M0b's main lesson stays guarded at the tag: the renderer's tests at `python-m0b` check that every identifier is whole in each PDF's text layer and that each trap still holds in the built file (the source can be right while the PDF is wrong). The build is committed as it passed them, and any re-render happens at that tag, so M0 has no TS test over the built PDFs.
+- `world.yaml` is unchanged. Ids are `uuid5(id_namespace, "<tenant>:<kind>:<name>")`, so the manifest, fake-workspace and the database agree without a lookup table.
 
 **Provider interface (sketch)**
-```python
-class ChatModel(Protocol):
-    async def respond(self, input, *, tools=None, reasoning, stream=False) -> Response | AsyncIterator[Event]: ...
-class EmbeddingModel(Protocol):
-    async def embed(self, texts: list[str], *, dimensions: int | None = None) -> list[list[float]]: ...
-class Reranker(Protocol):
-    async def rerank(self, query: str, docs: list[str], *, top_n: int) -> list[tuple[int, float]]: ...
-```
-Implementations: OpenAI, `FakeChatModel(turns=[...])`, cassette-backed, and local (section 21).
 
-**`ex smoke`** checks that every service is healthy; that a seeded user logs in through the BFF and the resulting JWT is accepted by Envoy; that the api `/health` answers through Envoy; that an outbox row makes the relay start a hello workflow, which completes; that the fake model answers; and that the workshop app lists the sections.
+```ts
+type Reasoning = { effort: ReasoningEffort }  // the provider's levels; required, never defaulted
+
+interface ChatModel {
+  respond(input: ChatInput, opts: { tools?: ToolSet; reasoning: Reasoning; signal?: AbortSignal }): Promise<ChatResponse>
+  stream(input: ChatInput, opts: { tools?: ToolSet; reasoning: Reasoning; signal?: AbortSignal }): AsyncIterable<ChatEvent>
+}
+interface EmbeddingModel {
+  embed(texts: string[], opts?: { dimensions?: number }): Promise<number[][]>
+}
+interface Reranker {
+  rerank(query: string, docs: string[], opts: { topN: number }): Promise<{ index: number; score: number }[]>
+}
+```
+
+Implementations: the hand-written client (section 01), the AI SDK, the AI SDK's mock model (tests), cassettes, and local models (section 21).
+
+**`ex smoke`** checks that:
+1. ParadeDB answers, with `pg_search` and `vector` at the pinned versions, and every app table has RLS enabled with its policy.
+2. `leo.martin` signs in with the Kestrel dev password, and the session's active organisation is `kestrel`.
+3. As Kestrel's connector, fake-workspace pages the root with `$top=2` through `nextLink`. The Heron memo's permissions grant exactly one thing, `write` to `/Kestrel/Exec`, matched by the world's group id and its path. Harbour's token on Kestrel's site gets 403.
+4. The directory returns `leo.martin` and `/Kestrel/Finance/AP` with the ids `world.yaml` implies, and `/Kestrel`'s transitive members include `leo.martin`.
+5. A pg_search BM25 query for `KPC-2026-0142` ranks the matching row first, and a pgvector nearest-neighbour query returns the expected row.
+6. The spike workflow, started from a server route, waits on a hook, is resumed, sleeps, streams a few chunks through `getWritable()`, and completes.
+7. The gate passes on one sample step: its tests fail against the problem and pass against the solution.
 
 ## Unresolved questions
 
-None. Multi-tenancy is in scope (09.6, `tenant_id` from M0); the path is linear, RAG first.
+None. The open items are facts to check while scaffolding (above), and none of them needs a choice from Lucien.
