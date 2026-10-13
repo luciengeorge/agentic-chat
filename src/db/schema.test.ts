@@ -84,7 +84,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     return { user, group, document: await document(sql, tenantId), conversation: conversation.id };
   }
 
-  it("enables RLS with the tenant policy on every app table, and on no auth table", async () => {
+  it("enables and forces RLS with the tenant policy on every app table, and on no auth table", async () => {
     const rows = await t.sql`
       SELECT c.relname AS table, c.relrowsecurity AS enabled, c.relforcerowsecurity AS forced,
         p.policyname, p.cmd, p.permissive, p.qual, p.with_check
@@ -96,7 +96,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     for (const table of tableNames(app)) {
       expect(byTable.get(table), table).toMatchObject({
         enabled: true,
-        forced: false,
+        forced: true,
         policyname: "tenant_isolation",
         cmd: "ALL",
         permissive: "PERMISSIVE",
@@ -109,12 +109,13 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     }
   });
 
-  it("covers the tables the M0b schema had", () => {
+  it("covers the tables the M0b schema had, and M1's document_blobs", () => {
     expect(tableNames(app)).toEqual(
       [
         "chunks",
         "conversations",
         "document_acl",
+        "document_blobs",
         "documents",
         "group_closure",
         "group_members",

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  bytea,
   check,
   date,
   foreignKey,
@@ -21,9 +22,10 @@ import {
 
 import { organization } from "./auth";
 
-// Tenants are better-auth organizations. Every table here is tenant data, with RLS enabled, not forced. The
-// policy binds only a role that neither owns the table nor has BYPASSRLS: section 09.6's app role. The dev role
-// `ac` is the image's superuser, so it skips RLS even once section 09 forces it.
+// Tenants are better-auth organizations. Every table here is tenant data, with RLS enabled and, through the
+// `app_role` migration, forced (Drizzle can't declare FORCE). The policy binds the app role `ac_app`, which neither
+// owns the tables nor has BYPASSRLS. The owner `ac` is the image's superuser, so it still sees every row: only
+// `systemDb` connects as it.
 const tenantIsolation = () =>
   pgPolicy("tenant_isolation", {
     using: sql`tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid`,
@@ -68,6 +70,9 @@ export const outbox = pgTable(
     lastError: text("last_error"),
     /** Set once the relay gives up on the row (unknown kind, or out of attempts). */
     failedAt: timestamp("failed_at", { withTimezone: true }),
+    /** The workflow run that claimed the row. The relay delivers at least once, so a second run finds it taken. */
+    claimedBy: text("claimed_by"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
   },
   (t) => [
     index("outbox_pending_idx")
@@ -218,6 +223,25 @@ export const documentAcl = pgTable(
   ],
 );
 
+/** A document's raw bytes, content-addressed: `documents.storage_key` is the sha256 (hex). */
+export const documentBlobs = pgTable(
+  "document_blobs",
+  {
+    tenantId: tenantId(),
+    sha256: text("sha256").notNull(),
+    bytes: bytea("bytes").notNull(),
+    size: integer("size").notNull(),
+    mimeType: text("mime_type").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "document_blobs_pkey", columns: [t.tenantId, t.sha256] }),
+    check("document_blobs_sha256_check", sql`sha256 ~ '^[0-9a-f]{64}$'`),
+    check("document_blobs_size_check", sql`size = octet_length(bytes)`),
+    tenantIsolation(),
+  ],
+);
+
 export const chunks = pgTable(
   "chunks",
   {
@@ -261,6 +285,10 @@ export const syncState = pgTable(
     deltaToken: text("delta_token"),
     lastFullCrawlAt: timestamp("last_full_crawl_at", { withTimezone: true }),
     lastDeltaAt: timestamp("last_delta_at", { withTimezone: true }),
+    /** The change-notification subscription, and a sha256 of the clientState it was created with. */
+    subscriptionId: text("subscription_id"),
+    clientStateHash: text("client_state_hash"),
+    subscriptionExpiresAt: timestamp("subscription_expires_at", { withTimezone: true }),
     updatedAt: updatedAt(),
   },
   (t) => [primaryKey({ name: "sync_state_pkey", columns: [t.tenantId, t.connector, t.scope] }), tenantIsolation()],

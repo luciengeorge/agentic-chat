@@ -8,7 +8,7 @@ import { type World, parentPath } from "@/fixtures/world";
 
 import type { Runtime } from "./app";
 
-import { notFound } from "./errors";
+import { GraphError, badRequest, notFound } from "./errors";
 import { type Json, keysetPage, siteAccess, top } from "./http";
 import { type SortKey, compareKeys, nameKey } from "./site";
 
@@ -42,7 +42,8 @@ export function memberKey(member: Member): SortKey {
 }
 
 export class Directory {
-  readonly users: readonly DirectoryUser[];
+  /** Replaced, never edited in place, when the control API changes a membership. A reset builds a new directory. */
+  users: readonly DirectoryUser[];
   readonly groups: readonly DirectoryGroup[];
 
   constructor(world: World, tenant: string) {
@@ -64,6 +65,24 @@ export class Directory {
     const group = this.groups.find((g) => g.id === id);
     if (!group) throw notFound("No such group.");
     return group;
+  }
+
+  /**
+   * Makes a user a direct member of the group, or stops it being one. Subgroups follow their paths, so only users
+   * move. Graph reports no drive change for this, so it reaches neither delta nor notifications.
+   */
+  setMembership(group: DirectoryGroup, memberId: string, member: boolean): void {
+    if (this.groups.some((g) => g.id === memberId)) {
+      throw badRequest("A subgroup's membership follows its path; only users can be added or removed.");
+    }
+    const user = this.users.find((u) => u.id === memberId);
+    if (!user) throw notFound("No such user.");
+    if (user.groups.includes(group.path) === member) {
+      if (member) throw new GraphError(409, "conflict", "The user is already a direct member of the group.");
+      throw notFound("The user isn't a direct member of the group.");
+    }
+    const groups = member ? [...user.groups, group.path] : user.groups.filter((path) => path !== group.path);
+    this.users = this.users.map((u) => (u === user ? { ...u, groups } : u));
   }
 
   /** A group's subgroups (one level down its path) and the users who list it. */

@@ -27,8 +27,17 @@ const securityHeaders = {
 };
 
 export default defineNitroConfig({
-  // The secrets first: a server that must not run stops before the world recovers any run.
-  plugins: ["./src/server/plugins/refuse-dev-secrets.ts", "./src/workflows/start-world.ts"],
+  // The secrets first: a server that must not run stops before the world recovers any run. The relay last: it
+  // starts runs, so the world is up first.
+  plugins: [
+    "./src/server/plugins/refuse-dev-secrets.ts",
+    "./src/workflows/start-world.ts",
+    "./src/server/plugins/relay.ts",
+  ],
+  // OCR (the ingest page route) loads tesseract.js from node_modules: bundled, it reads `__dirname`, which ESM
+  // lacks, and its worker script and English model are files it finds on disk. The trailing * traces the whole
+  // package into .output.
+  traceDeps: ["tesseract.js*", "tesseract.js-core*", "@tesseract.js-data/eng*"],
   routeRules: {
     "/**": {
       headers: securityHeaders,
