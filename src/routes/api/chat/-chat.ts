@@ -60,6 +60,8 @@ const json = (status: number, body: Record<string, unknown>, headers: HeadersIni
 /** `POST /api/chat`, behind `viewerMiddleware` (which gives `scope`): one question in, one answer streamed back as
  * a UI message stream. */
 export async function handleChat(request: Request, scope: Viewer, deps: ChatDeps): Promise<Response> {
+  // Content-length can be missing or wrong, so the body is measured again once read.
+  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return json(413, { error: "too_large" });
   const raw = await request.text();
   if (raw.length > MAX_BODY_BYTES) return json(413, { error: "too_large" });
   let body: unknown;

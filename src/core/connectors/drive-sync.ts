@@ -145,7 +145,8 @@ async function applyFile(
     report.ingest.push({ documentId, version: 1 });
   } else {
     documentId = existing.id;
-    const newContent = existing.contentHash !== sha256 || existing.status === "deleted";
+    // A failed ingest is tried again, as a deleted document comes back.
+    const newContent = existing.contentHash !== sha256 || existing.status === "deleted" || existing.status === "failed";
     const version = newContent ? existing.version + 1 : existing.version;
     if (existing.path !== path || existing.title !== item.name) report.moved += 1;
     await tx

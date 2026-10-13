@@ -8,6 +8,7 @@ import {
   documentPartition,
   enqueue,
   enqueueSync,
+  enqueueTenantSyncs,
   OutageError,
   type OutboxRow,
   relayOnce,
@@ -188,5 +189,24 @@ describe.skipIf(!postgresAvailable)("outbox and relay", () => {
     expect(await withTenantOn(t.appDb, kestrel, (tx) => enqueueSync(tx, kestrel, "full"))).not.toBeNull();
     await withTenantOn(t.appDb, kestrel, (tx) => claim(tx, first!, "wrun_1"));
     expect(await sync()).not.toBeNull();
+  });
+
+  it("asks again when a published sync was never claimed: its run died before its first step", async () => {
+    const sync = () => withTenantOn(t.appDb, kestrel, (tx) => enqueueSync(tx, kestrel, "delta"));
+    const first = await sync();
+    await t.sql`UPDATE outbox SET published_at = now() WHERE id = ${first}`;
+    expect(await sync()).toBeNull();
+    await t.sql`UPDATE outbox SET published_at = now() - interval '11 minutes' WHERE id = ${first}`;
+    expect(await sync()).not.toBeNull();
+  });
+
+  it("queues a delta sync for every tenant, once while it waits", async () => {
+    const queued = await enqueueTenantSyncs(t.db, t.appDb, "delta");
+    expect(queued.map((q) => q.tenantId).sort()).toEqual([kestrel, harbour].sort());
+    expect(queued.every((q) => q.id !== null)).toBe(true);
+    expect((await enqueueTenantSyncs(t.db, t.appDb, "delta")).every((q) => q.id === null)).toBe(true);
+    const rows = await t.sql`SELECT tenant_id, kind, payload FROM outbox`;
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.kind === "sync" && row.payload.mode === "delta")).toBe(true);
   });
 });

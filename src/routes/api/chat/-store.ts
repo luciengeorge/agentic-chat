@@ -6,6 +6,8 @@ import type { Viewer } from "#learn/retrieve/types";
 import type { ConversationSummary, ReplyStatus, SourceRef, StoredUIMessage, Verdict } from "@/components/chat/types";
 import type { Tx } from "@/db/tenant";
 
+import { readable } from "#learn/retrieve/acl";
+import { uuidArray } from "#learn/search/sql";
 import { conversations, messages } from "@/db/schema";
 
 /** What `messages.content` holds. A user turn keeps its text; a reply keeps what the UI needs to redraw it. */
@@ -92,7 +94,8 @@ export async function beginTurn(
       .select({ id: messages.id, content: messages.content })
       .from(messages)
       .where(and(eq(messages.conversationId, conversationId), eq(messages.idempotencyKey, replyKey(message.key))));
-    if (reply) return { kind: "replay", reply: { id: reply.id, content: reply.content as ReplyContent } };
+    const content = reply?.content as ReplyContent | undefined;
+    if (reply && content?.status === "complete") return { kind: "replay", reply: { id: reply.id, content } };
     seq = existing.seq;
   } else {
     seq = await nextSeq(tx, conversationId);
@@ -120,7 +123,8 @@ export async function beginTurn(
   return { kind: "new", history };
 }
 
-/** Stores a reply once: a second reply to the same user message (a concurrent retry) is dropped. */
+/** Stores a reply once: a second reply to the same user message (a concurrent retry) is dropped, unless the
+ * stored one was stopped, which the new one replaces. */
 export async function saveReply(
   tx: Tx,
   viewer: Viewer,
@@ -139,7 +143,11 @@ export async function saveReply(
       content: reply.content,
       idempotencyKey: replyKey(reply.userKey),
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: [messages.conversationId, messages.idempotencyKey],
+      set: { id: reply.id, content: reply.content },
+      setWhere: sql`${messages.content}->>'status' = 'aborted'`,
+    })
     .returning({ id: messages.id });
   await tx.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, conversationId));
   return inserted.length > 0;
@@ -169,7 +177,28 @@ export function replyToUIMessage(reply: StoredReply): StoredUIMessage {
   };
 }
 
-/** A conversation's messages in the shape `useChat` takes, or null when it isn't the viewer's. */
+/** Of these documents, the ones the viewer may read now, in one query. */
+async function readableDocuments(tx: Tx, userId: string, documentIds: string[]): Promise<Set<string>> {
+  if (documentIds.length === 0) return new Set();
+  const rows = await tx.execute<{ id: string }>(sql`
+    SELECT d.id FROM unnest(${uuidArray(documentIds)}) AS d(id) WHERE ${readable(userId, sql`d.id`)}`);
+  return new Set(rows.map((row) => row.id));
+}
+
+/** A reply without the sources and citations of documents the viewer can no longer read. */
+function readableReply(content: ReplyContent, allowed: Set<string>): ReplyContent {
+  return {
+    ...content,
+    sources: content.sources.filter((source) => allowed.has(source.documentId)),
+    verdict: {
+      ...content.verdict,
+      citations: content.verdict.citations.filter((citation) => allowed.has(citation.documentId)),
+    },
+  };
+}
+
+/** A conversation's messages in the shape `useChat` takes, or null when it isn't the viewer's. A stored reply
+ * shows only the sources the viewer may still read: a document unshared since keeps its title and path to itself. */
 export async function loadConversation(
   tx: Tx,
   viewer: Viewer,
@@ -186,10 +215,17 @@ export async function loadConversation(
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
     .orderBy(messages.seq);
+  const replies = rows.filter((row) => row.role === "assistant").map((row) => row.content as ReplyContent);
+  // Citations point at sources, so the sources name every document.
+  const allowed = await readableDocuments(tx, viewer.userId, [
+    ...new Set(replies.flatMap((reply) => reply.sources.map((source) => source.documentId))),
+  ]);
   return {
     title: conversation.title,
     messages: rows.map((row): StoredUIMessage => {
-      if (row.role === "assistant") return replyToUIMessage({ id: row.id, content: row.content as ReplyContent });
+      if (row.role === "assistant") {
+        return replyToUIMessage({ id: row.id, content: readableReply(row.content as ReplyContent, allowed) });
+      }
       return {
         id: row.key ?? row.id,
         role: "user",

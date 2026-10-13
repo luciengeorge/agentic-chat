@@ -130,7 +130,12 @@ export async function ensureSubscription(tenantId: string) {
       try {
         await graph.renew(state.subscriptionId, expiration);
         await withTenant(tenantId, (tx) =>
-          tx.update(syncState).set({ subscriptionExpiresAt: expiration }).where(eq(syncState.tenantId, tenantId)),
+          tx
+            .update(syncState)
+            .set({ subscriptionExpiresAt: expiration })
+            .where(
+              and(eq(syncState.tenantId, tenantId), eq(syncState.connector, CONNECTOR), eq(syncState.scope, DRIVE)),
+            ),
         );
         return { subscriptionId: state.subscriptionId, renewed: true };
       } catch (error) {

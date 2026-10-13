@@ -103,6 +103,22 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
     });
   }, 60_000);
 
+  it("renews only the drive's subscription row", async () => {
+    const other = new Date("2030-01-01T00:00:00Z");
+    await stack.t.sql`
+      INSERT INTO sync_state (tenant_id, connector, scope, subscription_id, subscription_expires_at)
+      VALUES (${kestrel}, 'workspace', 'mail', 'sub-mail', ${other.toISOString()}::timestamptz)`;
+    try {
+      const run = await start(syncWorkflow, [kestrel, null, "delta"]);
+      expect(await run.returnValue).toMatchObject({ subscription: { renewed: true } });
+      const [mail] = await stack.t.sql`
+        SELECT subscription_expires_at FROM sync_state WHERE tenant_id = ${kestrel} AND scope = 'mail'`;
+      expect(new Date(mail.subscription_expires_at)).toEqual(other);
+    } finally {
+      await stack.t.sql`DELETE FROM sync_state WHERE scope = 'mail'`;
+    }
+  }, 60_000);
+
   it("ingests markdown, docx and a text PDF: blob stored, chunks written, ready", async () => {
     for (const path of [
       "/Finance/Month-End Close Checklist.md",

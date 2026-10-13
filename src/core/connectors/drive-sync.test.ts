@@ -112,6 +112,15 @@ describe.skipIf(!postgresAvailable)("drive sync", () => {
     expect(await t.sql`SELECT last_value FROM acl_version_seq`).toEqual([{ last_value }]);
   });
 
+  it("ingests a failed document again on the next full sync, though its content hasn't changed", async () => {
+    await full();
+    const heron = await document("/Exec/Project Heron memo.pdf");
+    await inTenant((tx) => tx.update(documents).set({ status: "failed" }).where(eq(documents.id, heron.id)));
+    const report = await full();
+    expect(report).toMatchObject({ changed: 1, ingest: [{ documentId: heron.id, version: 2 }] });
+    expect(await document("/Exec/Project Heron memo.pdf")).toMatchObject({ status: "pending", version: 2 });
+  });
+
   it("applies a rename, a move, a delete, a sharing change and new content from delta", async () => {
     const { deltaLink } = await full();
     const id = (path: string) => fw.corpus.id("kestrel", path);
