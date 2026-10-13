@@ -3,6 +3,9 @@
 What the M0 spike settled about Vercel Workflow in this app, with the evidence behind each answer. Written on
 2026-10-02 against `workflow` 5.0.1, nitro `3.0.260903-beta`, Vite 8.3.2, TanStack Start 1.168 and Node 22.22.
 
+> **Upgraded 2026-10-13** to `workflow` 5.2.1 (`@workflow/builders` 5.0.4, `@workflow/vitest` 5.0.4), TanStack Start 1.169 (stable) and Vite 8.3.4. The builders patch was re-made as `patches/@workflow__builders@5.0.4.patch`: still two call sites, still no upstream option. Everything below was measured on 5.0.1 and still holds; the full suite, the gate and `ex smoke` pass on the new versions.
+
+
 A few terms first. A **run** is one execution of a workflow. The **world** is the backend Workflow keeps runs in: on
 your machine that is the **local world**, which writes JSON files to disk and holds its job queue in memory; on Vercel
 it is Vercel's world. A **hook** pauses a run until something calls `resumeHook(token, payload)`. A **sleep** pauses

@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 20
     services:
       paradedb:
-        image: paradedb/paradedb:0.25.11-pg18
+        image: paradedb/paradedb:0.26.1-pg18
         env:
           POSTGRES_USER: ac
           POSTGRES_PASSWORD: ac

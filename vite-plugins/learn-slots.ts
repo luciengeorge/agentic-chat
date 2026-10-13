@@ -172,6 +172,9 @@ export function learnSlots(options: { env?: Env; drainMs?: number } = {}): Plugi
   return {
     name: "agentic-chat:learn-slots",
     enforce: "pre",
+    // Vitest's on-disk module cache (on by default since 5.0.4) doesn't key on the active step, so a
+    // run could reuse the previous run's reference or playground code and grade the wrong file.
+    config: () => ({ test: { fsModuleCache: false } }),
     configResolved(config) {
       resolver = createSlotResolver({ root: config.root, env });
       for (const [module, file] of resolver.slots) {

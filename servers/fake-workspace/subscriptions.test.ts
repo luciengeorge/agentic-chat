@@ -87,6 +87,7 @@ describe("the handshake", () => {
     ["held", "timed out"],
   ] as const)("a failed one (%s) creates nothing", async (validation, problem) => {
     const client = fw.client();
+    await client.post("/_control/clock", { json: { now: NOW } });
     const receiver = await fw.receiver();
     receiver.validation = validation;
     const response = await client.post("/v1.0/subscriptions", { json: request(receiver) });
@@ -104,7 +105,9 @@ describe("the handshake", () => {
     const receiver = await fw.receiver();
     const target = await fw.receiver();
     receiver.redirectTo = new URL(target.url).origin;
-    const response = await fw.client().post("/v1.0/subscriptions", { json: request(receiver) });
+    const client = fw.client();
+    await client.post("/_control/clock", { json: { now: NOW } });
+    const response = await client.post("/v1.0/subscriptions", { json: request(receiver) });
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain("must respond with 200 OK");
     expect(target.tokens).toEqual([]);
@@ -112,7 +115,11 @@ describe("the handshake", () => {
 
   it("fails on an unreachable endpoint", async () => {
     const body = request(await fw.receiver(), { notificationUrl: "http://127.0.0.1:9/hooks" });
-    expect((await fw.client().post("/v1.0/subscriptions", { json: body })).status).toBe(400);
+    const client = fw.client();
+    await client.post("/_control/clock", { json: { now: NOW } });
+    const response = await client.post("/v1.0/subscriptions", { json: body });
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("validation");
   });
 });
 

@@ -154,8 +154,8 @@ These are where the pieces meet, and where a naive build breaks.
 | Stack | One TanStack Start app on Nitro, from Lucien's `tanstack-starter-template` (its packages updated first): Vite 8, React 19, AI SDK 7, shadcn on Base UI, Tailwind 4, zod, pnpm | His stack, so the effort goes into the AI work | The Python backend (tagged) |
 | Repo shape | A single app; learnable modules in `src/core/` | Nothing is published or deployed separately, so a monorepo adds build wiring for no gain | A pnpm monorepo |
 | Template extras | Convex, Sentry, PostHog, Resend + react-email and Polar removed. Dev auth emails go to the console; seeded users are marked verified | "none of those are needed" | |
-| Database | ParadeDB everywhere: `paradedb/paradedb:0.25.11-pg18` (Postgres 18.6, pg_search 0.25.11, pgvector) | BM25, vectors and the ACL decision in one database, with the same image locally and in the cloud | Neon (it retired pg_search on 21 Sep 2026, and its replacement, lakebase_text, exists only on Neon); OpenSearch |
-| ORM + migrations | Drizzle: `drizzle-orm@1.0.0-rc.4` pinned exactly, `@paradedb/drizzle-paradedb@0.5.0`, the `postgres` (postgres.js) driver, drizzle-kit migrations; set up per [ParadeDB's Drizzle guide](https://www.paradedb.com/docs/start/configure-your-environment#drizzle) | ParadeDB's package pins that release candidate | Prisma |
+| Database | ParadeDB everywhere: `paradedb/paradedb:0.26.1-pg18` (Postgres 18, pg_search 0.26.1, pgvector) | BM25, vectors and the ACL decision in one database, with the same image locally and in the cloud | Neon (it retired pg_search on 21 Sep 2026, and its replacement, lakebase_text, exists only on Neon); OpenSearch |
+| ORM + migrations | Drizzle: `drizzle-orm@1.0.0-rc.4` pinned exactly, `@paradedb/drizzle-paradedb@0.6.0`, the `postgres` (postgres.js) driver, drizzle-kit migrations; set up per [ParadeDB's Drizzle guide](https://www.paradedb.com/docs/start/configure-your-environment#drizzle) | ParadeDB's package pins that release candidate | Prisma |
 | Lexical search | pg_search BM25, after the hand-built version in 07 | Real BM25 inside Postgres, updated in the same transaction as the rows | Postgres full-text search (not BM25); OpenSearch |
 | Vector types | `vector`, `halfvec` (fp16), `bit` (binary) with rescoring; `hnsw.iterative_scan` for filtered search | pgvector's real types; iterative scan is the fix for filtered-search recall | int8 (pgvector has no int8 type) |
 | Hybrid | RRF over the BM25 and vector lists | Ranks only, so no score tuning | Blending raw scores |
@@ -331,7 +331,7 @@ These may change details. None of them changes the architecture.
 
 - **Workflow #4442:** settled. `workflow` 5.0.1 carries the fix, and the spike runs on it with nitro `3.0.260903-beta` (`docs/workflow-notes.md`).
 - **`start()` from a server function:** verified. It works from a `createServerFn` as well as from a server route (`docs/workflow-notes.md` (a)). Server routes stay the home for starts that hand back a stream.
-- **The ORM trio:** verified. `drizzle-orm@1.0.0-rc.4`, better-auth 1.7.7's Drizzle adapter and `@paradedb/drizzle-paradedb@0.5.0` work together on ParadeDB: migrations, uuid ids for the auth tables, and `auth.api.createUser` and `addMember` called with no headers (`src/db/*.test.ts`, `src/lib/auth.test.ts`).
+- **The ORM trio:** verified. `drizzle-orm@1.0.0-rc.4`, better-auth 1.7.7's Drizzle adapter and `@paradedb/drizzle-paradedb@0.6.0` work together on ParadeDB: migrations, uuid ids for the auth tables, and `auth.api.createUser` and `addMember` called with no headers (`src/db/*.test.ts`, `src/lib/auth.test.ts`).
 - **docling-serve:** the exact `docling-serve-cpu` image tag, pinned.
 - **Cohere:** the rerank model id (`rerank-v4.0-pro` or `rerank-v4.0-fast`) as `@ai-sdk/cohere` takes it.
 - **Slots and Workflow:** answered. Workflow bundles steps with esbuild, outside Vite, so a `pnpm patch` of `@workflow/builders` lets `learnSlots()` reach them. **The patch has to be re-made or dropped on every `workflow` upgrade:** `pnpm install` fails when it no longer applies. Re-make it with `pnpm patch @workflow/builders@<version>`, or drop it once upstream has an esbuild plugin option (`docs/workflow-notes.md` (b)).
@@ -349,7 +349,7 @@ Enough for a fresh agent to start without guessing. `docs/m0b-contract.md` still
 |---|---|---|
 | app (TanStack Start dev server, with Workflow's local world) | 3000 | `pnpm dev` |
 | fake-workspace | 8100 | `pnpm fake-workspace` (a Node process that restarts on change) |
-| ParadeDB, `paradedb/paradedb:0.25.11-pg18` | 5432 | `compose.yaml`; the dev role and password live there and in `.env.example` |
+| ParadeDB, `paradedb/paradedb:0.26.1-pg18` | 5432 | `compose.yaml`; the dev role and password live there and in `.env.example` |
 | docling-serve (`docling-serve-cpu`) | 5001 | `compose.yaml`, behind a profile, so it starts only for section 03 |
 
 `ex up` refuses to start if a process outside Docker holds 5432, then starts Compose, applies the migrations and seeds the world. The app and fake-workspace are started by hand.
