@@ -23,6 +23,10 @@ function getToastSessionPassword() {
   return password;
 }
 
+export function hasToastCookie(): boolean {
+  return Boolean(getCookie(TOAST_COOKIE));
+}
+
 export async function readToast(): Promise<unknown> {
   const sealed = getCookie(TOAST_COOKIE);
   if (!sealed) {
