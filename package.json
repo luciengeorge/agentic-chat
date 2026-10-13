@@ -24,6 +24,7 @@
     "db:seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
     "sync": "dotenv -e .env.local -- tsx src/db/request-sync.ts",
     "db:embed": "dotenv -e .env.local -- tsx src/db/embed-main.ts",
+    "eval": "dotenv -e .env.local -- tsx scripts/eval.ts",
     "auth:generate": "dotenv -e .env.local -- auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts --yes",
     "fake-workspace": "dotenv -e .env.local -- tsx watch servers/fake-workspace/main.ts"
   },
