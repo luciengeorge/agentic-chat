@@ -8,6 +8,7 @@ import { loadWorld } from "@/fixtures/world";
 import { TOKEN_PREFIX } from "../../servers/fake-workspace/corpus";
 import { localEnv } from "./env";
 import { runGate } from "./gate";
+import { checkAnswer } from "./smoke-answer";
 import { checkRetrieval } from "./smoke-retrieval";
 
 export type CheckResult = { name: string; passed: boolean; detail: string | null; duration_s: number };
@@ -66,7 +67,7 @@ export function smokeTargets(root: string, env: NodeJS.ProcessEnv = process.env)
 
 type Service = { url: string; start: string };
 
-async function send(fetch: Fetch, service: Service, path: string, init: RequestInit = {}): Promise<Response> {
+export async function send(fetch: Fetch, service: Service, path: string, init: RequestInit = {}): Promise<Response> {
   const url = path.startsWith("http") ? path : `${service.url}${path}`;
   try {
     return await fetch(url, init);
@@ -77,7 +78,7 @@ async function send(fetch: Fetch, service: Service, path: string, init: RequestI
   }
 }
 
-async function readText(response: Response, what: string): Promise<string> {
+export async function readText(response: Response, what: string): Promise<string> {
   const text = await response.text();
   if (!response.ok) throw new Error(`${what} answered ${response.status}: ${text.slice(0, 200).trim()}`);
   return text;
@@ -138,7 +139,7 @@ export async function checkParadeDb(databaseUrl: string): Promise<string> {
 type Viewer = { userId?: string; tenant?: { slug?: string } };
 
 /** Signs in through better-auth's own endpoint, as the login page does. */
-async function signIn(target: SmokeTargets, email: string, password: string): Promise<Response> {
+export async function signIn(target: SmokeTargets, email: string, password: string): Promise<Response> {
   return send(target.fetch, { url: target.appUrl, start: "pnpm dev" }, "/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json", origin: target.appUrl },
@@ -146,7 +147,7 @@ async function signIn(target: SmokeTargets, email: string, password: string): Pr
   });
 }
 
-function sessionCookie(response: Response): string {
+export function sessionCookie(response: Response): string {
   return response.headers
     .getSetCookie()
     .map((line) => line.split(";")[0])
@@ -420,5 +421,6 @@ export function smokeChecks(root: string, target: SmokeTargets): [string, Check]
     ["ex gate", () => checkGate(root)],
     ["ingestion", () => checkIngestion(target)],
     ["retrieval", () => checkRetrieval(target)],
+    ["answer", () => checkAnswer(target)],
   ];
 }
