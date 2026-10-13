@@ -17,7 +17,7 @@ const LoginSchema = z.object({
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
-    if (await getOptionalViewer()) throw redirect({ to: "/me" });
+    if (await getOptionalViewer()) throw redirect({ to: "/chat" });
   },
   component: LoginPage,
 });
@@ -32,7 +32,7 @@ function LoginPage() {
       onSubmitAsync: async ({ value }) => {
         const result = await authClient.signIn.email(value);
         if (result.error) return { form: result.error.message ?? "Sign in failed" };
-        await router.navigate({ to: "/me" });
+        await router.navigate({ to: "/chat" });
         return undefined;
       },
     },

@@ -46,6 +46,14 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
     stack.t
       .sql`SELECT ordinal, page_start, page_end, text FROM chunks WHERE document_id = ${documentId} ORDER BY ordinal`;
 
+  /** Chunks by embedding model version (NULL when not embedded) and dimensions. */
+  const embeddingsOf = async (documentId: string) =>
+    (
+      await stack.t.sql`
+        SELECT embedding_model_version AS version, vector_dims(embedding) AS dims, count(*)::int AS n
+        FROM chunks WHERE document_id = ${documentId} GROUP BY 1, 2`
+    ).map((row) => ({ ...row }));
+
   beforeAll(async () => {
     stack = await startStack();
     kestrel = stack.tenants.kestrel;
@@ -113,6 +121,9 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
       expect(rows).toHaveLength(result.chunks);
       if (path.endsWith(".pdf")) expect(rows.every((row) => row.page_start >= 1)).toBe(true);
       else expect(rows.every((row) => row.page_start === null)).toBe(true);
+      expect(await embeddingsOf(document.id), path).toEqual([
+        { version: "fake-hashing-v1@1536", dims: 1536, n: result.chunks },
+      ]);
     }
   }, 60_000);
 
@@ -134,6 +145,8 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
     // 7 pages in ranges of 2: four children, chunk ordinals start at 0, 100000, 200000 and 300000.
     const ranges = [...new Set(rows.map((row) => Math.floor(row.ordinal / ORDINALS_PER_RANGE)))];
     expect(ranges).toEqual([0, 1, 2, 3]);
+    // Embedded once every range is in, before the document is ready.
+    expect(await embeddingsOf(document.id)).toEqual([{ version: "fake-hashing-v1@1536", dims: 1536, n: rows.length }]);
     for (const row of rows) {
       const index = Math.floor(row.ordinal / ORDINALS_PER_RANGE);
       expect(row.page_start).toBeGreaterThanOrEqual(index * 2 + 1);

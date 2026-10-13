@@ -8,6 +8,7 @@ import { loadWorld } from "@/fixtures/world";
 import { TOKEN_PREFIX } from "../../servers/fake-workspace/corpus";
 import { localEnv } from "./env";
 import { runGate } from "./gate";
+import { checkRetrieval } from "./smoke-retrieval";
 
 export type CheckResult = { name: string; passed: boolean; detail: string | null; duration_s: number };
 /** Resolves with an optional detail when the check passes; throws when it fails. */
@@ -418,5 +419,6 @@ export function smokeChecks(root: string, target: SmokeTargets): [string, Check]
     ["spike workflow", () => checkSpikeWorkflow(target)],
     ["ex gate", () => checkGate(root)],
     ["ingestion", () => checkIngestion(target)],
+    ["retrieval", () => checkRetrieval(target)],
   ];
 }

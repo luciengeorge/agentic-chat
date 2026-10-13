@@ -1,0 +1,75 @@
+import { type SQL, sql } from "drizzle-orm";
+
+import type { Tx } from "@/db/tenant";
+
+import { uuidArray } from "#learn/search/sql";
+
+/** The viewer is not a principal of this tenant: the directory hasn't synced them, or they belong elsewhere. */
+export class UnknownViewerError extends Error {
+  override name = "UnknownViewerError";
+}
+
+export interface ViewerPrincipals {
+  userId: string;
+  /** The user and every group in their closure, enabled or not: the pre-filter's key, never the decision. */
+  principalIds: string[];
+}
+
+/** The user plus every group they're in, directly or through nesting (`group_closure`). */
+export async function viewerPrincipals(tx: Tx, userId: string): Promise<ViewerPrincipals> {
+  const rows = await tx.execute<{ id: string; kind: string }>(sql`
+    SELECT id, kind FROM principals WHERE id = ${userId}
+    UNION ALL
+    SELECT group_id, 'group' FROM group_closure WHERE member_id = ${userId}`);
+  if (!rows.some((row) => row.id === userId && row.kind === "user")) {
+    throw new UnknownViewerError(`no user principal ${userId} in this tenant`);
+  }
+  return { userId, principalIds: rows.map((row) => row.id) };
+}
+
+/**
+ * The recall pre-filter: ready documents with an `allow` row for any of the principals. It's cheap and errs wide
+ * (it ignores disabled principals and `deny` rows), so the search can run inside the index on a list of ids. It
+ * decides nothing: `readable` does.
+ */
+export async function candidateDocuments(tx: Tx, principalIds: readonly string[]): Promise<string[]> {
+  if (principalIds.length === 0) return [];
+  const rows = await tx.execute<{ id: string }>(sql`
+    SELECT DISTINCT d.id
+    FROM documents d
+    JOIN document_acl a ON a.document_id = d.id
+    WHERE a.effect = 'allow' AND a.principal_id = ANY(${uuidArray(principalIds)}) AND d.status = 'ready'`);
+  return rows.map((row) => row.id);
+}
+
+/** True when `principal` is the user or a group in their closure. */
+const holds = (userId: string, principal: SQL) =>
+  sql`(${principal} = ${userId} OR ${principal} IN (SELECT gc.group_id FROM group_closure gc WHERE gc.member_id = ${userId}))`;
+
+/**
+ * The authorisation decision, as a boolean SQL expression over a document id: Postgres is the only place it's
+ * made. The user must be an enabled user principal; some enabled principal they hold (themselves, or a group in
+ * their closure) must have an `allow` row on the document; none they hold may have a `deny` row; and the document
+ * must be ready.
+ */
+export function readable(userId: string, documentId: SQL): SQL {
+  return sql`(
+    EXISTS (SELECT 1 FROM principals u WHERE u.id = ${userId} AND u.kind = 'user' AND u.enabled)
+    AND EXISTS (SELECT 1 FROM documents d WHERE d.id = ${documentId} AND d.status = 'ready')
+    AND EXISTS (
+      SELECT 1 FROM document_acl a JOIN principals p ON p.id = a.principal_id
+      WHERE a.document_id = ${documentId} AND a.effect = 'allow' AND p.enabled
+        AND ${holds(userId, sql`a.principal_id`)})
+    AND NOT EXISTS (
+      SELECT 1 FROM document_acl a
+      WHERE a.document_id = ${documentId} AND a.effect = 'deny' AND ${holds(userId, sql`a.principal_id`)})
+  )`;
+}
+
+/** May this user read this document? Run it inside `withTenant` for the viewer's tenant. */
+export async function canRead(tx: Tx, userId: string, documentId: string): Promise<boolean> {
+  const [row] = await tx.execute<{ allowed: boolean }>(
+    sql`SELECT ${readable(userId, sql`${documentId}::uuid`)} AS allowed`,
+  );
+  return row.allowed;
+}

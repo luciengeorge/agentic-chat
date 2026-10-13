@@ -109,7 +109,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     }
   });
 
-  it("covers the tables the M0b schema had, and M1's document_blobs", () => {
+  it("covers the tables the M0b schema had, and M1's document_blobs and rate_limit_buckets", () => {
     expect(tableNames(app)).toEqual(
       [
         "chunks",
@@ -122,6 +122,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
         "messages",
         "outbox",
         "principals",
+        "rate_limit_buckets",
         "retrieval_audit",
         "sync_state",
       ].sort(),
@@ -234,6 +235,12 @@ describe.skipIf(!postgresAvailable)("schema", () => {
       (sql, _own, other) => sql`
         INSERT INTO retrieval_audit (tenant_id, user_id, query_hash, returned_ids, denied_ids, acl_version)
         VALUES (${harbour}, ${other.user}, 'sha256:0', '{}', '{}', 0)`,
+    ],
+    [
+      "rate_limit_buckets_tenant_id_user_id_fkey",
+      (sql, _own, other) => sql`
+        INSERT INTO rate_limit_buckets (tenant_id, user_id, bucket, tokens, refilled_at)
+        VALUES (${harbour}, ${other.user}, 'chat', 1, now())`,
     ],
   ];
 

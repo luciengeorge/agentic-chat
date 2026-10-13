@@ -10,21 +10,31 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChatRouteRouteImport } from './routes/chat/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as ApiMeRouteImport } from './routes/api/me'
+import { Route as ChatIndexRouteImport } from './routes/chat/index'
+import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversationId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiChatIndexRouteImport } from './routes/api/chat/index'
 import { Route as ApiIngestOcrRouteImport } from './routes/api/ingest/ocr'
 import { Route as ApiIngestRasteriseRouteImport } from './routes/api/ingest/rasterise'
 import { Route as ApiSpikeIndexRouteImport } from './routes/api/spike/index'
 import { Route as ApiSpikeResumeRouteImport } from './routes/api/spike/resume'
 import { Route as ApiWebhooksWorkspaceRouteImport } from './routes/api/webhooks/workspace'
+import { Route as ApiChatDocumentsDocumentIdRouteImport } from './routes/api/chat/documents.$documentId'
 import { Route as ApiSpikeRunIdIndexRouteImport } from './routes/api/spike/$runId/index'
 import { Route as ApiSpikeRunIdStreamRouteImport } from './routes/api/spike/$runId/stream'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRouteRoute = ChatRouteRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -42,9 +52,24 @@ const ApiMeRoute = ApiMeRouteImport.update({
   path: '/api/me',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatIndexRoute = ChatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChatRouteRoute,
+} as any)
+const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
+  id: '/$conversationId',
+  path: '/$conversationId',
+  getParentRoute: () => ChatRouteRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatIndexRoute = ApiChatIndexRouteImport.update({
+  id: '/api/chat/',
+  path: '/api/chat/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIngestOcrRoute = ApiIngestOcrRouteImport.update({
@@ -72,6 +97,12 @@ const ApiWebhooksWorkspaceRoute = ApiWebhooksWorkspaceRouteImport.update({
   path: '/api/webhooks/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatDocumentsDocumentIdRoute =
+  ApiChatDocumentsDocumentIdRouteImport.update({
+    id: '/api/chat/documents/$documentId',
+    path: '/api/chat/documents/$documentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSpikeRunIdIndexRoute = ApiSpikeRunIdIndexRouteImport.update({
   id: '/api/spike/$runId/',
   path: '/api/spike/$runId/',
@@ -85,15 +116,20 @@ const ApiSpikeRunIdStreamRoute = ApiSpikeRunIdStreamRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
+  '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/chat/': typeof ChatIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
+  '/api/chat/': typeof ApiChatIndexRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
+  '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
@@ -102,27 +138,36 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
+  '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/chat': typeof ChatIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
+  '/api/chat': typeof ApiChatIndexRoute
   '/api/spike': typeof ApiSpikeIndexRoute
+  '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId': typeof ApiSpikeRunIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chat': typeof ChatRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
+  '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/chat/': typeof ChatIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
+  '/api/chat/': typeof ApiChatIndexRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
+  '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
@@ -130,15 +175,20 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/chat'
     | '/login'
     | '/me'
     | '/api/me'
+    | '/chat/$conversationId'
+    | '/chat/'
     | '/api/auth/$'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
+    | '/api/chat/'
     | '/api/spike/'
+    | '/api/chat/documents/$documentId'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId/'
   fileRoutesByTo: FileRoutesByTo
@@ -147,32 +197,42 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/api/me'
+    | '/chat/$conversationId'
+    | '/chat'
     | '/api/auth/$'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
+    | '/api/chat'
     | '/api/spike'
+    | '/api/chat/documents/$documentId'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId'
   id:
     | '__root__'
     | '/'
+    | '/chat'
     | '/login'
     | '/me'
     | '/api/me'
+    | '/chat/$conversationId'
+    | '/chat/'
     | '/api/auth/$'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
+    | '/api/chat/'
     | '/api/spike/'
+    | '/api/chat/documents/$documentId'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChatRouteRoute: typeof ChatRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   ApiMeRoute: typeof ApiMeRoute
@@ -181,7 +241,9 @@ export interface RootRouteChildren {
   ApiIngestRasteriseRoute: typeof ApiIngestRasteriseRoute
   ApiSpikeResumeRoute: typeof ApiSpikeResumeRoute
   ApiWebhooksWorkspaceRoute: typeof ApiWebhooksWorkspaceRoute
+  ApiChatIndexRoute: typeof ApiChatIndexRoute
   ApiSpikeIndexRoute: typeof ApiSpikeIndexRoute
+  ApiChatDocumentsDocumentIdRoute: typeof ApiChatDocumentsDocumentIdRoute
   ApiSpikeRunIdStreamRoute: typeof ApiSpikeRunIdStreamRoute
   ApiSpikeRunIdIndexRoute: typeof ApiSpikeRunIdIndexRoute
 }
@@ -193,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -216,11 +285,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat/': {
+      id: '/chat/'
+      path: '/'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof ChatIndexRouteImport
+      parentRoute: typeof ChatRouteRoute
+    }
+    '/chat/$conversationId': {
+      id: '/chat/$conversationId'
+      path: '/$conversationId'
+      fullPath: '/chat/$conversationId'
+      preLoaderRoute: typeof ChatConversationIdRouteImport
+      parentRoute: typeof ChatRouteRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/': {
+      id: '/api/chat/'
+      path: '/api/chat'
+      fullPath: '/api/chat/'
+      preLoaderRoute: typeof ApiChatIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ingest/ocr': {
@@ -258,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat/documents/$documentId': {
+      id: '/api/chat/documents/$documentId'
+      path: '/api/chat/documents/$documentId'
+      fullPath: '/api/chat/documents/$documentId'
+      preLoaderRoute: typeof ApiChatDocumentsDocumentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/spike/$runId/': {
       id: '/api/spike/$runId/'
       path: '/api/spike/$runId'
@@ -275,8 +372,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ChatRouteRouteChildren {
+  ChatConversationIdRoute: typeof ChatConversationIdRoute
+  ChatIndexRoute: typeof ChatIndexRoute
+}
+
+const ChatRouteRouteChildren: ChatRouteRouteChildren = {
+  ChatConversationIdRoute: ChatConversationIdRoute,
+  ChatIndexRoute: ChatIndexRoute,
+}
+
+const ChatRouteRouteWithChildren = ChatRouteRoute._addFileChildren(
+  ChatRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChatRouteRoute: ChatRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   ApiMeRoute: ApiMeRoute,
@@ -285,7 +397,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIngestRasteriseRoute: ApiIngestRasteriseRoute,
   ApiSpikeResumeRoute: ApiSpikeResumeRoute,
   ApiWebhooksWorkspaceRoute: ApiWebhooksWorkspaceRoute,
+  ApiChatIndexRoute: ApiChatIndexRoute,
   ApiSpikeIndexRoute: ApiSpikeIndexRoute,
+  ApiChatDocumentsDocumentIdRoute: ApiChatDocumentsDocumentIdRoute,
   ApiSpikeRunIdStreamRoute: ApiSpikeRunIdStreamRoute,
   ApiSpikeRunIdIndexRoute: ApiSpikeRunIdIndexRoute,
 }

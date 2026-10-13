@@ -4,9 +4,11 @@ import { FatalError, RetryableError } from "workflow";
 
 import { chunk } from "#learn/chunk/chunk";
 import { parse, PDF, pdfPageCount, UnsupportedDocumentError } from "#learn/parse/parse";
+import { embedPendingChunks } from "@/db/embeddings";
 import { chunks, documentBlobs, documents } from "@/db/schema";
 import { type Tx, withTenant } from "@/db/tenant";
 import { createLogger } from "@/lib/logger";
+import { embedderFromEnv } from "@/lib/retrieval.server";
 
 import { ORDINALS_PER_RANGE, PageRouteError, pageRouteDeps } from "./ingest-deps";
 import { asStep, graphFor } from "./sync-common";
@@ -74,7 +76,7 @@ storeBlob.maxRetries = 5;
 
 /**
  * Parses the stored bytes (a page range of a PDF, or the whole document), chunks them, and writes the chunks for
- * this version, replacing what an earlier attempt wrote. Embeddings come later (wave 2).
+ * this version, replacing what an earlier attempt wrote. `embedChunks` embeds them once every range is in.
  */
 export async function parseAndChunk(
   tenantId: string,
@@ -145,6 +147,26 @@ export async function parseAndChunk(
   return { chunks: written ?? 0, skipped: written === null, ocrPages };
 }
 parseAndChunk.maxRetries = 3;
+
+/**
+ * Embeds this version's chunks that have no embedding from the current model, and records the model's version
+ * on each. A batch commits as it goes, so a retry pays only for what's left. A 429 or a network error from the
+ * provider is worth a retry; the AI SDK has already retried it twice.
+ */
+export async function embedChunks(tenantId: string, documentId: string, version: number) {
+  "use step";
+  const found = await withTenant(tenantId, (tx) => current(tx, documentId, version));
+  if (found.skip) return { chunks: 0, skipped: true };
+  const embedder = embedderFromEnv();
+  try {
+    const result = await embedPendingChunks(withTenant, embedder, { tenantId, documentId, documentVersion: version });
+    logger.info("embedded", { documentId, version, model: embedder.version, ...result });
+    return { chunks: result.chunks, skipped: false };
+  } catch (error) {
+    throw new RetryableError(`embedding failed: ${(error as Error).message}`, { retryAfter: 5_000 });
+  }
+}
+embedChunks.maxRetries = 5;
 
 /** Marks the version ready and drops older versions' chunks, unless a newer version or a delete overtook it. */
 export async function finishIngest(tenantId: string, documentId: string, version: number) {

@@ -8,6 +8,8 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { GlobalLoading } from "@/components/global-loading";
 import { Toaster } from "@/components/ui/sonner";
 import { useToast } from "@/hooks/use-toast";
+import { contentSecurityPolicy } from "@/lib/csp";
+import { acEnv } from "@/lib/env";
 import { getToast } from "@/lib/functions/get-toast";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
@@ -28,6 +30,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     return { serverToast };
   },
   component: RootComponent,
+  // The page's CSP carries this response's nonce, so it's set here rather than in nitro.config.ts.
+  headers: ({ ssr }) =>
+    ssr?.nonce ? { "Content-Security-Policy": contentSecurityPolicy(ssr.nonce, acEnv()) } : undefined,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
