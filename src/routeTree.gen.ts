@@ -14,8 +14,11 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as ApiMeRouteImport } from './routes/api/me'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiIngestOcrRouteImport } from './routes/api/ingest/ocr'
+import { Route as ApiIngestRasteriseRouteImport } from './routes/api/ingest/rasterise'
 import { Route as ApiSpikeIndexRouteImport } from './routes/api/spike/index'
 import { Route as ApiSpikeResumeRouteImport } from './routes/api/spike/resume'
+import { Route as ApiWebhooksWorkspaceRouteImport } from './routes/api/webhooks/workspace'
 import { Route as ApiSpikeRunIdIndexRouteImport } from './routes/api/spike/$runId/index'
 import { Route as ApiSpikeRunIdStreamRouteImport } from './routes/api/spike/$runId/stream'
 
@@ -44,6 +47,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIngestOcrRoute = ApiIngestOcrRouteImport.update({
+  id: '/api/ingest/ocr',
+  path: '/api/ingest/ocr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIngestRasteriseRoute = ApiIngestRasteriseRouteImport.update({
+  id: '/api/ingest/rasterise',
+  path: '/api/ingest/rasterise',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSpikeIndexRoute = ApiSpikeIndexRouteImport.update({
   id: '/api/spike/',
   path: '/api/spike/',
@@ -52,6 +65,11 @@ const ApiSpikeIndexRoute = ApiSpikeIndexRouteImport.update({
 const ApiSpikeResumeRoute = ApiSpikeResumeRouteImport.update({
   id: '/api/spike/resume',
   path: '/api/spike/resume',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksWorkspaceRoute = ApiWebhooksWorkspaceRouteImport.update({
+  id: '/api/webhooks/workspace',
+  path: '/api/webhooks/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSpikeRunIdIndexRoute = ApiSpikeRunIdIndexRouteImport.update({
@@ -71,7 +89,10 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/ingest/ocr': typeof ApiIngestOcrRoute
+  '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
+  '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
@@ -82,7 +103,10 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/ingest/ocr': typeof ApiIngestOcrRoute
+  '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
+  '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/spike': typeof ApiSpikeIndexRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId': typeof ApiSpikeRunIdIndexRoute
@@ -94,7 +118,10 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/ingest/ocr': typeof ApiIngestOcrRoute
+  '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
+  '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
@@ -107,7 +134,10 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/api/auth/$'
+    | '/api/ingest/ocr'
+    | '/api/ingest/rasterise'
     | '/api/spike/resume'
+    | '/api/webhooks/workspace'
     | '/api/spike/'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId/'
@@ -118,7 +148,10 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/api/auth/$'
+    | '/api/ingest/ocr'
+    | '/api/ingest/rasterise'
     | '/api/spike/resume'
+    | '/api/webhooks/workspace'
     | '/api/spike'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId'
@@ -129,7 +162,10 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/api/auth/$'
+    | '/api/ingest/ocr'
+    | '/api/ingest/rasterise'
     | '/api/spike/resume'
+    | '/api/webhooks/workspace'
     | '/api/spike/'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId/'
@@ -141,7 +177,10 @@ export interface RootRouteChildren {
   MeRoute: typeof MeRoute
   ApiMeRoute: typeof ApiMeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiIngestOcrRoute: typeof ApiIngestOcrRoute
+  ApiIngestRasteriseRoute: typeof ApiIngestRasteriseRoute
   ApiSpikeResumeRoute: typeof ApiSpikeResumeRoute
+  ApiWebhooksWorkspaceRoute: typeof ApiWebhooksWorkspaceRoute
   ApiSpikeIndexRoute: typeof ApiSpikeIndexRoute
   ApiSpikeRunIdStreamRoute: typeof ApiSpikeRunIdStreamRoute
   ApiSpikeRunIdIndexRoute: typeof ApiSpikeRunIdIndexRoute
@@ -184,6 +223,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ingest/ocr': {
+      id: '/api/ingest/ocr'
+      path: '/api/ingest/ocr'
+      fullPath: '/api/ingest/ocr'
+      preLoaderRoute: typeof ApiIngestOcrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ingest/rasterise': {
+      id: '/api/ingest/rasterise'
+      path: '/api/ingest/rasterise'
+      fullPath: '/api/ingest/rasterise'
+      preLoaderRoute: typeof ApiIngestRasteriseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/spike/': {
       id: '/api/spike/'
       path: '/api/spike'
@@ -196,6 +249,13 @@ declare module '@tanstack/react-router' {
       path: '/api/spike/resume'
       fullPath: '/api/spike/resume'
       preLoaderRoute: typeof ApiSpikeResumeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/workspace': {
+      id: '/api/webhooks/workspace'
+      path: '/api/webhooks/workspace'
+      fullPath: '/api/webhooks/workspace'
+      preLoaderRoute: typeof ApiWebhooksWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/spike/$runId/': {
@@ -221,7 +281,10 @@ const rootRouteChildren: RootRouteChildren = {
   MeRoute: MeRoute,
   ApiMeRoute: ApiMeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiIngestOcrRoute: ApiIngestOcrRoute,
+  ApiIngestRasteriseRoute: ApiIngestRasteriseRoute,
   ApiSpikeResumeRoute: ApiSpikeResumeRoute,
+  ApiWebhooksWorkspaceRoute: ApiWebhooksWorkspaceRoute,
   ApiSpikeIndexRoute: ApiSpikeIndexRoute,
   ApiSpikeRunIdStreamRoute: ApiSpikeRunIdStreamRoute,
   ApiSpikeRunIdIndexRoute: ApiSpikeRunIdIndexRoute,

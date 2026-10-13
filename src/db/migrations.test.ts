@@ -62,6 +62,11 @@ describe.skipIf(!postgresAvailable)("migrations", () => {
       await fromSchema.sql`CREATE EXTENSION IF NOT EXISTS pg_search`;
       const statements = await generateMigration(await generateDrizzleJson({}), await generateDrizzleJson(schema));
       for (const statement of statements) await fromSchema.sql.unsafe(statement);
+      // The app_role migration forces RLS on every table the schema enables it on: Drizzle can't declare FORCE.
+      const enabled = await fromSchema.sql`
+        SELECT relname FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' AND relrowsecurity`;
+      for (const { relname } of enabled)
+        await fromSchema.sql.unsafe(`ALTER TABLE "${relname}" FORCE ROW LEVEL SECURITY`);
 
       const want = new Set(await catalog(fromSchema.sql));
       const got = new Set(await catalog(migrated.sql));

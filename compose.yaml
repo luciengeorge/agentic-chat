@@ -15,5 +15,15 @@ services:
       timeout: 5s
       retries: 30
 
+  # The production parser that section 03 compares ours against (scripts/parse-compare.ts). About
+  # 4.4 GB, so it only starts with `docker compose --profile docling up -d docling`.
+  docling:
+    image: quay.io/docling-project/docling-serve-cpu:v1.35.0
+    profiles: [docling]
+    ports:
+      - "127.0.0.1:5001:5001"
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "0"
+
 volumes:
   paradedb-data:

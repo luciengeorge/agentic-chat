@@ -32,7 +32,12 @@ export default defineConfig({
           learnSlots(),
           viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
         ],
-        test: { name: "workflows", include: ["src/workflows/**/*.test.ts"], environment: "node" },
+        test: {
+          name: "workflows",
+          include: ["src/workflows/**/*.test.ts"],
+          environment: "node",
+          globalSetup: ["./src/db/test/global-setup.ts"],
+        },
       },
     ],
   },
