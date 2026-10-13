@@ -6,9 +6,11 @@ import type { Retrieve, RetrievedChunk } from "#learn/retrieve/types";
 import { ABSTAIN_TEXT } from "#learn/generate/prompt";
 import { parseSse } from "#learn/model/responses";
 import { scriptedModel } from "#learn/model/testing";
+import { withTenantOn } from "@/db/tenant";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
 
-import { handleChat, withHeartbeat, type ChatDeps } from "./-chat";
+import { handleChat, MAX_BODY_BYTES, withHeartbeat, type ChatDeps } from "./-chat";
+import { loadConversation } from "./-store";
 
 const LEO = "44444444-4444-4444-8444-444444444444";
 const NORA = "55555555-5555-4555-8555-555555555555";
@@ -118,6 +120,18 @@ describe.skipIf(!postgresAvailable)("POST /api/chat", () => {
       expect((await post(body)).status).toBe(400);
     }
     expect(retrieveCalls).toEqual([]);
+  });
+
+  it("refuses a body its content-length says is too big without reading it, and one that is too big anyway", async () => {
+    const request = new Request("http://localhost:3000/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": String(MAX_BODY_BYTES + 1) },
+      body: JSON.stringify(ask("hi")),
+    });
+    const response = await handleChat(request, { tenantId: tenant, userId: LEO }, deps());
+    expect(response.status).toBe(413);
+    expect(request.bodyUsed).toBe(false);
+    expect((await post(JSON.stringify(ask("x".repeat(MAX_BODY_BYTES))))).status).toBe(413);
   });
 
   it("streams sources, the answer and a verdict, and stores both turns", async () => {
@@ -233,6 +247,60 @@ describe.skipIf(!postgresAvailable)("POST /api/chat", () => {
     expect(reply.content.status).toBe("aborted");
     expect(reply.content.text.length).toBeLessThan("word ".repeat(200).length);
     expect(mock.doStreamCalls).toHaveLength(1);
+
+    // A retry of the stopped message answers again, and the finished reply takes the stopped one's place.
+    const retry = scriptedModel(CITED);
+    const again = await chunksOf(await post(body, LEO, deps({ model: retry.model })));
+    expect(retry.mock.doStreamCalls).toHaveLength(1);
+    expect(textOf(again)).toBe(CITED);
+    const rows = await stored(body.id);
+    expect(rows.map((r) => [r.role, r.content.status])).toEqual([
+      ["user", undefined],
+      ["assistant", "complete"],
+    ]);
+    expect(rows[1].content.text).toBe(CITED);
+  });
+
+  it("loads a conversation without the sources and citations of documents the viewer can no longer read", async () => {
+    const shared = { ...POLICY_V2, id: crypto.randomUUID(), documentId: crypto.randomUUID() };
+    const unshared = {
+      ...POLICY_V2,
+      id: crypto.randomUUID(),
+      documentId: crypto.randomUUID(),
+      title: "Heron memo",
+      path: "/Exec/Heron memo.pdf",
+      text: "Project Heron closes in March next year.",
+    };
+    for (const doc of [shared, unshared]) {
+      await t.sql`
+        INSERT INTO documents (id, tenant_id, source, external_id, title, path, mime_type, version, source_version,
+                               content_hash, status)
+        VALUES (${doc.documentId}, ${tenant}, 'workspace', ${doc.documentId}, ${doc.title}, ${doc.path},
+                'application/pdf', 1, 'v1', 'hash', 'ready')`;
+      await t.sql`INSERT INTO document_acl (tenant_id, document_id, principal_id, effect, acl_version)
+                  VALUES (${tenant}, ${doc.documentId}, ${LEO}, 'allow', 1)`;
+    }
+    retrieved = [shared, unshared];
+    const { model } = scriptedModel(
+      'Meals: £45 [[S1: "reimbursed up to £45 per day"]]. Heron [[S2: "Project Heron closes in March"]].',
+    );
+    const body = ask("Meals and Heron?");
+    await chunksOf(await post(body, LEO, deps({ model })));
+    await t.sql`DELETE FROM document_acl WHERE document_id = ${unshared.documentId}`;
+
+    const loaded = await withTenantOn(t.appDb, tenant, (tx) =>
+      loadConversation(tx, { tenantId: tenant, userId: LEO }, body.id),
+    );
+    const reply = loaded!.messages[1];
+    if (reply.role !== "assistant") throw new Error("expected the reply");
+    const [sources, , verdict] = reply.parts;
+    expect(sources.type === "data-sources" && sources.data.sources.map((s) => s.documentId)).toEqual([
+      shared.documentId,
+    ]);
+    expect(verdict.type === "data-verdict" && verdict.data.citations.map((c) => c.documentId)).toEqual([
+      shared.documentId,
+    ]);
+    expect(JSON.stringify(reply.parts.filter((p) => p.type !== "text"))).not.toContain("Heron");
   });
 
   it("sends heartbeats while the answer is quiet", async () => {

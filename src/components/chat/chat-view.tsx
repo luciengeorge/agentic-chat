@@ -28,6 +28,7 @@ function describe(error: Error): string {
     }
     if (body.error === "unauthorized") return "Your session has ended. Sign in again.";
     if (body.error === "not_in_directory") return "Your account isn't in the company directory yet.";
+    if (body.error === "disabled") return "Your account is disabled in the company directory.";
     if (body.error === "not_found") return "This conversation isn't yours, or it no longer exists.";
   } catch {
     // not JSON: a stream error, whose message is already for people

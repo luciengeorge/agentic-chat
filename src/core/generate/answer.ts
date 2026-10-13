@@ -82,7 +82,8 @@ export async function* answer(input: AnswerInput): AsyncGenerator<AnswerEvent> {
     }
   }
 
-  const abstained = normalizeAbstention(text).startsWith(normalizeAbstention(ABSTAIN_TEXT));
+  // Only the sentence on its own: anything after it is an answer, checked like one.
+  const abstained = normalizeAbstention(text) === normalizeAbstention(ABSTAIN_TEXT);
   const report = abstained
     ? { ...validateCitations(text, prompt.sources), flagged: false }
     : validateCitations(text, prompt.sources);

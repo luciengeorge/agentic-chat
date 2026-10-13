@@ -8,13 +8,13 @@ import type { RetrievedChunk } from "#learn/retrieve/types";
  * can't see that" would leak that it exists. */
 export const ABSTAIN_TEXT = "I couldn't find an answer to that in the documents you can access.";
 
-/** For spotting an abstention: models vary the apostrophe and the full stop. */
+/** For spotting an abstention: models vary the apostrophe and the closing punctuation. */
 export const normalizeAbstention = (text: string) =>
   text
     .trim()
     .toLowerCase()
     .replace(/[‘’]/g, "'")
-    .replace(/[.!\s]+$/, "");
+    .replace(/[\p{P}\s]+$/u, "");
 
 export interface PromptBudget {
   /** For the labelled sources, in rank order. A source that doesn't fit is skipped; smaller ones after it can still go in. */
@@ -60,9 +60,12 @@ function pages(chunk: Pick<RetrievedChunk, "pageStart" | "pageEnd">): string {
     : ` page="${chunk.pageStart}"`;
 }
 
+/** The tags the prompt itself is built from. */
+const PROMPT_TAG = /<\/?\s*(?:sources?|question)\b[^>]*>?/gi;
+
 export function renderSource(label: string, chunk: RetrievedChunk): string {
-  // A chunk can't close its own tag and pose as another source.
-  const text = chunk.text.replace(/<\/?source\b[^>]*>/gi, "");
+  // A chunk can't close its own tag, or the sources block, and pose as another source or the question.
+  const text = chunk.text.replace(PROMPT_TAG, "");
   return `<source id="${label}" title="${escapeAttribute(chunk.title)}" path="${escapeAttribute(chunk.path)}"${pages(chunk)}>\n${text}\n</source>`;
 }
 

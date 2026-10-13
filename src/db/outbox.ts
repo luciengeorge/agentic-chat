@@ -3,7 +3,8 @@ import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "./create";
 import type { Tx } from "./tenant";
 
-import { outbox } from "./schema";
+import { organization, outbox } from "./schema";
+import { withTenantOn } from "./tenant";
 
 /** What the relay hands to a workflow start. Payloads carry ids, never content. */
 export type OutboxMessage =
@@ -50,9 +51,14 @@ export async function enqueue(tx: Tx, tenantId: string, message: OutboxMessage, 
   return row.id;
 }
 
+/** A run claims its row as its first step. A row published this long ago and still unclaimed has no run left. */
+const UNCLAIMED_SYNC_DEAD_AFTER = "10 minutes";
+
 /**
  * Asks for a sync of the tenant unless one is already waiting to be picked up: an unclaimed sync reads the
- * changes when it runs, so a burst of notifications costs one sync. Returns the new row's id, or null.
+ * changes when it runs, so a burst of notifications costs one sync. A row published long ago but never claimed
+ * isn't waiting: its run died first. Runs are idempotent, so erring toward a second one is safe. Returns the new
+ * row's id, or null.
  */
 export async function enqueueSync(tx: Tx, tenantId: string, mode: "full" | "delta"): Promise<string | null> {
   const partitionKey = syncPartition(tenantId);
@@ -66,11 +72,25 @@ export async function enqueueSync(tx: Tx, tenantId: string, mode: "full" | "delt
         isNull(outbox.claimedBy),
         isNull(outbox.failedAt),
         sql`${outbox.payload}->>'mode' = ${mode}`,
+        or(isNull(outbox.publishedAt), sql`${outbox.publishedAt} > now() - ${UNCLAIMED_SYNC_DEAD_AFTER}::interval`),
       ),
     )
     .limit(1);
   if (waiting) return null;
   return enqueue(tx, tenantId, { kind: "sync", payload: { mode } }, partitionKey);
+}
+
+/**
+ * `enqueueSync` for every tenant: the periodic sync. Listing tenants crosses them, so it reads on the owner's
+ * pool; each request is written as the app role, in its tenant.
+ */
+export async function enqueueTenantSyncs(owner: Db, app: Db, mode: "full" | "delta") {
+  const tenants = await owner.select({ id: organization.id }).from(organization);
+  const queued: { tenantId: string; id: string | null }[] = [];
+  for (const { id: tenantId } of tenants) {
+    queued.push({ tenantId, id: await withTenantOn(app, tenantId, (tx) => enqueueSync(tx, tenantId, mode)) });
+  }
+  return queued;
 }
 
 /**
