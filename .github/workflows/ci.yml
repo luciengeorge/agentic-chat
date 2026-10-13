@@ -33,7 +33,9 @@ jobs:
     env:
       AC_ENV: test
       AC_REQUIRE_POSTGRES: "1"
-      DATABASE_URL: postgres://ac:ac@localhost:5432/ac
+      # The app role (row-level security binds it); tests give it this password. The owner runs migrations.
+      DATABASE_URL: postgres://ac_app:ac_app@localhost:5432/ac
+      DATABASE_ADMIN_URL: postgres://ac:ac@localhost:5432/ac
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

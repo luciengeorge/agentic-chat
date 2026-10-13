@@ -1,6 +1,6 @@
-import { createDb } from "./create";
+import { appDb } from "./pool";
 
-const url = process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL must be set");
+export { appDb, systemDb } from "./pool";
 
-export const db = createDb(url);
+/** The app role's pool. Importing this needs DATABASE_URL; code that may load without it imports `./pool`. */
+export const db = appDb();

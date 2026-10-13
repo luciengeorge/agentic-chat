@@ -1,0 +1,2 @@
+CREATE INDEX "chunks_embedding_hnsw_idx" ON "chunks" USING hnsw ("embedding" vector_cosine_ops);--> statement-breakpoint
+CREATE INDEX "chunks_bm25_idx" ON "chunks" USING paradedb ("id",(("text")::pdb.unicode_words('stemmer=english','stopwords_language=english')),"tenant_id","document_id");

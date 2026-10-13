@@ -2,17 +2,30 @@ import type { TestProject } from "vitest/node";
 
 import postgres from "postgres";
 
+import { APP_ROLE, enableAppLogin } from "../app-role";
+
 declare module "vitest" {
   export interface ProvidedContext {
     // null when Postgres is unreachable: the database suites skip.
-    postgres: { adminUrl: string; prefix: string } | null;
+    postgres: { adminUrl: string; appPassword: string; prefix: string } | null;
   }
+}
+
+const DEFAULT_ADMIN_URL = "postgres://ac:ac@localhost:5432/ac";
+/** The dev password from .env.example. The role belongs to the whole server, so tests keep the one dev uses. */
+const DEFAULT_APP_PASSWORD = "ac_app";
+
+/** The app role's password: DATABASE_URL's when it connects as the app role, else the dev one. */
+function appPassword(): string {
+  const url = process.env.DATABASE_URL ? URL.parse(process.env.DATABASE_URL) : null;
+  if (url && decodeURIComponent(url.username) === APP_ROLE && url.password) return decodeURIComponent(url.password);
+  return DEFAULT_APP_PASSWORD;
 }
 
 // Each run gets its own prefix, and every test database starts with it, so teardown drops exactly
 // what this run made.
 export default async function setup(project: TestProject) {
-  const adminUrl = process.env.DATABASE_URL ?? "postgres://ac:ac@localhost:5432/ac";
+  const adminUrl = process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL || DEFAULT_ADMIN_URL;
   const prefix = `ac_test_${Date.now().toString(36)}_${process.pid}`;
   const sql = postgres(adminUrl, { max: 1, connect_timeout: 3, onnotice: () => {} });
 
@@ -31,7 +44,14 @@ export default async function setup(project: TestProject) {
     return;
   }
 
-  project.provide("postgres", { adminUrl, prefix });
+  // Once per run, before any test migrates: concurrent ALTER ROLEs would collide.
+  const password = appPassword();
+  const appUrl = new URL(adminUrl);
+  appUrl.username = APP_ROLE;
+  appUrl.password = encodeURIComponent(password);
+  await enableAppLogin(adminUrl, appUrl.toString());
+
+  project.provide("postgres", { adminUrl, appPassword: password, prefix });
 
   return async () => {
     const rows = await sql<
