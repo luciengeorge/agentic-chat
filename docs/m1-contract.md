@@ -63,6 +63,45 @@ export function chunk(doc: ParsedDocument, options?: { targetTokens?: number; ov
 - **Webhooks.** `POST /api/webhooks/workspace` answers the validation handshake and turns a notification into a delta sync for that tenant through the outbox. It checks `clientState`.
 - **Tests and live proof.** Unit tests with fake-workspace in-process and throwaway databases. Live: from an empty `ac`, `pnpm ex up`, `pnpm dev`, `pnpm fake-workspace`, then a full sync of both tenants: all 46 documents `ready` with chunks and ACLs; a rename, a move, a delete and a sharing change made through fake-workspace's control API arrive by webhook and apply; removing `leo.martin` from `/Kestrel/Finance/AP` in the directory removes his closure rows. A new `ex smoke` check, "ingestion", covers counts and one ACL fact (the Heron memo's `document_acl` holds `/Kestrel/Exec` only).
 
+## Wave 2 ownership
+
+| Lane | Owns |
+|---|---|
+| C. Retrieval | `src/core/{embed,search,rerank,query,retrieve}/**`, `src/db/**` (all wave-2 migrations, including any table lane D needs), the embedding step added to `src/workflows/ingest*.ts`, their tests |
+| D. Answer + app | `src/core/{model,generate,cite}/**`, `src/lib/{middleware,rate-limit}*.ts`, the chat routes and UI (`src/routes/chat/**`, `src/routes/api/chat/**`, `src/components/chat/**`), their tests |
+
+Lane C alone uses the live stack (Docker, :3000, :8100) and owns the database layer; lane D asks lane C for schema it needs (the rate-limit table, message columns) by SendMessage and builds against a fake `retrieve()` until lane C's lands. The model key is `OPENAI_API_KEY`; with it unset, everything runs on fakes and the live proof waits. Cohere has no key yet: `rerank()` uses a deterministic fake reranker unless `COHERE_API_KEY` is set.
+
+## Shared interface (lane C writes it first, then tells lane D)
+
+```ts
+// src/core/retrieve/types.ts
+export interface Viewer { tenantId: string; userId: string } // from getViewer(), never from the client
+export interface RetrievedChunk {
+  id: string; documentId: string; title: string; path: string; text: string
+  pageStart: number | null; pageEnd: number | null; section: string | null; score: number
+}
+export interface Retrieval { query: string; rewritten: string[]; chunks: RetrievedChunk[]; auditId: string }
+export function retrieve(viewer: Viewer, query: string, options?: { k?: number }): Promise<Retrieval>
+```
+
+## Lane C: retrieval
+
+- Embeddings: `embedMany` from the AI SDK with `text-embedding-3-small` at 1536 dimensions, batched, behind an `Embedder` the tests replace with a deterministic fake. An ingest step embeds a document's chunks and records `embedding_model_version`.
+- Indexes (migrations): HNSW on `chunks.embedding` (cosine), a pg_search BM25 index on `chunks.text` carrying `tenant_id` and the ids the filters need. Vector search sets `hnsw.ef_search` and `hnsw.iterative_scan` per query.
+- Search: BM25 and vector lists fused with RRF (`k = 60`), reranked with `rerank()` (Cohere when keyed, else the fake), query rewriting and expansion through the model with structured output (fake in tests).
+- ACLs: the viewer's principals are the user plus every group in their closure; candidates are pre-filtered by those principals with over-fetch, then the final set is decided by a join on `document_acl` (Postgres is the only decision point), all inside `withTenant`. Disabled principals see nothing.
+- Audit: every `retrieve()` writes `retrieval_audit` (returned and denied ids, the `acl_version` high-water mark read after the query, per the M0 contract).
+- Tests and live proof: contract numbers and error codes come back first through BM25 even when vectors miss them; the Heron memo never reaches `leo.martin` and does reach `daniel.reyes`; a Harbour user never gets a Kestrel chunk; `peter.hall` gets nothing. Live (needs the key): embed the corpus, then those same facts against the real stack, and a new `ex smoke` check, "retrieval".
+
+## Lane D: answer + app
+
+- Section 01: a hand-written client for OpenAI's Responses API (`src/core/model/responses.ts`: request building, the streaming event format, tool-call wire format), then the AI SDK behind one `ChatModel` interface the app uses. `gpt-6-luna`, reasoning effort always explicit (`medium`). Tests use the AI SDK's mock models.
+- Section 10: prompt assembly within a token budget (`gpt-tokenizer`), grounding instructions and abstention when the chunks don't answer, streaming with `streamText`, and a citation validator: every citation must point at a retrieved chunk id, and its quoted span must appear in that chunk. Invalid citations are dropped and the answer flagged.
+- Section 11: one middleware for every server function and route that needs a viewer (the tenant comes only from `getViewer()`), zod validation on every input, a token bucket in Postgres per user (table from lane C), and streaming through the boundary with abort and heartbeats.
+- Section 12: a chat page with `useChat`, conversations and messages persisted (idempotency keys), citations that open the cited document at its page.
+- Tests and live proof: a made-up citation is rejected; an empty retrieval abstains; the rate limit returns 429; live (needs the key and lane C), `leo.martin` asks about expenses and gets a cited answer from policy v2, and asking about the Heron deal gets an abstention.
+
 ## Settled during the build
 
 (Lanes add what they decide here.)
