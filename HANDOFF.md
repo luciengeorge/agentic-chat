@@ -4,15 +4,15 @@ For the next agent picking this up. Read this first, then `PLAN.md` (the source 
 
 ## TL;DR
 
-- **What:** a hands-on workshop repo where Lucien builds a production-grade AI application (a small Cohere North) layer by layer, Epic React style: problem and solution folders, hints inline, tests as the grader, run from a local workshop web app with a lab panel per section.
+- **What:** a hands-on workshop repo where Lucien builds a production-grade AI application (a small Cohere North) layer by layer, Epic React style: problem and solution folders, hints inline, tests as the grader, and the running reference app as the lab.
 - **Why:** Cohere rejected him after the onsite. The feedback named one gap: "autonomous agent orchestration and state management."
-- **State:** M0a (infra + tooling) is done and merged to `main`; `ex up` then `ex smoke` pass. The next step is milestone M0b (schema, fixtures, fake-workspace) in `PLAN.md`.
+- **State:** **restarting on TypeScript** (1 Oct 2026), on branch `ts-restart`, which starts from the Python M0b work. The Python stack is tagged: `python-m0a` (17b6b0d, merged to `main`) and `python-m0b` (cd6f753, reviewed three rounds, ready to merge, not merged). PLAN.md has been rewritten for the new stack, and nothing of it is built yet. Next: TypeScript M0 in `PLAN.md`.
 - **Repo:** `~/src/luciengeorge/agentic-chat` (local git, no remote).
 
 ## Who Lucien is
 
 - Full-stack TypeScript engineer at Fyxer (Firebase functions, Firestore, Cloud Tasks, GrowthBook). Personal repos live in `~/src/luciengeorge/`, among them `poof` (an autonomous trading agent on Convex and Vercel), `tanstack-starter-template` and `vite-interview-template`.
-- Usual stack: pnpm, Vite, React, TanStack Router, Query and Start, shadcn on Base UI, Tailwind, zod, Vitest (sometimes browser mode), oxlint, oxfmt, tsgo, msw. He chose a **Python backend** for this repo on purpose: it's what AI backends mostly use.
+- Usual stack: pnpm, Vite, React, TanStack Router, Query and Start, shadcn on Base UI, Tailwind, zod, Vitest (sometimes browser mode), oxlint, oxfmt, tsgo, msw. He first chose a Python backend for this repo, since that's what most AI backends use. On 1 Oct he moved it to his own TypeScript stack so the effort goes into the AI work (§8).
 - He had never built a production agent app. His own read of the rejection: "maybe lack of prep, but 2 is that i don't have enough hands on experience in a fully fledged out production application involving agent orchestration."
 
 ### How he learns (observed across four mock interviews and a self-check)
@@ -26,7 +26,7 @@ For the next agent picking this up. Read this first, then `PLAN.md` (the source 
 **What this means for the exercises:**
 - Define every term the first time it appears in a README.
 - Hints should push for the *why* (🦉), and tests should check behaviour that only the mechanism explains.
-- Labs should make effects visible: rankings side by side, denied chunks, a run resuming after the worker is killed.
+- Labs should make effects visible: rankings side by side, denied chunks, a run resuming after the server is killed.
 
 ### Preferences and instructions
 
@@ -39,7 +39,7 @@ For the next agent picking this up. Read this first, then `PLAN.md` (the source 
   - Record work in the Obsidian vault.
 - `~/obsidian/AGENTS.md`: the daily note `daily/YYYY-MM-DD.md` gets a timestamped bullet for every change (the #1 rule). Project hubs live at `projects/<slug>/index.md`. Commit after writing, one commit per meaningful change.
 - House writing style for anything he reads: plain words, no em dashes, varied sentence length, and none of the "not X, but Y" construction.
-- On scope, twice and firmly: **no shortcuts.** "this is about learning the best practices out there for a production grade AI application."
+- On scope, twice and firmly on 30 Sep: **no shortcuts.** "this is about learning the best practices out there for a production grade AI application." On 1 Oct he narrowed where that applies: production tools still, each built small by hand first, but only for the AI layers he wants to learn. The plumbing around them comes from a framework he knows.
 
 ## History
 
@@ -113,51 +113,105 @@ The plan went through several revisions in one sitting. Here is each decision, w
 
 ### 5. Independent plan review (30 Sep 2026)
 
-A fresh agent (not the author) reviewed `PLAN.md` and this file. Verdict: the stack and shape are sound, but four seams were undecided and M0 was underspecified. All 15 findings were accepted and written into `PLAN.md` (see "Design seams" and the appendix). The ones that mattered most:
+A fresh agent (not the author) reviewed `PLAN.md` and this file. Verdict: the stack and shape are sound, but four seams were undecided and M0 was underspecified. All 15 findings were accepted and written into `PLAN.md`. The ones that mattered most:
 
 - **Blockers fixed.**
-  - A slot loader that swaps modules at runtime breaks Temporal's workflow sandbox and replay, so slots now resolve once at process start and `ex start` restarts the workers.
+  - A slot loader that swaps modules at runtime breaks Temporal's workflow sandbox and replay, so slots resolved once at process start and `ex start` restarted the workers. (The same replay concern carries into the TypeScript plan: `ex start` cancels open workflow runs before it swaps files.)
   - Recordings keyed by a request hash can't grade a learner's code, so steps use scripted fakes and cassettes are only for reference runs.
-  - Agent tokens can't reach the api through workflow history, and Neon's pooler has no LISTEN/NOTIFY, so tokens go through Redis Streams.
-- **Facts corrected.** pgvector has no int8 type (it's `halfvec` and `bit`); TEI has no official Apple-silicon image, so a sentence-transformers service with TEI's API runs locally.
-- **Added.** Outbox semantics, and Temporal-first as the alternative. Postgres as the single authorisation point across both stores. Keycloak sync details. The BFF login pattern and SSE through Envoy. Time-skipping tests. Temporal updates. Heartbeat cancellation. Per-user token budgets and a kill switch. Reindexing with alias cutover. `graded | guided | lab` step types. An M0 spec appendix.
+  - Agent tokens can't reach the api through workflow history, and Neon's pooler has no LISTEN/NOTIFY, so tokens went through Redis Streams.
+- **Facts corrected.** pgvector has no int8 type (it's `halfvec` and `bit`); TEI has no official Apple-silicon image.
+- **Added.** Outbox semantics, and Temporal-first as the alternative. Postgres as the single authorisation point across both stores. Keycloak sync details. The BFF login pattern and SSE through Envoy. Time-skipping tests. Heartbeat cancellation. Per-user token budgets and a kill switch. Reindexing with alias cutover. `graded | guided | lab` step types. An M0 spec appendix.
 - **Build order changed.** The agent reference (M2) is written before any exercises, so the run/event schema is settled first.
 - **Left for Lucien, then answered:** multi-tenancy in scope (one step); learner path linear, RAG first.
 
 A second independent review through Codex (per `CLAUDE.md`) wasn't possible from the sandbox, where the Codex CLI isn't installed.
 
-Superseded along the way: a Hono/TypeScript backend, Drizzle, pg-boss, better-auth, BM25 on our own Postgres tables, ParadeDB, and folding web and API into one TanStack Start app.
+Superseded along the way: a Hono/TypeScript backend, Drizzle, pg-boss, better-auth, BM25 on our own Postgres tables, ParadeDB, and folding web and API into one TanStack Start app. (Several of these came back on 1 Oct; see §8.)
 
-### 6. M0a: infra and tooling (30 Sep 2026)
+### 6. M0a (Python): infra and tooling (30 Sep 2026, tag `python-m0a`)
 
-- **How it ran:** I wrote a contract (`docs/m0a-contract.md`) and the uv skeleton, then four Opus lanes ran in parallel on disjoint files: Python core, infra, the `ex` CLI + slots, and TypeScript. An integrator brought `ex smoke` to green. A fresh Fable reviewer and a read-only Codex review (gpt-6-sol) ran independently; Opus applied 19 accepted fixes, and a fresh Fable verifier reverted each high-risk fix to prove its test goes red. It caught one regression (Temporal outages counted as row attempts), which was fixed in a second round.
-- **Lucien's calls:** install OrbStack via brew; **local Postgres is host brew `postgresql@18` + `pgvector`**, not a container (brew `postgresql@14` had been holding 5432; its data, including `lucien_george_com_development`, is still on disk); stop brew `redis`, which shadowed the Compose Valkey; clean the npm, pnpm and brew caches (the disk had 2.4 GiB free); merge with a merge commit.
-- **Worth knowing:** neither review found everything. Codex alone caught the logout/refresh race, the slot-switch ordering, relay per-key ordering and the unbound tenant claim; Fable alone caught the gate's blind spot and the template gaps. `minio/minio` is gone from registries (we use `pgsty/minio`). httpx drops custom cookie policies (it copies the cookies into a default-policy jar on every request). FastAPI 0.142 auto-configures its own OTLP exporter unless it's turned off. The openai SDK 3.22 uses `httpx2`.
+- **What it built:** uv and pnpm workspaces, Compose with every service, Envoy and a Keycloak realm, the Python `ex` CLI with slots, scripted fakes and cassettes, CI, and a workshop app shell. `ex up` then `ex smoke` passed 6/6, and it merged to `main` (17b6b0d).
+- **How it ran:** a contract (`docs/m0a-contract.md`), four Opus lanes in parallel on disjoint files, an integrator, then a fresh Fable review and a read-only Codex review (gpt-6-sol). Opus applied 19 fixes, and a fresh Fable verifier reverted each high-risk fix to prove its test went red. That caught one regression (Temporal outages counted as relay attempts).
+- **Worth keeping:** neither review found everything. Codex alone caught the logout/refresh race, the slot-switch ordering, relay per-key ordering and an unbound tenant claim; Fable alone caught the gate's blind spot and the template gaps. So run both.
+
+### 7. M0b (Python): schema, fixtures, fake-workspace (1 Oct 2026, tag `python-m0b`)
+
+- **What it built:** `fixtures/world.yaml` as the single source for people, groups, folders and facts; 46 markdown sources rendered into PDFs, scans, handwriting and DOCX (about 14 MB, byte-identical across builds); Keycloak realms generated from the world; migration `0002` (tenant_id + RLS everywhere, the group closure, `acl_version_seq`); and fake-workspace, a Graph-style SharePoint. `docs/m0b-contract.md` is the contract, and its "Settled during the build" list holds the decisions that carry over.
+- **How it ran:** six Opus lanes, an integrator, Fable and Codex reviews, then three fix-and-verify rounds. Round 3 ended at cd6f753 with 595 tests passing and smoke 8/8. It is ready to merge and hasn't been.
+- **Lessons:**
+  - **Check traps in the built file.** The lexical trap's source was right, but the PDF broke it: the table renderer squeezed columns below their longest word, so contract numbers wrapped mid-token in the text layer (`KPC-2026-014` then `2` on the next line). 8 of 31 ids never appeared whole. Now tables shrink their font instead, and a test reads every built PDF.
+  - **Seeded facts can move each other.** Fixing the Q2 complaint mix shifted a shared seeded random stream and silently moved the Q2 resolution rate from 96.8% to 97.7%.
+  - **Concurrent subscription ids.** Concurrent subscribes all got the same id, because the id was read after an `await`; 4 of 5 callers would never have been notified. Ids now also carry a per-process nonce, so a restart never reuses one.
+  - **A stale realm record.** `ex fixtures` remembered which realm exports Keycloak had loaded by their digest alone, so after a branch switch it trusted a container built from the other branch's exports. The fix keyed the record on the container id too. (Keycloak is gone now, and so is that record.)
+  - **The acl_version high-water mark's read order.** The audit must read the mark after the retrieval query (or inside one REPEATABLE READ snapshot). Read before it under READ COMMITTED, the stale-ACL drill would excuse a real leak. This carries into the TypeScript schema.
+  - **A stopping rule for reviews.** Each round found smaller things. Round 3 was declared final up front, and anything new went to the next milestone's backlog. Set the rule before round 1 next time.
+  - **The shared-stack collision.** I ran a live smoke while a fixer re-ran its drills on the same Docker stack, and we took the stack down under each other. One agent owns the live stack at a time.
+
+### 8. The TypeScript restart (1 Oct 2026)
+
+Mid-afternoon, with M0b ready to merge, Lucien changed course: "the main goal is for me to learn everything about agent orchastration, parsing, vector searching, bm25, reranking, etc. so instead of building everything from scratch, let's use a framework i am familiar with. this way i can focus on the agent orchestration part and the learnings i want to get out of this. So let's restart everything using the https://github.com/luciengeorge/tanstack-starter-template template and adapt it to the 'course' we're building."
+
+| # | Topic | What Lucien said | Result |
+|---|---|---|---|
+| 1 | Restart | (above) | A restart in this repo from his template. The Python work tagged `python-m0a` and `python-m0b`; branch `ts-restart` |
+| 2 | Template versions | "before you use the template make sure the template is up to date in terms of the package versions it uses" | An Opus agent updated the template on branch `chore/deps-2026-10` in its own repo, with no push until Lucien okays it. better-auth had been held at ~1.6 for the Convex adapter; with Convex gone, it moves to 1.7.7 |
+| 3 | Database and BM25 | "neon for the cloud? didn't we say paradeDB? do we need to handbuild bm25 or is there a better way" | **ParadeDB everywhere** (`paradedb/paradedb:0.25.11-pg18`: Postgres 18.6, pg_search 0.25.11, pgvector). Neon is out: it retired pg_search on 21 Sep 2026, and its replacement, lakebase_text, exists only on Neon. BM25 is hand-built once as an exercise, then the app uses pg_search |
+| 4 | Repo shape | "why would we need pnpm monorepo instead of single app? what are the pros and cons of each?" | **A single app.** A monorepo pays off when parts are published or deployed separately, and nothing here is. The learnable modules live in `src/core/` |
+| 5 | Template extras | "none of those are needed i believe" | Convex, Sentry, PostHog, Resend/react-email and Polar removed. Dev auth emails print to the console; seeded users are marked verified |
+| 6 | Parsing | "what is docling?" | Explained: IBM's open-source converter that turns PDF and DOCX into structured text with tables, OCR and page numbers. Kept as section 03's comparison, through docling-serve in local Docker |
+| 7 | ParadeDB install | He installed ParadeDB himself with its install script | We moved it into the repo's Compose (pinned tag, known dev password), stopped brew `postgresql@18`, which was holding localhost:5432 again, and removed the script's empty container |
+| 8 | The other choices | He picked each from the options offered | better-auth with organisations as tenants; the directory from fake-workspace (no Keycloak); Vercel Workflow after a hand-built Postgres version; Cohere-only rerank; exercises with Vitest first and the workshop UI later; the built corpus committed and the renderer retired |
+
+**How the plan changed while it was drafted.** The first draft had hand-built BM25 in the app compared against ParadeDB, and a local bge reranker (transformers.js) next to Cohere. The approved plan uses pg_search in the app and Cohere alone; the local reranker moved to section 21.
+
+**Things the research turned up** (each one is in `PLAN.md`):
+- `@paradedb/drizzle-paradedb` (0.5.0, now 0.6.0) pins `drizzle-orm@1.0.0-rc.4`, and better-auth 1.7.7's Drizzle adapter accepts `>=1.0.0-rc.1 <2.0.0`, so the two fit.
+- better-auth's CLI is now `auth`; `@better-auth/cli` is deprecated.
+- Vercel Workflow issue #4442 breaks the dev server on nitro `3.0.260903-beta`. The fix is merged but not yet released.
+- Issue #1003: native modules inside workflow steps fail on Vercel with TanStack Start.
+- Calling `start()` from a `createServerFn` is unverified.
+- transformers.js's pipeline API scores every rerank candidate 1.0. Call the model directly and apply a sigmoid.
+- `docling-serve-cpu` is about 4.4 GB, has an async API, and returns per-item `prov[{page_no, bbox}]`.
+
+**What carried over from the Python work:** `world.yaml`, the corpus (sources and built files) and its traps, fake-workspace's behaviour, the schema rules from `docs/m0b-contract.md`, the curriculum and the review process. **What was dropped:** Python and uv, Temporal, Envoy, Keycloak, OpenSearch, TEI, Redis Streams, MinIO, and Compose for every service (it now runs only ParadeDB and docling).
+
+Several choices superseded on 30 Sep came back: Drizzle, better-auth, ParadeDB and a single TanStack Start app. The goal changed. On 30 Sep it was to learn every production layer; on 1 Oct it narrowed to the AI layers, built on a stack he already knows.
 
 ## Environment gotchas
 
-- **Stale git locks.** The Cowork sandbox cannot delete files inside `.git`, so commits there leave `.git/HEAD.lock` and `.git/index.lock` behind and every later git write fails. On the host: `cd ~/src/luciengeorge/agentic-chat && rm -f .git/HEAD.lock .git/index.lock && git add -A && git commit -m "plan: review fixes, handoff, prep docs"`. If you commit from a sandbox, expect this again.
-- **No git identity in the sandbox.** Commit with `git -c user.name="Lucien George" -c user.email="luciengeorge95@gmail.com"`, the identity his other repos use.
-- **Path mapping.** Bash sees host folders under `/sessions/<id>/mnt/...`, while the file tools use host paths. Claude's own data folders under `~/Library/Application Support/Claude/` are unreadable, so the raw transcript can't be exported from inside a session.
+- **Postgres.** ParadeDB owns port 5432, through the repo's Compose. Brew `postgresql@14` and `postgresql@18` are both stopped; don't start them, or they shadow 5432. `@14`'s data (including `lucien_george_com_development`, from the legacy lucien.dev app) is still on disk; ignore it. The `psql` on PATH is the v18 client.
+- **Docker** is OrbStack, installed via brew on 30 Sep.
+- **Disk is tight.** The handoff note said about 20 GiB free; `df` showed 12 GiB late on 1 Oct. `docling-serve-cpu` alone is about 4.4 GB, so check before pulling images.
+- **`.ex/realm-applied.json`** is obsolete (it tracked Keycloak). Delete it if you find it.
+- **`cp` is aliased to `cp -i`** in his shell, so scripts use `/bin/cp -f`.
+- **One owner for the live stack.** Only one agent runs or restarts the shared Compose stack and dev servers at a time; announce before touching it.
+- **One dev server per `.workflow-data/`.** Each dev server has its own in-memory queue, and at boot it re-enqueues every open run it finds on disk. Two servers on the same directory (say one on 3000 and a test server on 3010) would both process the same runs. Give a second server its own `WORKFLOW_LOCAL_DATA_DIR`.
+- **`.workflow-data/` is disposable.** It is Workflow's local world: runs, events, hooks and streams as JSON files. With the dev server stopped, deleting it just forgets every local run.
+- **Bumping the ParadeDB image doesn't update the installed extension.** After changing the tag in `compose.yaml`, run `ALTER EXTENSION pg_search UPDATE` in `ac` and in `template1` (the test databases are copied from it), or queries fail with errors such as `function paradedb.ctid_is_valid(tid) does not exist`. A fresh volume needs nothing.
+- **Vitest's module cache and slots.** Vitest 5.0.4 caches transformed modules on disk by default, and the cache can't tell a slotted run from a reference run. `learnSlots()` turns it off; keep it off.
+- **The `@workflow/builders` patch.** `patches/@workflow__builders@5.0.4.patch` lets `learnSlots()` reach Workflow's step bundles. On every `workflow` upgrade, `pnpm install` fails until the patch is re-made (`pnpm patch @workflow/builders@<version>`) or dropped, if upstream has added an esbuild plugin option by then. `docs/workflow-notes.md` (b) explains it.
 - **The shared vault.** Other agents write to the same daily note at the same time. Append rather than rewriting, and `git add` only your own paths.
-- **Docker.** OrbStack, installed via brew on 30 Sep. Postgres is **not** in Compose: it's brew `postgresql@18` on :5432 (role, password and database all `ac`), reached from containers at `host.docker.internal`. The `psql` on PATH may still be the v14 client; use `/opt/homebrew/opt/postgresql@18/bin/psql`. `ex up` refuses to start if a non-Docker process holds a published port.
 - **Private GitHub repos return 404** in the in-app browser, which isn't signed in.
-- **Model gotcha (from poof):** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly. His `CLAUDE.md` lists `gpt-6-luna` and `gpt-6-sol` (for Codex), and `gpt-6-luna` is now pinned as the default: it's the cheapest tier, and its reasoning default is medium.
+- **Model gotcha (from poof):** the GPT-5.6 series defaults to `reasoning: "none"`. Always set reasoning effort explicitly. His `CLAUDE.md` lists `gpt-6-luna` and `gpt-6-sol` (for Codex), and `gpt-6-luna` is pinned as the default: it's the cheapest tier, and its reasoning default is medium.
 
 ## Where things are
 
-- `PLAN.md`: architecture, decisions, deployment profiles, repo layout, workshop mechanics, curriculum (about 100 steps), milestones, and what to check while scaffolding.
+- `PLAN.md`: architecture, design seams, decisions, deployment profiles, repo layout, workshop mechanics, the curriculum (107 steps), milestones, what to verify while scaffolding, and the M0 spec.
+- `docs/m0b-contract.md`: the Python M0b contract. Its schema and fake-workspace sections, and "Settled during the build", still describe the behaviour to port. `docs/m0a-contract.md` is history only.
+- `fixtures/`: `world.yaml`, the corpus sources, the built corpus, and `corpus/README.md` with the trap table.
+- `~/src/luciengeorge/tanstack-starter-template`, branch `chore/deps-2026-10`: the updated template M0 starts from.
 - `docs/interview-prep/spotify/` and `docs/interview-prep/cohere/`: all the prep material. The most useful for building the curriculum:
   - `COHERE_01_rag_fundamentals.md` (the explanations that worked)
   - `COHERE_03_practice_questions.md`
   - `COHERE_09_debugging_round.md` (the basis for section 20)
   - `COHERE_10_model_answer_pharma_airgapped.md`
-- Vault: `projects/agentic-chat/index.md` (hub), `topics/building-with-llms/` (the durable AI-systems notes), and daily notes `2026-09-18` and `2026-09-30`.
+- Vault: `projects/agentic-chat/index.md` (hub), `topics/building-with-llms/` (the durable AI-systems notes), and daily notes `2026-09-18`, `2026-09-30` and `2026-10-01`.
 
 ## Next steps for whoever picks this up
 
-1. Read `PLAN.md` end to end, then `docs/m0a-contract.md` (the names, ports, env vars, slot rule and `ex --json` shapes that everything now depends on).
-2. `uv run ex up`, start `pnpm --filter web dev` and `pnpm --filter workshop dev`, then `uv run ex smoke --json` to confirm the stack is green before changing anything.
-3. Start M0b the same way M0a ran: a contract first, parallel Opus lanes on disjoint files, an integrator, then a fresh Fable review plus a read-only Codex review, and a fresh verifier on the fixes.
-4. Carry the deferred item into section 09.6: enforcing RLS needs a non-owner app role (the owner bypasses RLS unless `FORCE`), `SET LOCAL` tenant context per transaction, and an explicit cross-tenant role for the relay.
-5. Log every change to the vault's daily note and the project hub.
+1. Read `PLAN.md` end to end, then the sections of `docs/m0b-contract.md` that the M0 appendix points to.
+2. Check the template's `chore/deps-2026-10` branch is finished and that Lucien has okayed it. M0 starts from it.
+3. Build M0 per `PLAN.md`, the way M0a and M0b ran: a contract first, parallel Opus lanes on disjoint files, an integrator, then a fresh Fable review and a read-only Codex review, and a fresh verifier that reverts each fix to prove its test goes red. Set the stopping rule for review rounds before the first one.
+4. Run the Workflow spike early. It settles the workflow and nitro pins (#4442), and whether `start()` works from a server function.
+5. Carry the deferred item into section 09.6: enforcing RLS needs a non-owner app role (the owner bypasses RLS unless it is forced), `SET LOCAL` tenant context per transaction, and an explicit cross-tenant role for background jobs.
+6. Log every change to the vault's daily note and the project hub.

@@ -13,57 +13,59 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python:
-    runs-on: ubuntu-24.04
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
-      postgres:
-        image: pgvector/pgvector:0.8.6-pg18-trixie
+      paradedb:
+        image: paradedb/paradedb:0.26.1-pg18
         env:
           POSTGRES_USER: ac
           POSTGRES_PASSWORD: ac
           POSTGRES_DB: ac
-        ports: ["5432:5432"]
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ac"
+          --health-cmd "pg_isready -h 127.0.0.1 -U ac -d ac"
           --health-interval 2s
           --health-timeout 5s
           --health-retries 30
     env:
       AC_ENV: test
       AC_REQUIRE_POSTGRES: "1"
+      DATABASE_URL: postgres://ac:ac@localhost:5432/ac
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          enable-cache: true
-      - run: uv sync --all-packages --locked
-      - run: uv run ruff check
-      - run: uv run ruff format --check
-      - run: uv run pyright
-      - run: uv run pytest
-
-  typescript:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          persist-credentials: false
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version-file: .node-version
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm fmt:check
+      - run: pnpm lint:check
+      - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
-
-  gate:
-    name: step quality gate
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-        with:
-          enable-cache: true
-      - run: uv sync --all-packages --locked
-      - run: uv run ex gate
+      - run: pnpm build
+      # src/server/production-build.test.ts makes the same checks; this runs them on the artifact CI built.
+      # env -i drops the job's AC_ENV=test: a deploy that sets nothing must come up as prod.
+      - name: The production build fails closed
+        run: |
+          run=(timeout 60 env -i PATH="$PATH" PORT=3001 WORKFLOW_LOCAL_DATA_DIR="$RUNNER_TEMP/world")
+          if "${run[@]}" BETTER_AUTH_SECRET=dev-better-auth-secret-not-for-production \
+            TOAST_SECRET=dev-toast-secret-not-for-production-use node .output/server/index.mjs > refused.log 2>&1; then
+            cat refused.log; echo "it started on the dev secrets"; exit 1
+          fi
+          grep -q "BETTER_AUTH_SECRET must be set to a real secret" refused.log || { cat refused.log; exit 1; }
+          "${run[@]}" BETTER_AUTH_SECRET="$(openssl rand -hex 32)" TOAST_SECRET="$(openssl rand -hex 32)" \
+            DATABASE_URL="$DATABASE_URL" node .output/server/index.mjs > served.log 2>&1 &
+          server=$!
+          for _ in $(seq 100); do curl -s -o /dev/null http://localhost:3001/ && break; sleep 0.2; done
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{}' http://localhost:3001/api/spike)
+          kill "$server"
+          test "$status" = 404 || { cat served.log; echo "POST /api/spike answered $status, not 404"; exit 1; }
+      - run: pnpm ex gate

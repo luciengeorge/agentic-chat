@@ -1,0 +1,84 @@
+---
+id: finance-safeguarding-reconciliation-procedure
+title: Safeguarding Reconciliation Procedure
+folder: /Finance
+filename: Safeguarding Reconciliation Procedure.md
+format: md
+author: tom.whitfield
+created: 2025-03-03
+modified: 2026-05-06
+valid_from: 2026-05-07
+---
+
+# Safeguarding reconciliation procedure
+
+Version 3.1, in force from 7 May 2026. Owner: Tom Whitfield (Financial Controller). Approved by Daniel Reyes (CFO) and Sofia Lindqvist (Compliance Officer).
+
+This procedure applies to Kestrel Pay Ltd (FRN 999901). Kestrel Pay Europe Ltd follows its own procedure under Central Bank of Ireland rules.
+
+## 1. Why we do this
+
+As an electronic money institution, we must protect customer funds at all times, so that merchants get their money back if Kestrel fails. We use the segregation method: customer funds are held apart from our own money, in accounts that are named as safeguarding accounts and that the banks have acknowledged in writing.
+
+| Currency | Bank | Account | Reference |
+|---|---|---|---|
+| GBP | Albion Clearing Bank | Kestrel Pay Ltd Customer Funds Safeguarding Account | ACB-SG-01 |
+| EUR | Banco Meridional, S.A. | Kestrel Pay Ltd Customer Funds Safeguarding Account (EUR) | BM-SG-02 |
+
+Funds we receive for customers must reach a safeguarding account by the end of the business day after we receive them.
+
+## 2. What we compare
+
+Every UK business day we compare two figures for each currency, as at the 17:00 UK cut-off on the previous business day:
+
+- **The requirement:** e-money outstanding in the ledger (merchant balances in Kestrel Accounts and Payouts wallets), plus funds received for merchants and not yet paid out to them (Checkout settlements in transit).
+- **The resource:** cleared balances in the safeguarding accounts, taken from the bank statement files.
+
+The resource must be at least equal to the requirement. The difference is either a **shortfall** (resource below requirement) or an **excess** (resource above).
+
+## 3. Daily timetable
+
+| Time | Step | Who |
+|---|---|---|
+| 07:30 | The ledger extract (query SG-REQ-DAILY) runs and loads into the safeguarding workbook | Automatic; Chris Dunn maintains the query |
+| 08:00 | Load the MT940 statement files for ACB-SG-01 and BM-SG-02 | Preparer |
+| 09:30 | Compare requirement and resource for each currency; explain every difference | Preparer |
+| 10:30 | Review and sign off | Tom Whitfield, or Daniel Reyes when Tom is away |
+| **11:00** | **Deadline: reconciliation complete and signed** | |
+| 12:00 | Any shortfall topped up from our own funds | Preparer inputs, Tom Whitfield releases |
+| 15:00 | Check that today's statement file has arrived from each bank; chase any that is missing | Preparer |
+| 16:00 | Any excess moved back to the operating account | Preparer, with the reviewer's approval |
+
+Treasury Operations prepares the reconciliation. Its Treasury and Safeguarding Analyst role has been vacant since April 2026; Grace Adeyemi covers it, with Luis Ortega as backup. Interns may not prepare or review the reconciliation.
+
+## 4. Differences and escalation
+
+- **Shortfall, any size:** top up from own funds by 12:00 the same day and record it in the safeguarding log.
+- **Unexplained difference over £10,000, or any difference not cleared within one business day:** tell Tom Whitfield and Sofia Lindqvist the same morning.
+- **A reconciliation not finished by 11:00, or a shortfall not topped up by 12:00:** this is a breach of the procedure. Sofia Lindqvist notifies the FCA within one business day; under the delegated authority matrix, the CEO and the General Counsel approve the notification. The 12 March 2026 late EUR reconciliation (SG-2026-01) was handled this way.
+- **Excess over £1,000,000 for more than two business days:** check for receipts sent to the wrong account before moving the money out.
+- Every late reconciliation and every shortfall goes in the compliance breaches log and is reported to the Safeguarding Committee (chair Daniel Reyes), even when it was fixed the same day.
+
+## 5. Monthly and yearly tasks
+
+- **Month-end reconciliation:** on WD1 by 11:00, against bank confirmations of the month-end balances (month-end close checklist, item 5).
+- **Monthly safeguarding return to the FCA:** within 15 business days of month end. Grace Adeyemi prepares the figures and Tom Whitfield reviews them; Sofia Lindqvist prepares the return from them, Helen Marsh approves it, and Sofia submits it.
+- **Resolution pack:** checked and updated every month, so an administrator could find and return customer funds quickly.
+- **Annual safeguarding audit:** by Fernside & Co LLP, our safeguarding auditor since October 2025. The 2025 audit was completed on 27 March 2026.
+- **Bank acknowledgement letters:** checked every January to confirm both banks still recognise the accounts as safeguarding accounts.
+
+## 6. What changed in version 3.1
+
+The FCA's new safeguarding rules apply from 7 May 2026. Because of them:
+
+- the monthly safeguarding return to the FCA was added;
+- the resolution pack is now checked every month instead of every year;
+- the 15:00 statement file check, started after breach SG-2026-01 in March, is now part of the written procedure.
+
+## 7. Version history
+
+| Version | Date | Change | By |
+|---|---|---|---|
+| 3.1 | 6 May 2026 | Changes for the FCA's new safeguarding rules (section 6) | Tom Whitfield |
+| 3.0 | 12 January 2026 | Added BM-SG-02 for UK merchants' EUR balances | Tom Whitfield |
+| 2.4 | 3 March 2025 | CFO added as cover reviewer | Tom Whitfield |

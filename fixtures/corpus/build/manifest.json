@@ -1,0 +1,1994 @@
+{
+  "sites": {
+    "harbour": {
+      "groups": {
+        "2defbc62-7861-5411-b3ea-2ea7b0ad7a57": {
+          "path": "/Harbour"
+        },
+        "3091866c-8a40-5bf5-9923-0105b4ca3c32": {
+          "path": "/Harbour/Operations"
+        },
+        "6192ffe6-2352-5c14-b51c-612013d254c9": {
+          "path": "/Harbour/IT"
+        },
+        "887be899-315d-54b5-81c8-7a20febc4a3d": {
+          "path": "/Harbour/Finance"
+        }
+      },
+      "items": [
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "a91d76d8-e62c-57b4-a934-1789b00b2394",
+          "id": "2d11051d-62bc-564b-abc6-a914ecb8ed8b",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "a91d76d8-e62c-57b4-a934-1789b00b2394",
+          "name": "root",
+          "parent_id": null,
+          "path": "/",
+          "sharing": {
+            "grants": [],
+            "inherit": false
+          }
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "e47572fa-cabf-588d-9133-b1aad60ae635",
+          "id": "c0cfca59-bf99-5306-8927-59141d4b1aed",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "e47572fa-cabf-588d-9133-b1aad60ae635",
+          "name": "Finance",
+          "parent_id": "2d11051d-62bc-564b-abc6-a914ecb8ed8b",
+          "path": "/Finance",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "887be899-315d-54b5-81c8-7a20febc4a3d",
+                "principal_name": "/Harbour/Finance",
+                "principal_type": "group",
+                "role": "write"
+              },
+              {
+                "principal_id": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+                "principal_name": "nina.osei",
+                "principal_type": "user",
+                "role": "read"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-01-12T09:20:00Z",
+          "created_by": "e47572fa-cabf-588d-9133-b1aad60ae635",
+          "doc_id": "harbour-delegated-financial-authority",
+          "file": {
+            "blob": "blobs/2c2069f8af02faf8376dbeea2cf6d1078b16250c930fd52c8536366691877776.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "2c2069f8af02faf8376dbeea2cf6d1078b16250c930fd52c8536366691877776",
+            "size": 5133
+          },
+          "format": "pdf",
+          "id": "1f5c78ef-3e79-5574-b895-fbed0a786097",
+          "kind": "file",
+          "modified": "2026-04-08T14:55:00Z",
+          "modified_by": "e47572fa-cabf-588d-9133-b1aad60ae635",
+          "name": "Delegated Financial Authority 2026.pdf",
+          "parent_id": "c0cfca59-bf99-5306-8927-59141d4b1aed",
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": "2026-04-01",
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "a91d76d8-e62c-57b4-a934-1789b00b2394",
+          "id": "beee79ec-3a43-5a94-9351-7d67002dd456",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "a91d76d8-e62c-57b4-a934-1789b00b2394",
+          "name": "IT",
+          "parent_id": "2d11051d-62bc-564b-abc6-a914ecb8ed8b",
+          "path": "/IT",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "6192ffe6-2352-5c14-b51c-612013d254c9",
+                "principal_name": "/Harbour/IT",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2025-06-09T08:40:00Z",
+          "created_by": "a91d76d8-e62c-57b4-a934-1789b00b2394",
+          "doc_id": "harbour-it-onboarding",
+          "file": {
+            "blob": "blobs/6d22edb692234d29692d40aa9b8e3902cd0eb59853dd9e8098605acfec4e1cce.md",
+            "mime_type": "text/markdown",
+            "sha256": "6d22edb692234d29692d40aa9b8e3902cd0eb59853dd9e8098605acfec4e1cce",
+            "size": 4073
+          },
+          "format": "md",
+          "id": "0fd6a052-a7ec-5053-8e68-b4fdc56875e0",
+          "kind": "file",
+          "modified": "2026-07-21T14:27:00Z",
+          "modified_by": "a91d76d8-e62c-57b4-a934-1789b00b2394",
+          "name": "it-onboarding-guide.md",
+          "parent_id": "beee79ec-3a43-5a94-9351-7d67002dd456",
+          "path": "/IT/it-onboarding-guide.md",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+          "id": "bd59eccb-e0a9-5c93-ac93-40a6da777ed4",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+          "name": "Operations",
+          "parent_id": "2d11051d-62bc-564b-abc6-a914ecb8ed8b",
+          "path": "/Operations",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "3091866c-8a40-5bf5-9923-0105b4ca3c32",
+                "principal_name": "/Harbour/Operations",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2025-12-01T11:40:00Z",
+          "created_by": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+          "doc_id": "harbour-clinic-opening-hours",
+          "file": {
+            "blob": "blobs/56e0298f05acb4f51809535c6d35e61bfb83fdd74b1992a2aae517f26a5e476d.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "56e0298f05acb4f51809535c6d35e61bfb83fdd74b1992a2aae517f26a5e476d",
+            "size": 4963
+          },
+          "format": "pdf",
+          "id": "052dc55c-fc20-595a-9b95-97d04585df74",
+          "kind": "file",
+          "modified": "2026-08-20T17:11:00Z",
+          "modified_by": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+          "name": "Clinic Opening Hours 2026.pdf",
+          "parent_id": "bd59eccb-e0a9-5c93-ac93-40a6da777ed4",
+          "path": "/Operations/Clinic Opening Hours 2026.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-04-14T08:35:00Z",
+          "created_by": "26d3b515-7c13-5a45-9b94-a70c00d8b103",
+          "doc_id": "harbour-procurement-process",
+          "file": {
+            "blob": "blobs/e80527d12a097652763e8035f9551c527bf8df7ca968b4d85a7e067921c1019f.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "e80527d12a097652763e8035f9551c527bf8df7ca968b4d85a7e067921c1019f",
+            "size": 39013
+          },
+          "format": "docx",
+          "id": "46d5b839-639e-5ab8-8c93-a163cd49d95a",
+          "kind": "file",
+          "modified": "2026-06-03T13:04:00Z",
+          "modified_by": "26d3b515-7c13-5a45-9b94-a70c00d8b103",
+          "name": "Procurement Process.docx",
+          "parent_id": "bd59eccb-e0a9-5c93-ac93-40a6da777ed4",
+          "path": "/Operations/Procurement Process.docx",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+          "id": "86897c10-a38d-56b6-a73b-b7c94693e3e2",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19",
+          "name": "Policies",
+          "parent_id": "2d11051d-62bc-564b-abc6-a914ecb8ed8b",
+          "path": "/Policies",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "2defbc62-7861-5411-b3ea-2ea7b0ad7a57",
+                "principal_name": "/Harbour",
+                "principal_type": "group",
+                "role": "read"
+              },
+              {
+                "principal_id": "3091866c-8a40-5bf5-9923-0105b4ca3c32",
+                "principal_name": "/Harbour/Operations",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2025-09-15T10:56:00Z",
+          "created_by": "dc1cf8ea-e7ce-512d-87d2-797e91545709",
+          "doc_id": "harbour-rota-policy",
+          "file": {
+            "blob": "blobs/1c7d4f4eb073e6b1f361b981cad3e491c08938c519289073f0b8db38506d55f6.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "1c7d4f4eb073e6b1f361b981cad3e491c08938c519289073f0b8db38506d55f6",
+            "size": 5926
+          },
+          "format": "pdf",
+          "id": "4329c983-77d5-55f2-b3d6-611839438035",
+          "kind": "file",
+          "modified": "2026-05-11T15:13:00Z",
+          "modified_by": "dc1cf8ea-e7ce-512d-87d2-797e91545709",
+          "name": "Staff Rota Policy.pdf",
+          "parent_id": "86897c10-a38d-56b6-a73b-b7c94693e3e2",
+          "path": "/Policies/Staff Rota Policy.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": "2025-10-01",
+          "valid_to": null
+        },
+        {
+          "created": "2026-03-20T08:07:00Z",
+          "created_by": "e47572fa-cabf-588d-9133-b1aad60ae635",
+          "doc_id": "harbour-expenses-policy",
+          "file": {
+            "blob": "blobs/047799b875eb6dc6a19c7e39878db69263e03939290d703e0052a87689a5337c.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "047799b875eb6dc6a19c7e39878db69263e03939290d703e0052a87689a5337c",
+            "size": 7177
+          },
+          "format": "pdf",
+          "id": "00b26438-2d2c-5ad6-97a7-e9c3f76d221c",
+          "kind": "file",
+          "modified": "2026-03-27T17:28:00Z",
+          "modified_by": "e47572fa-cabf-588d-9133-b1aad60ae635",
+          "name": "Travel and Expenses Policy.pdf",
+          "parent_id": "86897c10-a38d-56b6-a73b-b7c94693e3e2",
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "tenant-isolation"
+          ],
+          "valid_from": "2026-04-01",
+          "valid_to": null
+        }
+      ],
+      "users": {
+        "26d3b515-7c13-5a45-9b94-a70c00d8b103": {
+          "display_name": "George Evans",
+          "username": "george.evans"
+        },
+        "3d07eb5a-7843-5e8b-a2bd-4db818fa2a19": {
+          "display_name": "Nina Osei",
+          "username": "nina.osei"
+        },
+        "84464701-15c9-5f62-8a79-ae2375aa9473": {
+          "display_name": "Sam Patel",
+          "username": "sam.patel"
+        },
+        "a91d76d8-e62c-57b4-a934-1789b00b2394": {
+          "display_name": "David Cho",
+          "username": "david.cho"
+        },
+        "dc1cf8ea-e7ce-512d-87d2-797e91545709": {
+          "display_name": "Isla McGregor",
+          "username": "isla.mcgregor"
+        },
+        "e47572fa-cabf-588d-9133-b1aad60ae635": {
+          "display_name": "Fatima Ali",
+          "username": "fatima.ali"
+        }
+      }
+    },
+    "kestrel": {
+      "groups": {
+        "0c0199be-c8c7-5561-a0d7-6c1424e5565b": {
+          "path": "/Kestrel/Exec"
+        },
+        "26d275a1-b769-5d72-b7c2-8377cc12860f": {
+          "path": "/Kestrel/Finance/AP"
+        },
+        "37bf0d8f-622f-521f-8ef7-81e72ba61b4d": {
+          "path": "/Kestrel/Engineering"
+        },
+        "430c70a4-13a5-5d63-82bf-520cd021eb4c": {
+          "path": "/Kestrel/Engineering/Platform"
+        },
+        "606f6c2c-8054-55fa-b358-2b2b66166ece": {
+          "path": "/Kestrel/Legal"
+        },
+        "667f0e2a-5bdd-5096-9fc7-9e5264d4cd18": {
+          "path": "/Kestrel/Finance"
+        },
+        "6ed20b9a-1809-5e8e-9f85-14c9631c7d9e": {
+          "path": "/Kestrel/HR"
+        },
+        "cb01003d-94c5-5b78-bb05-ecdd2102f5cb": {
+          "path": "/Kestrel/Sales"
+        },
+        "dbcac778-7d58-57c6-bccb-024650b82cfb": {
+          "path": "/Kestrel/Engineering/Payments"
+        },
+        "e9737a02-5d27-5fb5-8c02-aa0cc3c45cc0": {
+          "path": "/Kestrel"
+        },
+        "ec526e44-230c-506d-ba92-80a4731d9986": {
+          "path": "/Kestrel/Finance/FP&A"
+        }
+      },
+      "items": [
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "f59f93fa-02ac-559f-bc9d-22462b8945f3",
+          "id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "f59f93fa-02ac-559f-bc9d-22462b8945f3",
+          "name": "root",
+          "parent_id": null,
+          "path": "/",
+          "sharing": {
+            "grants": [],
+            "inherit": false
+          }
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+          "id": "1102f9e6-69e8-52da-8d17-2e393071892e",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+          "name": "Company",
+          "parent_id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "path": "/Company",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "e9737a02-5d27-5fb5-8c02-aa0cc3c45cc0",
+                "principal_name": "/Kestrel",
+                "principal_type": "group",
+                "role": "read"
+              },
+              {
+                "principal_id": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+                "principal_name": "ella.brooks",
+                "principal_type": "user",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2025-11-12T08:19:00Z",
+          "created_by": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+          "doc_id": "company-holiday-calendar-2026",
+          "file": {
+            "blob": "blobs/cbc0eed342684e5ca2b560d40a6e5d46d7d587f3a706684210e94b7e28802925.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "cbc0eed342684e5ca2b560d40a6e5d46d7d587f3a706684210e94b7e28802925",
+            "size": 5827
+          },
+          "format": "pdf",
+          "id": "c29eb83f-4e67-58f2-b1b3-593cc36c37ba",
+          "kind": "file",
+          "modified": "2026-01-06T17:32:00Z",
+          "modified_by": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+          "name": "2026 Holiday Calendar.pdf",
+          "parent_id": "1102f9e6-69e8-52da-8d17-2e393071892e",
+          "path": "/Company/2026 Holiday Calendar.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-09T10:13:00Z",
+          "created_by": "851b31df-0166-52b7-8fdc-88696aee2a8b",
+          "doc_id": "company-partner-onboarding-brightwell",
+          "file": {
+            "blob": "blobs/36d313ad317e44ed5ea09ab04f668b768af36dc1bbab9bbcb7991ebe300d4e05.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "36d313ad317e44ed5ea09ab04f668b768af36dc1bbab9bbcb7991ebe300d4e05",
+            "size": 39794
+          },
+          "format": "docx",
+          "id": "45acc182-0c19-5726-812b-0b75c94373d7",
+          "kind": "file",
+          "modified": "2026-09-09T15:58:00Z",
+          "modified_by": "851b31df-0166-52b7-8fdc-88696aee2a8b",
+          "name": "Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "parent_id": "1102f9e6-69e8-52da-8d17-2e393071892e",
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "prompt-injection"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-01-20T08:38:00Z",
+          "created_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "doc_id": "company-code-of-conduct",
+          "file": {
+            "blob": "blobs/4efb7562373195a1734095151dd840c6099d8d0bb4b4f91c40bd9244e4ee29f2.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "4efb7562373195a1734095151dd840c6099d8d0bb4b4f91c40bd9244e4ee29f2",
+            "size": 7524
+          },
+          "format": "pdf",
+          "id": "3475c33b-9475-50fd-8a63-88dfda29eb3f",
+          "kind": "file",
+          "modified": "2026-02-10T15:28:00Z",
+          "modified_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "name": "Code of Conduct.pdf",
+          "parent_id": "1102f9e6-69e8-52da-8d17-2e393071892e",
+          "path": "/Company/Code of Conduct.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": "2026-02-10",
+          "valid_to": null
+        },
+        {
+          "created": "2025-01-15T10:13:00Z",
+          "created_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "doc_id": "company-employee-handbook",
+          "file": {
+            "blob": "blobs/ffd9f3bf82de1bb3ad04339904ad1908fafadc9e673ab5494b1da4fb3740c854.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "ffd9f3bf82de1bb3ad04339904ad1908fafadc9e673ab5494b1da4fb3740c854",
+            "size": 40289
+          },
+          "format": "docx",
+          "id": "3077260f-c5b3-5944-93ec-c81d02c45af6",
+          "kind": "file",
+          "modified": "2026-07-02T15:45:00Z",
+          "modified_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "name": "Kestrel Pay Employee Handbook 2026.docx",
+          "parent_id": "1102f9e6-69e8-52da-8d17-2e393071892e",
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-02-03T10:37:00Z",
+          "created_by": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+          "doc_id": "company-office-guide",
+          "file": {
+            "blob": "blobs/9e877e39f7a010a099a8fe35fcd83b0d284524927518e78cad9c09326df2066e.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "9e877e39f7a010a099a8fe35fcd83b0d284524927518e78cad9c09326df2066e",
+            "size": 6805
+          },
+          "format": "pdf",
+          "id": "39cad653-2488-5a7b-90da-0d511f00321a",
+          "kind": "file",
+          "modified": "2026-09-07T13:29:00Z",
+          "modified_by": "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61",
+          "name": "Office Guide.pdf",
+          "parent_id": "1102f9e6-69e8-52da-8d17-2e393071892e",
+          "path": "/Company/Office Guide.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-05-06T08:22:00Z",
+          "created_by": "1dfe5421-8791-54f9-9360-ec597a009d20",
+          "doc_id": "company-new-starter-checklist",
+          "file": {
+            "blob": "blobs/4b9d2874bb3c37e6b8eeefbd2846574fdc2d9bdc04574eb25a17c9bad35003a7.md",
+            "mime_type": "text/markdown",
+            "sha256": "4b9d2874bb3c37e6b8eeefbd2846574fdc2d9bdc04574eb25a17c9bad35003a7",
+            "size": 3367
+          },
+          "format": "md",
+          "id": "9b6c6117-f95c-5674-a8c5-32fa8de8c553",
+          "kind": "file",
+          "modified": "2026-07-14T13:20:00Z",
+          "modified_by": "1dfe5421-8791-54f9-9360-ec597a009d20",
+          "name": "new-starter-checklist.md",
+          "parent_id": "1102f9e6-69e8-52da-8d17-2e393071892e",
+          "path": "/Company/new-starter-checklist.md",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "id": "f7ce0179-21c5-5cbf-b5f6-881000be5430",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "name": "Engineering",
+          "parent_id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "path": "/Engineering",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "37bf0d8f-622f-521f-8ef7-81e72ba61b4d",
+                "principal_name": "/Kestrel/Engineering",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "id": "901b83a2-1e4d-559d-bb36-d59df1365b92",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "name": "Incidents",
+          "parent_id": "f7ce0179-21c5-5cbf-b5f6-881000be5430",
+          "path": "/Engineering/Incidents",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-08-17T08:21:00Z",
+          "created_by": "e5397a73-54e0-5ceb-8234-5bf1c4acf383",
+          "doc_id": "eng-incident-bridge-notes-2026-08-17",
+          "file": {
+            "blob": "blobs/f47ce21f581a3aee3457252849755a198b8dfd3567c8de5d9509b3e123db2742.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "f47ce21f581a3aee3457252849755a198b8dfd3567c8de5d9509b3e123db2742",
+            "size": 1100255
+          },
+          "format": "handwriting",
+          "id": "c3e5ddde-0531-575d-84d5-d754d2a3a399",
+          "kind": "file",
+          "modified": "2026-08-18T17:46:00Z",
+          "modified_by": "e5397a73-54e0-5ceb-8234-5bf1c4acf383",
+          "name": "INC-2026-0817 Bridge Notes.pdf",
+          "parent_id": "901b83a2-1e4d-559d-bb36-d59df1365b92",
+          "path": "/Engineering/Incidents/INC-2026-0817 Bridge Notes.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "ocr"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-08-20T11:56:00Z",
+          "created_by": "951d3b25-8ed7-51e8-b1b8-764efaebe9a5",
+          "doc_id": "eng-postmortem-inc-2026-0817",
+          "file": {
+            "blob": "blobs/25e704f6d2cb32ad65e09aef4641e4cd6a3a82dffe7df846d11d6f734cfea987.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "25e704f6d2cb32ad65e09aef4641e4cd6a3a82dffe7df846d11d6f734cfea987",
+            "size": 9861
+          },
+          "format": "pdf",
+          "id": "e44371d5-08ba-5d8d-9dac-ccfca90c8f9f",
+          "kind": "file",
+          "modified": "2026-09-11T17:59:00Z",
+          "modified_by": "951d3b25-8ed7-51e8-b1b8-764efaebe9a5",
+          "name": "INC-2026-0817 Postmortem.pdf",
+          "parent_id": "901b83a2-1e4d-559d-bb36-d59df1365b92",
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "id": "3105b65e-cb30-5b0a-adc7-2f38c7b86514",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "name": "Runbooks",
+          "parent_id": "f7ce0179-21c5-5cbf-b5f6-881000be5430",
+          "path": "/Engineering/Runbooks",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-07-06T10:43:00Z",
+          "created_by": "3bdcb780-3a59-584b-91a7-cdbb0cca1981",
+          "doc_id": "eng-fraud-rules",
+          "file": {
+            "blob": "blobs/7a43add4f9ff042ab7ff7af4435acaee3050434435d32f9fa163b4ff0fb87339.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "7a43add4f9ff042ab7ff7af4435acaee3050434435d32f9fa163b4ff0fb87339",
+            "size": 9299
+          },
+          "format": "pdf",
+          "id": "266c8294-f71d-59af-906b-1347fbfaa545",
+          "kind": "file",
+          "modified": "2026-09-11T17:24:00Z",
+          "modified_by": "3bdcb780-3a59-584b-91a7-cdbb0cca1981",
+          "name": "Kestrel Shield Fraud Rules v14.pdf",
+          "parent_id": "3105b65e-cb30-5b0a-adc7-2f38c7b86514",
+          "path": "/Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "dbcac778-7d58-57c6-bccb-024650b82cfb",
+                "principal_name": "/Kestrel/Engineering/Payments",
+                "principal_type": "group",
+                "role": "read"
+              },
+              {
+                "principal_id": "3bdcb780-3a59-584b-91a7-cdbb0cca1981",
+                "principal_name": "lena.fischer",
+                "principal_type": "user",
+                "role": "write"
+              }
+            ],
+            "inherit": false
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-06-02T09:44:00Z",
+          "created_by": "851b31df-0166-52b7-8fdc-88696aee2a8b",
+          "doc_id": "eng-payments-api-error-codes",
+          "file": {
+            "blob": "blobs/7c7f3df06db461e726f0366bd1ae1b83e197664a9e50a2c5bf650ddd74e7b7c9.pdf",
+            "mime_type": "application/pdf",
+            "pages": 5,
+            "sha256": "7c7f3df06db461e726f0366bd1ae1b83e197664a9e50a2c5bf650ddd74e7b7c9",
+            "size": 14296
+          },
+          "format": "pdf",
+          "id": "1d0532d0-267d-5021-aeee-9917c40bf70c",
+          "kind": "file",
+          "modified": "2026-08-24T16:50:00Z",
+          "modified_by": "851b31df-0166-52b7-8fdc-88696aee2a8b",
+          "name": "Payments API Error Code Catalogue.pdf",
+          "parent_id": "3105b65e-cb30-5b0a-adc7-2f38c7b86514",
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "lexical"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-03-10T11:59:00Z",
+          "created_by": "784278c5-091c-599d-ac11-d401c2355cf4",
+          "doc_id": "eng-deploy-runbook",
+          "file": {
+            "blob": "blobs/7bc688846977a8083a086451df5c1614b64fd0f1ef8707f857de7abb4ce1b9d7.md",
+            "mime_type": "text/markdown",
+            "sha256": "7bc688846977a8083a086451df5c1614b64fd0f1ef8707f857de7abb4ce1b9d7",
+            "size": 5183
+          },
+          "format": "md",
+          "id": "d9211218-0a7b-5659-983e-166f9dbf5963",
+          "kind": "file",
+          "modified": "2026-09-04T15:47:00Z",
+          "modified_by": "784278c5-091c-599d-ac11-d401c2355cf4",
+          "name": "deploy-runbook.md",
+          "parent_id": "3105b65e-cb30-5b0a-adc7-2f38c7b86514",
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-02-17T11:01:00Z",
+          "created_by": "e5397a73-54e0-5ceb-8234-5bf1c4acf383",
+          "doc_id": "eng-on-call-runbook",
+          "file": {
+            "blob": "blobs/4f48f14b2e3ac7d74fd4e03c8abe50655fdffda1c2bd6b3cb23ef90303c345aa.md",
+            "mime_type": "text/markdown",
+            "sha256": "4f48f14b2e3ac7d74fd4e03c8abe50655fdffda1c2bd6b3cb23ef90303c345aa",
+            "size": 5601
+          },
+          "format": "md",
+          "id": "cef437d1-6a11-5cfe-8533-622e47c3f0fd",
+          "kind": "file",
+          "modified": "2026-08-27T15:44:00Z",
+          "modified_by": "e5397a73-54e0-5ceb-8234-5bf1c4acf383",
+          "name": "on-call-runbook.md",
+          "parent_id": "3105b65e-cb30-5b0a-adc7-2f38c7b86514",
+          "path": "/Engineering/Runbooks/on-call-runbook.md",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-04-22T11:53:00Z",
+          "created_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "doc_id": "eng-architecture-overview",
+          "file": {
+            "blob": "blobs/b7c863af9c0eccf4ffc30664ab1c2df8456c18856772b16732a77b342397fd32.md",
+            "mime_type": "text/markdown",
+            "sha256": "b7c863af9c0eccf4ffc30664ab1c2df8456c18856772b16732a77b342397fd32",
+            "size": 5455
+          },
+          "format": "md",
+          "id": "21a76585-9098-5a9b-ae9d-50c08446de2b",
+          "kind": "file",
+          "modified": "2026-09-15T16:43:00Z",
+          "modified_by": "bdd97595-1d1b-5124-a518-76b2fa9e1363",
+          "name": "architecture-overview.md",
+          "parent_id": "f7ce0179-21c5-5cbf-b5f6-881000be5430",
+          "path": "/Engineering/architecture-overview.md",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "cfbd0e53-10cf-531a-866f-0bf102d602e2",
+          "id": "6336cccd-3c69-5599-a86e-9145b83ebf96",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "cfbd0e53-10cf-531a-866f-0bf102d602e2",
+          "name": "Exec",
+          "parent_id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "path": "/Exec",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "0c0199be-c8c7-5561-a0d7-6c1424e5565b",
+                "principal_name": "/Kestrel/Exec",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-07-13T08:27:00Z",
+          "created_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "doc_id": "exec-board-pack-2026-07",
+          "file": {
+            "blob": "blobs/ed14868328aa4e8e513d5b05a4241bfc7288eaf1db521a7a87ad837fafcc5878.pdf",
+            "mime_type": "application/pdf",
+            "pages": 4,
+            "sha256": "ed14868328aa4e8e513d5b05a4241bfc7288eaf1db521a7a87ad837fafcc5878",
+            "size": 11396
+          },
+          "format": "pdf",
+          "id": "79cf485f-a3e8-5b58-aa80-b0b5dbd125c5",
+          "kind": "file",
+          "modified": "2026-07-15T17:26:00Z",
+          "modified_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "name": "Board Pack 2026-07-22.pdf",
+          "parent_id": "6336cccd-3c69-5599-a86e-9145b83ebf96",
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-14T11:48:00Z",
+          "created_by": "cfbd0e53-10cf-531a-866f-0bf102d602e2",
+          "doc_id": "exec-offsite-notes-2026-09",
+          "file": {
+            "blob": "blobs/03a4403eae375ef1ff5dcbd917a57eb3af2ea8f54d47a20812eb4edf9c898869.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "03a4403eae375ef1ff5dcbd917a57eb3af2ea8f54d47a20812eb4edf9c898869",
+            "size": 1191151
+          },
+          "format": "handwriting",
+          "id": "76428cdd-5603-5b6b-b949-52ce108831b1",
+          "kind": "file",
+          "modified": "2026-09-14T17:54:00Z",
+          "modified_by": "cfbd0e53-10cf-531a-866f-0bf102d602e2",
+          "name": "Exec Offsite Notes Sept 2026.pdf",
+          "parent_id": "6336cccd-3c69-5599-a86e-9145b83ebf96",
+          "path": "/Exec/Exec Offsite Notes Sept 2026.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "ocr"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-22T10:32:00Z",
+          "created_by": "cc04b66d-ace4-5327-8590-8d0a41fca0fc",
+          "doc_id": "exec-project-heron-board-memo",
+          "file": {
+            "blob": "blobs/680fbfc9da6efc6cef7d081562570999a1924d5cfc7fe544a74b5d23dce1cbec.pdf",
+            "mime_type": "application/pdf",
+            "pages": 5,
+            "sha256": "680fbfc9da6efc6cef7d081562570999a1924d5cfc7fe544a74b5d23dce1cbec",
+            "size": 13278
+          },
+          "format": "pdf",
+          "id": "4fb87666-e50a-5a81-a13f-2d9773b584b1",
+          "kind": "file",
+          "modified": "2026-09-24T14:39:00Z",
+          "modified_by": "cc04b66d-ace4-5327-8590-8d0a41fca0fc",
+          "name": "Project Heron Board Memo.pdf",
+          "parent_id": "6336cccd-3c69-5599-a86e-9145b83ebf96",
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "acl-leak"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-15T11:45:00Z",
+          "created_by": "cc04b66d-ace4-5327-8590-8d0a41fca0fc",
+          "doc_id": "exec-project-heron-integration-plan",
+          "file": {
+            "blob": "blobs/938790b122b2b88a021289b9eae3f41bdfe58fface45dc737d1766c0ab6d2fa3.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "938790b122b2b88a021289b9eae3f41bdfe58fface45dc737d1766c0ab6d2fa3",
+            "size": 40595
+          },
+          "format": "docx",
+          "id": "8fb3187f-96f0-538d-86de-04310fa4b487",
+          "kind": "file",
+          "modified": "2026-09-28T14:00:00Z",
+          "modified_by": "cc04b66d-ace4-5327-8590-8d0a41fca0fc",
+          "name": "Project Heron Integration Plan v0.4.docx",
+          "parent_id": "6336cccd-3c69-5599-a86e-9145b83ebf96",
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+                "principal_name": "tom.whitfield",
+                "principal_type": "user",
+                "role": "read"
+              }
+            ],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "id": "cf8fd1d3-742c-5827-b277-b254d0ca18d9",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "name": "Finance",
+          "parent_id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "path": "/Finance",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "667f0e2a-5bdd-5096-9fc7-9e5264d4cd18",
+                "principal_name": "/Kestrel/Finance",
+                "principal_type": "group",
+                "role": "read"
+              },
+              {
+                "principal_id": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+                "principal_name": "tom.whitfield",
+                "principal_type": "user",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "50e2b299-7468-577d-a8e3-ed6e5bdb9f0f",
+          "id": "6182f983-80c7-5bd1-a385-5f88915528e4",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "50e2b299-7468-577d-a8e3-ed6e5bdb9f0f",
+          "name": "AP",
+          "parent_id": "cf8fd1d3-742c-5827-b277-b254d0ca18d9",
+          "path": "/Finance/AP",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "26d275a1-b769-5d72-b7c2-8377cc12860f",
+                "principal_name": "/Kestrel/Finance/AP",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-09-21T09:00:00Z",
+          "created_by": "124ed148-b5a7-5274-a79c-4ba807a82fd8",
+          "doc_id": "finance-ap-invoice-batch-b-2026-117",
+          "file": {
+            "blob": "blobs/3920a38ba6571c87242db4781a833f0fac3e30b96668198587d4c5b9aa86f7e5.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "3920a38ba6571c87242db4781a833f0fac3e30b96668198587d4c5b9aa86f7e5",
+            "size": 1754142
+          },
+          "format": "scan",
+          "id": "3da6c219-fc85-58a8-b376-f881e0653c1d",
+          "kind": "file",
+          "modified": "2026-09-21T16:00:00Z",
+          "modified_by": "124ed148-b5a7-5274-a79c-4ba807a82fd8",
+          "name": "AP Batch B-2026-117 Scanned Invoices.pdf",
+          "parent_id": "6182f983-80c7-5bd1-a385-5f88915528e4",
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "ocr"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-03-10T09:47:00Z",
+          "created_by": "50e2b299-7468-577d-a8e3-ed6e5bdb9f0f",
+          "doc_id": "finance-ap-payment-run-procedure",
+          "file": {
+            "blob": "blobs/374a398d962bf9ae6213c66eddea041766378d997fa209e9d91e1e48d070fa34.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "374a398d962bf9ae6213c66eddea041766378d997fa209e9d91e1e48d070fa34",
+            "size": 39871
+          },
+          "format": "docx",
+          "id": "ea383cab-c334-5035-a363-b48b469b2b20",
+          "kind": "file",
+          "modified": "2026-06-02T13:18:00Z",
+          "modified_by": "50e2b299-7468-577d-a8e3-ed6e5bdb9f0f",
+          "name": "Supplier Payment Run Procedure.docx",
+          "parent_id": "6182f983-80c7-5bd1-a385-5f88915528e4",
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "8daad9b0-d47e-5d0b-b27a-4d344e4876b3",
+          "id": "374a2dff-9381-55b4-87e7-0a9d5df15682",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "8daad9b0-d47e-5d0b-b27a-4d344e4876b3",
+          "name": "FP&A",
+          "parent_id": "cf8fd1d3-742c-5827-b277-b254d0ca18d9",
+          "path": "/Finance/FP&A",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "ec526e44-230c-506d-ba92-80a4731d9986",
+                "principal_name": "/Kestrel/Finance/FP&A",
+                "principal_type": "group",
+                "role": "write"
+              },
+              {
+                "principal_id": "cc04b66d-ace4-5327-8590-8d0a41fca0fc",
+                "principal_name": "daniel.reyes",
+                "principal_type": "user",
+                "role": "read"
+              }
+            ],
+            "inherit": false
+          }
+        },
+        {
+          "created": "2025-11-24T08:02:00Z",
+          "created_by": "680dda86-986a-5703-9a3a-ffc3ed29b1c7",
+          "doc_id": "finance-fpa-fy2026-budget-notes",
+          "file": {
+            "blob": "blobs/4ed155c93997a80165a4978dd205a59827abb1571ba47a2ef6f4d5021029d208.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "4ed155c93997a80165a4978dd205a59827abb1571ba47a2ef6f4d5021029d208",
+            "size": 41297
+          },
+          "format": "docx",
+          "id": "ce744a41-2b86-52eb-bc2a-09521bb93818",
+          "kind": "file",
+          "modified": "2026-01-21T16:31:00Z",
+          "modified_by": "680dda86-986a-5703-9a3a-ffc3ed29b1c7",
+          "name": "FY2026 Budget Notes and Assumptions.docx",
+          "parent_id": "374a2dff-9381-55b4-87e7-0a9d5df15682",
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-02-03T08:39:00Z",
+          "created_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "doc_id": "finance-month-end-close-checklist",
+          "file": {
+            "blob": "blobs/c804c5e5c92b9f9df267b0232581811972e7271cf724d22624b8ff7d64fa2c3d.md",
+            "mime_type": "text/markdown",
+            "sha256": "c804c5e5c92b9f9df267b0232581811972e7271cf724d22624b8ff7d64fa2c3d",
+            "size": 5168
+          },
+          "format": "md",
+          "id": "887a2241-5318-541f-8092-5ffb24c81ba8",
+          "kind": "file",
+          "modified": "2026-09-28T13:23:00Z",
+          "modified_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "name": "Month-End Close Checklist.md",
+          "parent_id": "cf8fd1d3-742c-5827-b277-b254d0ca18d9",
+          "path": "/Finance/Month-End Close Checklist.md",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "id": "a1954fc0-d199-509e-9ae6-0d1455283243",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "name": "Reports",
+          "parent_id": "cf8fd1d3-742c-5827-b277-b254d0ca18d9",
+          "path": "/Finance/Reports",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "0c0199be-c8c7-5561-a0d7-6c1424e5565b",
+                "principal_name": "/Kestrel/Exec",
+                "principal_type": "group",
+                "role": "read"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-09-10T08:23:00Z",
+          "created_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "doc_id": "finance-management-accounts-2026-08",
+          "file": {
+            "blob": "blobs/3105129f9ba0da7da3b6f921c04bec9b5185819907bd8d8bf4e5525986a42646.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "3105129f9ba0da7da3b6f921c04bec9b5185819907bd8d8bf4e5525986a42646",
+            "size": 6549
+          },
+          "format": "pdf",
+          "id": "570e0f9e-8038-5cd0-bd9e-d62b2b47773d",
+          "kind": "file",
+          "modified": "2026-09-10T15:46:00Z",
+          "modified_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "name": "Management Accounts August 2026.pdf",
+          "parent_id": "a1954fc0-d199-509e-9ae6-0d1455283243",
+          "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-29T10:18:00Z",
+          "created_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "doc_id": "finance-q3-2026-quarterly-report",
+          "file": {
+            "blob": "blobs/928843fd0cbe09fd04a4b367faa9d769fc28b4a706ee9a45f8a4cc49a4058869.pdf",
+            "mime_type": "application/pdf",
+            "pages": 7,
+            "sha256": "928843fd0cbe09fd04a4b367faa9d769fc28b4a706ee9a45f8a4cc49a4058869",
+            "size": 22105
+          },
+          "format": "pdf",
+          "id": "66c9a5a2-860b-50e9-b983-be861b3d826f",
+          "kind": "file",
+          "modified": "2026-09-30T13:52:00Z",
+          "modified_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "name": "Q3 2026 Quarterly Report.pdf",
+          "parent_id": "a1954fc0-d199-509e-9ae6-0d1455283243",
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "tables"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-03-03T09:44:00Z",
+          "created_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "doc_id": "finance-safeguarding-reconciliation-procedure",
+          "file": {
+            "blob": "blobs/0cffe957a6f43d705a0b8e5ede0546130e1214887f08da8db17f0c9e9329cdaa.md",
+            "mime_type": "text/markdown",
+            "sha256": "0cffe957a6f43d705a0b8e5ede0546130e1214887f08da8db17f0c9e9329cdaa",
+            "size": 5249
+          },
+          "format": "md",
+          "id": "d6c58916-582c-53b8-af1d-2649bf864f8e",
+          "kind": "file",
+          "modified": "2026-05-06T15:18:00Z",
+          "modified_by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+          "name": "Safeguarding Reconciliation Procedure.md",
+          "parent_id": "cf8fd1d3-742c-5827-b277-b254d0ca18d9",
+          "path": "/Finance/Safeguarding Reconciliation Procedure.md",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": "2026-05-07",
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "id": "8f350d39-f291-5711-8059-525ad5b4fbdb",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "name": "HR",
+          "parent_id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "path": "/HR",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "6ed20b9a-1809-5e8e-9f85-14c9631c7d9e",
+                "principal_name": "/Kestrel/HR",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "id": "17540a91-dd76-5181-bb8c-de6734beadca",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "name": "Casework",
+          "parent_id": "8f350d39-f291-5711-8059-525ad5b4fbdb",
+          "path": "/HR/Casework",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-09-03T10:43:00Z",
+          "created_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "doc_id": "hr-case-note-2026-014",
+          "file": {
+            "blob": "blobs/e7ccf618fc32273552025b04cc45fe4f448e0191ad6af08633256e47d8b0ff5b.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "e7ccf618fc32273552025b04cc45fe4f448e0191ad6af08633256e47d8b0ff5b",
+            "size": 1078876
+          },
+          "format": "handwriting",
+          "id": "fb35f60b-90ba-5364-b1f4-4fe19dcd128a",
+          "kind": "file",
+          "modified": "2026-09-04T17:45:00Z",
+          "modified_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "name": "HR-CASE-2026-014 Grievance Meeting Note.pdf",
+          "parent_id": "17540a91-dd76-5181-bb8c-de6734beadca",
+          "path": "/HR/Casework/HR-CASE-2026-014 Grievance Meeting Note.pdf",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+                "principal_name": "marco.bianchi",
+                "principal_type": "user",
+                "role": "write"
+              }
+            ],
+            "inherit": false
+          },
+          "traps": [
+            "ocr"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-08T08:17:00Z",
+          "created_by": "1dfe5421-8791-54f9-9360-ec597a009d20",
+          "doc_id": "hr-h2-2026-review-cycle",
+          "file": {
+            "blob": "blobs/f474e4a2253c368da3efe446abb5efc21e15be34a3361c76a13c7a95a24c8937.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "f474e4a2253c368da3efe446abb5efc21e15be34a3361c76a13c7a95a24c8937",
+            "size": 7495
+          },
+          "format": "pdf",
+          "id": "cb6faeee-3c9d-5d3b-bd87-e767a623d04e",
+          "kind": "file",
+          "modified": "2026-09-22T16:38:00Z",
+          "modified_by": "1dfe5421-8791-54f9-9360-ec597a009d20",
+          "name": "H2 2026 Performance and Pay Review Plan.pdf",
+          "parent_id": "8f350d39-f291-5711-8059-525ad5b4fbdb",
+          "path": "/HR/H2 2026 Performance and Pay Review Plan.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "id": "deb2c5e9-1465-5cd7-bc8a-9eb77c30023c",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "name": "Policies",
+          "parent_id": "8f350d39-f291-5711-8059-525ad5b4fbdb",
+          "path": "/HR/Policies",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "e9737a02-5d27-5fb5-8c02-aa0cc3c45cc0",
+                "principal_name": "/Kestrel",
+                "principal_type": "group",
+                "role": "read"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2025-12-15T10:24:00Z",
+          "created_by": "1dfe5421-8791-54f9-9360-ec597a009d20",
+          "doc_id": "hr-leave-policy",
+          "file": {
+            "blob": "blobs/710e76cba16565be36ef593ca98afaada9a65024256ae5819954c037b58c1b42.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "710e76cba16565be36ef593ca98afaada9a65024256ae5819954c037b58c1b42",
+            "size": 6569
+          },
+          "format": "pdf",
+          "id": "144092ee-19c7-596f-bf0c-3fe0d0e52916",
+          "kind": "file",
+          "modified": "2026-03-02T14:24:00Z",
+          "modified_by": "1dfe5421-8791-54f9-9360-ec597a009d20",
+          "name": "Leave Policy.pdf",
+          "parent_id": "deb2c5e9-1465-5cd7-bc8a-9eb77c30023c",
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": "2026-01-01",
+          "valid_to": null
+        },
+        {
+          "created": "2026-06-15T09:01:00Z",
+          "created_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "doc_id": "hr-expenses-policy-v2",
+          "file": {
+            "blob": "blobs/1d52e2ac9ddf35fefe4db09a154362b98a8fe4791f3ce5e98e53018e40d244f2.pdf",
+            "mime_type": "application/pdf",
+            "pages": 4,
+            "sha256": "1d52e2ac9ddf35fefe4db09a154362b98a8fe4791f3ce5e98e53018e40d244f2",
+            "size": 10793
+          },
+          "format": "pdf",
+          "id": "56c5def6-8d34-5a6b-bf3b-9d80bb875897",
+          "kind": "file",
+          "modified": "2026-06-26T13:13:00Z",
+          "modified_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "name": "Travel and Expenses Policy v2.pdf",
+          "parent_id": "deb2c5e9-1465-5cd7-bc8a-9eb77c30023c",
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "conflicting-sources"
+          ],
+          "valid_from": "2026-07-01",
+          "valid_to": null
+        },
+        {
+          "created": "2025-01-01T09:41:00Z",
+          "created_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "doc_id": "hr-expenses-policy-v1",
+          "file": {
+            "blob": "blobs/0fc48c984e5643cdcd703490b4ee4727fbd1e8c03a4c6ed12bc54dfcddf09be8.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "0fc48c984e5643cdcd703490b4ee4727fbd1e8c03a4c6ed12bc54dfcddf09be8",
+            "size": 8631
+          },
+          "format": "pdf",
+          "id": "da6619bc-53a9-55df-8b95-453bf86d9e89",
+          "kind": "file",
+          "modified": "2025-02-11T14:52:00Z",
+          "modified_by": "6ce34c02-cc59-5bf3-a056-d322c30b1b06",
+          "name": "Travel and Expenses Policy.pdf",
+          "parent_id": "deb2c5e9-1465-5cd7-bc8a-9eb77c30023c",
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "conflicting-sources"
+          ],
+          "valid_from": "2025-01-01",
+          "valid_to": "2026-06-30"
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "id": "c1f9d984-7d1c-59cc-88f0-2d1588d1abe2",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "name": "Legal",
+          "parent_id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "path": "/Legal",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "606f6c2c-8054-55fa-b358-2b2b66166ece",
+                "principal_name": "/Kestrel/Legal",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "id": "165a33a5-243f-5ef3-b2a2-fa21ecc99277",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "name": "Contracts",
+          "parent_id": "c1f9d984-7d1c-59cc-88f0-2d1588d1abe2",
+          "path": "/Legal/Contracts",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "667f0e2a-5bdd-5096-9fc7-9e5264d4cd18",
+                "principal_name": "/Kestrel/Finance",
+                "principal_type": "group",
+                "role": "read"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2025-01-06T10:55:00Z",
+          "created_by": "eb87f844-bfaa-5862-a168-a728853ffd57",
+          "doc_id": "legal-contract-register",
+          "file": {
+            "blob": "blobs/6468542e06dc3979bc3606050bda931fb2112a85595a8a023ed87d55811aa880.pdf",
+            "mime_type": "application/pdf",
+            "pages": 6,
+            "sha256": "6468542e06dc3979bc3606050bda931fb2112a85595a8a023ed87d55811aa880",
+            "size": 15849
+          },
+          "format": "pdf",
+          "id": "a1ba21b7-8e92-5fe6-a1ba-cda65b6eb6d0",
+          "kind": "file",
+          "modified": "2026-09-28T14:05:00Z",
+          "modified_by": "eb87f844-bfaa-5862-a168-a728853ffd57",
+          "name": "Contract Register 2026-09-28.pdf",
+          "parent_id": "165a33a5-243f-5ef3-b2a2-fa21ecc99277",
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "lexical"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-11-05T10:10:00Z",
+          "created_by": "c630d2ef-1c5e-5561-b986-c5fddd4391ac",
+          "doc_id": "legal-contract-kpc-2025-0231-sorrel-dpa",
+          "file": {
+            "blob": "blobs/aab0a4ae9d9fdce75de005f848c200e5ec91049c76b35a5c5d8e9d6920a92e12.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "aab0a4ae9d9fdce75de005f848c200e5ec91049c76b35a5c5d8e9d6920a92e12",
+            "size": 40008
+          },
+          "format": "docx",
+          "id": "5204df3c-bc1f-5961-a39e-8ed87655c35a",
+          "kind": "file",
+          "modified": "2025-11-05T13:45:00Z",
+          "modified_by": "c630d2ef-1c5e-5561-b986-c5fddd4391ac",
+          "name": "KPC-2025-0231 Sorrel Identity DPA.docx",
+          "parent_id": "165a33a5-243f-5ef3-b2a2-fa21ecc99277",
+          "path": "/Legal/Contracts/KPC-2025-0231 Sorrel Identity DPA.docx",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-03-19T10:53:00Z",
+          "created_by": "c630d2ef-1c5e-5561-b986-c5fddd4391ac",
+          "doc_id": "legal-contract-kpc-2026-0142-ashgrove-msa",
+          "file": {
+            "blob": "blobs/c1056cdd7ba8dce7c27ac260b35f5420cb03d56f36f13002a35575b1472fce37.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "c1056cdd7ba8dce7c27ac260b35f5420cb03d56f36f13002a35575b1472fce37",
+            "size": 609108
+          },
+          "format": "pdf_mixed",
+          "id": "73c6a120-94ab-5c0e-bbdb-1f4a26d0bb59",
+          "kind": "file",
+          "modified": "2026-03-19T14:49:00Z",
+          "modified_by": "c630d2ef-1c5e-5561-b986-c5fddd4391ac",
+          "name": "KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "parent_id": "165a33a5-243f-5ef3-b2a2-fa21ecc99277",
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "ocr"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-11-28T10:04:00Z",
+          "created_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "doc_id": "legal-delegated-authority-matrix",
+          "file": {
+            "blob": "blobs/cad0a3b85c77981b1afdf1de15876531a43a9f02919735e5494e649609997efc.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "cad0a3b85c77981b1afdf1de15876531a43a9f02919735e5494e649609997efc",
+            "size": 7520
+          },
+          "format": "pdf",
+          "id": "c61ddaa5-18fa-5e9b-a151-dd74b4003ba1",
+          "kind": "file",
+          "modified": "2025-12-12T14:18:00Z",
+          "modified_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "name": "Delegated Authority Matrix 2026.pdf",
+          "parent_id": "c1f9d984-7d1c-59cc-88f0-2d1588d1abe2",
+          "path": "/Legal/Delegated Authority Matrix 2026.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": "2026-01-01",
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "id": "8b139540-a003-5dcf-8919-e59311235a10",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "name": "Regulatory",
+          "parent_id": "c1f9d984-7d1c-59cc-88f0-2d1588d1abe2",
+          "path": "/Legal/Regulatory",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "0c0199be-c8c7-5561-a0d7-6c1424e5565b",
+                "principal_name": "/Kestrel/Exec",
+                "principal_type": "group",
+                "role": "read"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-07-08T10:01:00Z",
+          "created_by": "50433ab3-3b93-5e12-aaa1-d614125b8dd1",
+          "doc_id": "legal-compliance-monitoring-q2-2026",
+          "file": {
+            "blob": "blobs/8d17909de1e211003418014161af6aef958189e8a12230d36af043028ee75d67.pdf",
+            "mime_type": "application/pdf",
+            "pages": 4,
+            "sha256": "8d17909de1e211003418014161af6aef958189e8a12230d36af043028ee75d67",
+            "size": 11332
+          },
+          "format": "pdf",
+          "id": "c8032feb-c29f-5fe8-bc29-ae3bd6efadab",
+          "kind": "file",
+          "modified": "2026-07-14T14:46:00Z",
+          "modified_by": "50433ab3-3b93-5e12-aaa1-d614125b8dd1",
+          "name": "Compliance Monitoring Report Q2 2026.pdf",
+          "parent_id": "8b139540-a003-5dcf-8919-e59311235a10",
+          "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-08-03T08:29:00Z",
+          "created_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "doc_id": "legal-regulatory-filing-2026",
+          "file": {
+            "blob": "blobs/638467c88f5419fb46648819e43c1dc166ab62e579a5587b64581e05aabda972.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3000,
+            "sha256": "638467c88f5419fb46648819e43c1dc166ab62e579a5587b64581e05aabda972",
+            "size": 6984450
+          },
+          "format": "generated",
+          "id": "4b8ce6c4-8fb1-522e-ab02-7aacb21dd0b2",
+          "kind": "file",
+          "modified": "2026-09-15T14:45:00Z",
+          "modified_by": "922e38e6-45e0-5086-a7ff-a3546614576b",
+          "name": "FCA Annual Regulatory Return 2026.pdf",
+          "parent_id": "8b139540-a003-5dcf-8919-e59311235a10",
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "fan-out"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "id": "fccd64bf-ffe9-5d83-bbe7-727eda48dac1",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "name": "Sales",
+          "parent_id": "352d2b9a-f77b-5db1-9650-f3f15681bd60",
+          "path": "/Sales",
+          "sharing": {
+            "grants": [
+              {
+                "principal_id": "cb01003d-94c5-5b78-bb05-ecdd2102f5cb",
+                "principal_name": "/Kestrel/Sales",
+                "principal_type": "group",
+                "role": "write"
+              }
+            ],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2026-03-18T09:25:00Z",
+          "created_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "doc_id": "sales-price-list-2026",
+          "file": {
+            "blob": "blobs/a296d4f78ba775d20a1d9c8e1ff2d7dfa1ec27dca573e8aa6850743c997dbf0a.pdf",
+            "mime_type": "application/pdf",
+            "pages": 4,
+            "sha256": "a296d4f78ba775d20a1d9c8e1ff2d7dfa1ec27dca573e8aa6850743c997dbf0a",
+            "size": 9568
+          },
+          "format": "pdf",
+          "id": "49444968-0fe8-5fe3-b675-9e380f4683d2",
+          "kind": "file",
+          "modified": "2026-09-01T15:22:00Z",
+          "modified_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "name": "Kestrel Pay Price List 2026.2.pdf",
+          "parent_id": "fccd64bf-ffe9-5d83-bbe7-727eda48dac1",
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "lexical"
+          ],
+          "valid_from": "2026-04-01",
+          "valid_to": null
+        },
+        {
+          "created": "2026-08-24T08:00:00Z",
+          "created_by": "78de2df3-1ff5-5148-9d61-14e593ee4438",
+          "doc_id": "sales-order-form-marlow-finch",
+          "file": {
+            "blob": "blobs/cfc87eb22f6c6591d4ee0111ee2abcf5cfe4badbb3e1fdce026d7bbbac6fddae.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "cfc87eb22f6c6591d4ee0111ee2abcf5cfe4badbb3e1fdce026d7bbbac6fddae",
+            "size": 1124160
+          },
+          "format": "scan",
+          "id": "19a98631-e5ba-5e6b-8e39-ea9eb7c7500f",
+          "kind": "file",
+          "modified": "2026-08-24T13:44:00Z",
+          "modified_by": "78de2df3-1ff5-5148-9d61-14e593ee4438",
+          "name": "OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "parent_id": "fccd64bf-ffe9-5d83-bbe7-727eda48dac1",
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [
+            "ocr"
+          ],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-09-30T00:00:00Z",
+          "created_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "id": "d3391b7d-2400-590b-9ffc-9ba3bab99b0c",
+          "kind": "folder",
+          "modified": "2026-09-30T00:00:00Z",
+          "modified_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "name": "Playbooks",
+          "parent_id": "fccd64bf-ffe9-5d83-bbe7-727eda48dac1",
+          "path": "/Sales/Playbooks",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          }
+        },
+        {
+          "created": "2025-05-12T08:44:00Z",
+          "created_by": "26350b13-8d4f-561f-8f85-270924feb3cb",
+          "doc_id": "sales-cs-escalation-guide",
+          "file": {
+            "blob": "blobs/e562d638834133ef8744e456338b504e948f5809c015f3adf42782a5697de656.pdf",
+            "mime_type": "application/pdf",
+            "pages": 3,
+            "sha256": "e562d638834133ef8744e456338b504e948f5809c015f3adf42782a5697de656",
+            "size": 8956
+          },
+          "format": "pdf",
+          "id": "c4a36295-a759-54e2-b0f3-210af2ca95d4",
+          "kind": "file",
+          "modified": "2026-08-28T17:14:00Z",
+          "modified_by": "26350b13-8d4f-561f-8f85-270924feb3cb",
+          "name": "Customer Success Escalation Guide.pdf",
+          "parent_id": "d3391b7d-2400-590b-9ffc-9ba3bab99b0c",
+          "path": "/Sales/Playbooks/Customer Success Escalation Guide.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2025-09-01T10:31:00Z",
+          "created_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "doc_id": "sales-playbook",
+          "file": {
+            "blob": "blobs/9daacb658c32dea824d9db2751a1a83ce4da4bf042da34fbc01515642cdf9998.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "sha256": "9daacb658c32dea824d9db2751a1a83ce4da4bf042da34fbc01515642cdf9998",
+            "size": 40173
+          },
+          "format": "docx",
+          "id": "4267cc5a-98b0-5800-b2f5-a201803f6aea",
+          "kind": "file",
+          "modified": "2026-09-03T14:20:00Z",
+          "modified_by": "293efae0-b898-5bda-9bf9-a576ecba9fc8",
+          "name": "Sales Playbook 2026.docx",
+          "parent_id": "d3391b7d-2400-590b-9ffc-9ba3bab99b0c",
+          "path": "/Sales/Playbooks/Sales Playbook 2026.docx",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        },
+        {
+          "created": "2026-04-02T11:32:00Z",
+          "created_by": "78de2df3-1ff5-5148-9d61-14e593ee4438",
+          "doc_id": "sales-pricing-faq",
+          "file": {
+            "blob": "blobs/d4d9cc2386ab1a2f1df1c99b866c9d2c18091d6059994c45819c1c1f66f51ca0.pdf",
+            "mime_type": "application/pdf",
+            "pages": 2,
+            "sha256": "d4d9cc2386ab1a2f1df1c99b866c9d2c18091d6059994c45819c1c1f66f51ca0",
+            "size": 5888
+          },
+          "format": "pdf",
+          "id": "8525b346-52c2-56c8-a366-6ddaf0bf1fe7",
+          "kind": "file",
+          "modified": "2026-09-02T16:09:00Z",
+          "modified_by": "78de2df3-1ff5-5148-9d61-14e593ee4438",
+          "name": "Pricing FAQ.pdf",
+          "parent_id": "fccd64bf-ffe9-5d83-bbe7-727eda48dac1",
+          "path": "/Sales/Pricing FAQ.pdf",
+          "sharing": {
+            "grants": [],
+            "inherit": true
+          },
+          "traps": [],
+          "valid_from": null,
+          "valid_to": null
+        }
+      ],
+      "users": {
+        "0ae8fa04-8d89-5fd9-b3f0-17a15e8a72f6": {
+          "display_name": "Leo Martin",
+          "username": "leo.martin"
+        },
+        "124ed148-b5a7-5274-a79c-4ba807a82fd8": {
+          "display_name": "Luis Ortega",
+          "username": "luis.ortega"
+        },
+        "1dfe5421-8791-54f9-9360-ec597a009d20": {
+          "display_name": "Rachel Obi",
+          "username": "rachel.obi"
+        },
+        "26350b13-8d4f-561f-8f85-270924feb3cb": {
+          "display_name": "Hannah Kim",
+          "username": "hannah.kim"
+        },
+        "293efae0-b898-5bda-9bf9-a576ecba9fc8": {
+          "display_name": "Jake Morrison",
+          "username": "jake.morrison"
+        },
+        "2a8c67b6-d27b-5f0f-adf9-49bb8500cb61": {
+          "display_name": "Ella Brooks",
+          "username": "ella.brooks"
+        },
+        "3bdcb780-3a59-584b-91a7-cdbb0cca1981": {
+          "display_name": "Lena Fischer",
+          "username": "lena.fischer"
+        },
+        "50433ab3-3b93-5e12-aaa1-d614125b8dd1": {
+          "display_name": "Sofia Lindqvist",
+          "username": "sofia.lindqvist"
+        },
+        "50e2b299-7468-577d-a8e3-ed6e5bdb9f0f": {
+          "display_name": "Grace Adeyemi",
+          "username": "grace.adeyemi"
+        },
+        "680dda86-986a-5703-9a3a-ffc3ed29b1c7": {
+          "display_name": "Jonas Berg",
+          "username": "jonas.berg"
+        },
+        "6ce34c02-cc59-5bf3-a056-d322c30b1b06": {
+          "display_name": "Marco Bianchi",
+          "username": "marco.bianchi"
+        },
+        "7380299f-ea90-590b-a973-2c136309aa46": {
+          "display_name": "Omar Haddad",
+          "username": "omar.haddad"
+        },
+        "784278c5-091c-599d-ac11-d401c2355cf4": {
+          "display_name": "Nadia Kowalski",
+          "username": "nadia.kowalski"
+        },
+        "78de2df3-1ff5-5148-9d61-14e593ee4438": {
+          "display_name": "Chloe Dubois",
+          "username": "chloe.dubois"
+        },
+        "851b31df-0166-52b7-8fdc-88696aee2a8b": {
+          "display_name": "Julia Novak",
+          "username": "julia.novak"
+        },
+        "8daad9b0-d47e-5d0b-b27a-4d344e4876b3": {
+          "display_name": "Mia Chen",
+          "username": "mia.chen"
+        },
+        "922e38e6-45e0-5086-a7ff-a3546614576b": {
+          "display_name": "Helen Marsh",
+          "username": "helen.marsh"
+        },
+        "92f42a42-ae8a-57ae-b0b9-3053863f4409": {
+          "display_name": "Peter Hall",
+          "username": "peter.hall"
+        },
+        "951d3b25-8ed7-51e8-b1b8-764efaebe9a5": {
+          "display_name": "Emily Tran",
+          "username": "emily.tran"
+        },
+        "9ed52de6-e2c1-5455-bdf2-a4a0a74506ae": {
+          "display_name": "Ravi Shah",
+          "username": "ravi.shah"
+        },
+        "bdd97595-1d1b-5124-a518-76b2fa9e1363": {
+          "display_name": "Priya Nair",
+          "username": "priya.nair"
+        },
+        "be5074cf-130f-50d4-aac8-878c6993b81f": {
+          "display_name": "Chris Dunn",
+          "username": "chris.dunn"
+        },
+        "c630d2ef-1c5e-5561-b986-c5fddd4391ac": {
+          "display_name": "Ben Carter",
+          "username": "ben.carter"
+        },
+        "cc04b66d-ace4-5327-8590-8d0a41fca0fc": {
+          "display_name": "Daniel Reyes",
+          "username": "daniel.reyes"
+        },
+        "cdc93fa3-cbef-5ee9-b1c7-2d154f4694f7": {
+          "display_name": "Sam Patel",
+          "username": "sam.patel"
+        },
+        "cfbd0e53-10cf-531a-866f-0bf102d602e2": {
+          "display_name": "Amara Okafor",
+          "username": "amara.okafor"
+        },
+        "d276db83-6258-56e2-9fd9-a214a012b73f": {
+          "display_name": "Aisha Rahman",
+          "username": "aisha.rahman"
+        },
+        "e5397a73-54e0-5ceb-8234-5bf1c4acf383": {
+          "display_name": "Kofi Mensah",
+          "username": "kofi.mensah"
+        },
+        "e8a6bf31-0196-5c63-8cb6-9db675db14fa": {
+          "display_name": "Tom Whitfield",
+          "username": "tom.whitfield"
+        },
+        "eb87f844-bfaa-5862-a168-a728853ffd57": {
+          "display_name": "Maya Levi",
+          "username": "maya.levi"
+        },
+        "f59f93fa-02ac-559f-bc9d-22462b8945f3": {
+          "display_name": "Tariq Aziz",
+          "username": "tariq.aziz"
+        }
+      }
+    }
+  },
+  "version": 1
+}

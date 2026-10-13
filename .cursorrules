@@ -1,0 +1,25 @@
+# Stack
+
+- TanStack Start (Vite-based) + TanStack Router + Query + Form
+- shadcn/ui (Base UI variant) + Tailwind v4 + hugeicons
+- AI SDK 7 (@ai-sdk/openai, @ai-sdk/react, ai)
+- pnpm, oxlint + oxfmt + tsgo for tooling, Vitest
+- Hosted on Vercel
+
+See AGENTS.md for the full conventions and PLAN.md for what the repo builds.
+
+# shadcn
+
+This project uses Base UI (not Radix). Install components with:
+
+```bash
+pnpm dlx shadcn@latest add <component>
+```
+
+For form composition use `FieldGroup` + `Field`. Icons in buttons use `data-icon`.
+Use semantic tokens (`bg-primary`, `text-muted-foreground`), never raw colors.
+Use `flex` + `gap-*`, never `space-x-*` / `space-y-*`. Use `size-*` for square dims.
+
+# Imports
+
+`#/*` and `@/*` both resolve to `./src/*`. Prefer `@/` for app code.
