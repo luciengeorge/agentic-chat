@@ -91,7 +91,7 @@ describe.skipIf(!postgresAvailable)("seedWorld", () => {
     t = await createTestDatabase();
     // The db and auth modules read these at import, so they bind to this test's database.
     Object.assign(process.env, {
-      DATABASE_URL: t.url,
+      DATABASE_URL: t.appUrl,
       AC_ENV: "test",
       BETTER_AUTH_SECRET: DEV_SECRETS.BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: "http://localhost:3000",

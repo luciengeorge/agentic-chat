@@ -137,6 +137,20 @@ describe.skipIf(!postgresAvailable)("auth", () => {
         status: 403,
       });
     });
+
+    it("throws 403 for a user the directory has disabled, and lets one it hasn't synced yet through", async () => {
+      const userId = await createUser("sam.disabled", "kestrelpay.example");
+      await auth.api.addMember({ body: { userId, organizationId: orgs.kestrel, role: "member" } });
+      const sam = await sessionHeaders("sam.disabled@kestrelpay.example");
+      expect((await getViewer(sam)).userId).toBe(userId);
+
+      await t.sql`INSERT INTO principals (id, tenant_id, kind, external_id, name, display_name, enabled, synced_at)
+                  VALUES (${userId}, ${orgs.kestrel}, 'user', ${userId}, 'sam.disabled', 'Sam', false, now())`;
+      const refused = await getViewer(sam).catch((error: unknown) => error);
+      expect(refused).toBeInstanceOf(Response);
+      expect((refused as Response).status).toBe(403);
+      expect(await (refused as Response).json()).toEqual({ error: "disabled" });
+    });
   });
 
   describe("the tenant comes from membership", () => {

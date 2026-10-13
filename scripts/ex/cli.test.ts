@@ -535,7 +535,7 @@ describe("smoke", SPAWNS_VITEST, () => {
     const out = await ex(["smoke"], { ok: false });
     expect(out.passed).toBe(false);
     expect(out.checks.map((check: { duration_s: unknown }) => check.duration_s)).toEqual(
-      Array(6).fill(expect.any(Number)),
+      Array(9).fill(expect.any(Number)),
     );
     expect(out.checks.map(({ name, passed, detail }: Record<string, unknown>) => [name, passed, detail])).toEqual([
       ["paradedb extensions and queries", false, "nothing answers at 127.0.0.1:1; `pnpm ex up` starts ParadeDB"],
@@ -548,6 +548,9 @@ describe("smoke", SPAWNS_VITEST, () => {
       ],
       ["spike workflow", false, `POST http://localhost:3000/api/spike ${app}`],
       ["ex gate", false, "the gate didn't check _smoke.2"],
+      ["ingestion", false, "GET http://localhost:8100/health failed (ECONNREFUSED); is `pnpm fake-workspace` running?"],
+      ["retrieval", false, "nothing answers at 127.0.0.1:1; `pnpm ex up` starts ParadeDB"],
+      ["answer", false, `POST http://localhost:3000/api/auth/sign-in/email ${app}`],
     ]);
   });
 

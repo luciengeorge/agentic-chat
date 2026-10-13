@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import postgres from "postgres";
 
+import { createGraphClient } from "#learn/connectors/graph";
 import { loadWorld } from "@/fixtures/world";
 
 import { TOKEN_PREFIX } from "../../servers/fake-workspace/corpus";
 import { localEnv } from "./env";
 import { runGate } from "./gate";
+import { checkAnswer } from "./smoke-answer";
+import { checkRetrieval } from "./smoke-retrieval";
 
 export type CheckResult = { name: string; passed: boolean; detail: string | null; duration_s: number };
 /** Resolves with an optional detail when the check passes; throws when it fails. */
@@ -15,7 +18,10 @@ export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 /** Where the running stack answers, and how to reach it. */
 export type SmokeTargets = {
+  /** The app role's URL, which row-level security binds. */
   databaseUrl: string;
+  /** The owner's, for check 1's probe table; the app role can't create one. Defaults to databaseUrl. */
+  adminDatabaseUrl?: string;
   appUrl: string;
   workspaceUrl: string;
   /** The corpus fake-workspace serves; its manifest names the documents the checks look up. */
@@ -50,7 +56,8 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export function smokeTargets(root: string, env: NodeJS.ProcessEnv = process.env): SmokeTargets {
   const vars = localEnv(root, env);
   return {
-    databaseUrl: vars.DATABASE_URL || "postgres://ac:ac@localhost:5432/ac",
+    databaseUrl: vars.DATABASE_URL || "postgres://ac_app:ac_app@localhost:5432/ac",
+    adminDatabaseUrl: vars.DATABASE_ADMIN_URL || "postgres://ac:ac@localhost:5432/ac",
     appUrl: vars.BETTER_AUTH_URL || "http://localhost:3000",
     workspaceUrl: vars.FAKE_WORKSPACE_URL || "http://localhost:8100",
     corpusDir: resolve(root, vars.AC_CORPUS_DIR || "fixtures/corpus/build"),
@@ -60,7 +67,7 @@ export function smokeTargets(root: string, env: NodeJS.ProcessEnv = process.env)
 
 type Service = { url: string; start: string };
 
-async function send(fetch: Fetch, service: Service, path: string, init: RequestInit = {}): Promise<Response> {
+export async function send(fetch: Fetch, service: Service, path: string, init: RequestInit = {}): Promise<Response> {
   const url = path.startsWith("http") ? path : `${service.url}${path}`;
   try {
     return await fetch(url, init);
@@ -71,7 +78,7 @@ async function send(fetch: Fetch, service: Service, path: string, init: RequestI
   }
 }
 
-async function readText(response: Response, what: string): Promise<string> {
+export async function readText(response: Response, what: string): Promise<string> {
   const text = await response.text();
   if (!response.ok) throw new Error(`${what} answered ${response.status}: ${text.slice(0, 200).trim()}`);
   return text;
@@ -132,7 +139,7 @@ export async function checkParadeDb(databaseUrl: string): Promise<string> {
 type Viewer = { userId?: string; tenant?: { slug?: string } };
 
 /** Signs in through better-auth's own endpoint, as the login page does. */
-async function signIn(target: SmokeTargets, email: string, password: string): Promise<Response> {
+export async function signIn(target: SmokeTargets, email: string, password: string): Promise<Response> {
   return send(target.fetch, { url: target.appUrl, start: "pnpm dev" }, "/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json", origin: target.appUrl },
@@ -140,7 +147,7 @@ async function signIn(target: SmokeTargets, email: string, password: string): Pr
   });
 }
 
-function sessionCookie(response: Response): string {
+export function sessionCookie(response: Response): string {
   return response.headers
     .getSetCookie()
     .map((line) => line.split(";")[0])
@@ -242,6 +249,74 @@ export async function checkFakeWorkspace(target: SmokeTargets): Promise<string> 
   return `${memo.path}: write to ${EXEC} only; Harbour's token: 403; ${EXEC} reaches daniel.reyes, not leo.martin`;
 }
 
+type TenantDocument = { external_id: string; path: string; status: string; acl_version: string; chunks: number };
+
+/**
+ * 7. Ingestion: every file fake-workspace serves for each tenant is a `ready` document with chunks and a stamped
+ * ACL, nothing else is live, and the Heron memo's `document_acl` holds /Kestrel/Exec only. It reads as the app
+ * role, one tenant per transaction, as the app does.
+ */
+export async function checkIngestion(target: SmokeTargets): Promise<string> {
+  await send(target.fetch, { url: target.workspaceUrl, start: "pnpm fake-workspace" }, "/health");
+  const manifest = JSON.parse(readFileSync(join(target.corpusDir, "manifest.json"), "utf8")) as Manifest;
+  const [memo] = manifest.sites.kestrel?.items.filter((item) => item.traps?.includes("acl-leak")) ?? [];
+  if (!memo) throw new Error("the manifest has no acl-leak document");
+
+  const sql = postgres(target.databaseUrl, { max: 1, connect_timeout: 5, onnotice: () => {} });
+  const summary: string[] = [];
+  try {
+    for (const site of Object.keys(manifest.sites).sort()) {
+      const files: string[] = [];
+      const graph = createGraphClient({
+        baseUrl: target.workspaceUrl,
+        site,
+        token: `${TOKEN_PREFIX}${site}`,
+        fetch: target.fetch,
+      });
+      for await (const { item } of graph.crawl()) files.push(item.id);
+
+      const [tenant] = await sql<{ id: string }[]>`SELECT id FROM organization WHERE slug = ${site}`;
+      if (!tenant) throw new Error(`no ${site} organization; run \`pnpm db:seed\``);
+      const { live, heron } = await sql.begin(async (tx) => {
+        await tx`SELECT set_config('app.tenant_id', ${tenant.id}, true)`;
+        const live = await tx<TenantDocument[]>`
+          SELECT d.external_id, d.path, d.status, d.acl_version,
+            (SELECT count(*)::int FROM chunks c WHERE c.document_id = d.id AND c.document_version = d.version) AS chunks
+          FROM documents d WHERE d.status <> 'deleted'`;
+        const heron = await tx<{ name: string }[]>`
+          SELECT p.name FROM documents d
+          JOIN document_acl a ON a.document_id = d.id JOIN principals p ON p.id = a.principal_id
+          WHERE d.external_id = ${memo.id} ORDER BY p.name`;
+        return { live, heron };
+      });
+
+      const byId = new Map(live.map((row) => [row.external_id, row]));
+      const missing = files.filter((id) => !byId.has(id));
+      if (missing.length)
+        throw new Error(`${site}: ${missing.length} of ${files.length} files have no document; is a sync done?`);
+      const extra = live.filter((row) => !files.includes(row.external_id));
+      if (extra.length)
+        throw new Error(`${site}: ${extra.map((row) => row.path).join(", ")} live but gone from the drive`);
+      const unready = live.filter((row) => row.status !== "ready");
+      if (unready.length) {
+        throw new Error(`${site}: not ready: ${unready.map((row) => `${row.path} (${row.status})`).join(", ")}`);
+      }
+      const empty = live.filter((row) => row.chunks === 0 || Number(row.acl_version) === 0);
+      if (empty.length) throw new Error(`${site}: no chunks or no ACL: ${empty.map((row) => row.path).join(", ")}`);
+      summary.push(`${site} ${live.length} ready (${live.reduce((sum, row) => sum + row.chunks, 0)} chunks)`);
+
+      if (site === "kestrel") {
+        const names = heron.map((row) => row.name);
+        if (names.join() !== EXEC)
+          throw new Error(`${memo.path}'s document_acl holds [${names.join(", ")}], want ${EXEC} only`);
+      }
+    }
+  } finally {
+    await sql.end();
+  }
+  return `${summary.join(", ")}; ${memo.path}'s ACL: ${EXEC} only`;
+}
+
 export type SpikeOptions = { sleepMs?: number; pollMs?: number; timeoutMs?: number };
 
 const OPEN = ["pending", "running"];
@@ -338,11 +413,14 @@ export async function checkGate(root: string): Promise<string> {
 
 export function smokeChecks(root: string, target: SmokeTargets): [string, Check][] {
   return [
-    ["paradedb extensions and queries", () => checkParadeDb(target.databaseUrl)],
+    ["paradedb extensions and queries", () => checkParadeDb(target.adminDatabaseUrl ?? target.databaseUrl)],
     ["sign in and /api/me", () => checkSignIn(target)],
     ["banned user refused", () => checkBannedUser(target)],
     ["fake-workspace sharing and directory", () => checkFakeWorkspace(target)],
     ["spike workflow", () => checkSpikeWorkflow(target)],
     ["ex gate", () => checkGate(root)],
+    ["ingestion", () => checkIngestion(target)],
+    ["retrieval", () => checkRetrieval(target)],
+    ["answer", () => checkAnswer(target)],
   ];
 }

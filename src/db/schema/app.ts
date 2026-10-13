@@ -1,9 +1,12 @@
+import { indexing, tokenizer } from "@paradedb/drizzle-paradedb";
 import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  bytea,
   check,
   date,
+  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -21,9 +24,10 @@ import {
 
 import { organization } from "./auth";
 
-// Tenants are better-auth organizations. Every table here is tenant data, with RLS enabled, not forced. The
-// policy binds only a role that neither owns the table nor has BYPASSRLS: section 09.6's app role. The dev role
-// `ac` is the image's superuser, so it skips RLS even once section 09 forces it.
+// Tenants are better-auth organizations. Every table here is tenant data, with RLS enabled and, through the
+// `app_role` migration, forced (Drizzle can't declare FORCE). The policy binds the app role `ac_app`, which neither
+// owns the tables nor has BYPASSRLS. The owner `ac` is the image's superuser, so it still sees every row: only
+// `systemDb` connects as it.
 const tenantIsolation = () =>
   pgPolicy("tenant_isolation", {
     using: sql`tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid`,
@@ -68,6 +72,9 @@ export const outbox = pgTable(
     lastError: text("last_error"),
     /** Set once the relay gives up on the row (unknown kind, or out of attempts). */
     failedAt: timestamp("failed_at", { withTimezone: true }),
+    /** The workflow run that claimed the row. The relay delivers at least once, so a second run finds it taken. */
+    claimedBy: text("claimed_by"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
   },
   (t) => [
     index("outbox_pending_idx")
@@ -218,6 +225,25 @@ export const documentAcl = pgTable(
   ],
 );
 
+/** A document's raw bytes, content-addressed: `documents.storage_key` is the sha256 (hex). */
+export const documentBlobs = pgTable(
+  "document_blobs",
+  {
+    tenantId: tenantId(),
+    sha256: text("sha256").notNull(),
+    bytes: bytea("bytes").notNull(),
+    size: integer("size").notNull(),
+    mimeType: text("mime_type").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "document_blobs_pkey", columns: [t.tenantId, t.sha256] }),
+    check("document_blobs_sha256_check", sql`sha256 ~ '^[0-9a-f]{64}$'`),
+    check("document_blobs_size_check", sql`size = octet_length(bytes)`),
+    tenantIsolation(),
+  ],
+);
+
 export const chunks = pgTable(
   "chunks",
   {
@@ -238,6 +264,19 @@ export const chunks = pgTable(
   },
   (t) => [
     unique("chunks_document_id_document_version_ordinal_key").on(t.documentId, t.documentVersion, t.ordinal),
+    // Vector search (section 06): cosine, as the embeddings are compared by `<=>`.
+    index("chunks_embedding_hnsw_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+    // Lexical search (section 07). The text is split on Unicode word boundaries, stemmed and stripped of English
+    // stopwords, so "KPC-2026-0142" becomes kpc, 2026, 0142. tenant_id and document_id ride along so the ACL
+    // pre-filter (`document_id = ANY(...)`) and the RLS policy are answered inside the index.
+    indexing
+      .paradedbIndex("chunks_bm25_idx")
+      .on(
+        t.id,
+        indexing.paradedbField(t.text, tokenizer.unicodeWords({ stemmer: "english", stopwords_language: "english" })),
+        t.tenantId,
+        t.documentId,
+      ),
     check(
       "chunks_pages_check",
       sql`(page_start IS NULL) = (page_end IS NULL) AND (page_end IS NULL OR page_end >= page_start)`,
@@ -261,6 +300,10 @@ export const syncState = pgTable(
     deltaToken: text("delta_token"),
     lastFullCrawlAt: timestamp("last_full_crawl_at", { withTimezone: true }),
     lastDeltaAt: timestamp("last_delta_at", { withTimezone: true }),
+    /** The change-notification subscription, and a sha256 of the clientState it was created with. */
+    subscriptionId: text("subscription_id"),
+    clientStateHash: text("client_state_hash"),
+    subscriptionExpiresAt: timestamp("subscription_expires_at", { withTimezone: true }),
     updatedAt: updatedAt(),
   },
   (t) => [primaryKey({ name: "sync_state_pkey", columns: [t.tenantId, t.connector, t.scope] }), tenantIsolation()],
@@ -338,6 +381,29 @@ export const retrievalAudit = pgTable(
       foreignColumns: [principals.tenantId, principals.id],
     }),
     index("retrieval_audit_user_idx").on(t.userId),
+    tenantIsolation(),
+  ],
+);
+
+/** A token bucket per user and bucket name (section 11). `tokens` is what was left at `refilled_at`; a request
+ * refills it for the time since, then spends one, in a single upsert. */
+export const rateLimitBuckets = pgTable(
+  "rate_limit_buckets",
+  {
+    tenantId: tenantId(),
+    userId: uuid("user_id").notNull(),
+    bucket: text("bucket").notNull(),
+    tokens: doublePrecision("tokens").notNull(),
+    refilledAt: timestamp("refilled_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    primaryKey({ name: "rate_limit_buckets_pkey", columns: [t.tenantId, t.userId, t.bucket] }),
+    check("rate_limit_buckets_tokens_check", sql`tokens >= 0`),
+    foreignKey({
+      name: "rate_limit_buckets_tenant_id_user_id_fkey",
+      columns: [t.tenantId, t.userId],
+      foreignColumns: [principals.tenantId, principals.id],
+    }).onDelete("cascade"),
     tenantIsolation(),
   ],
 );

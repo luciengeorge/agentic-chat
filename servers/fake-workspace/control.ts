@@ -33,6 +33,7 @@ const UploadSchema = z.object({ content_base64: base64, mime_type: z.string().nu
 const MoveSchema = z.object({ parent_id: z.string(), name: z.string().nullish().default(null) });
 const RenameSchema = z.object({ name: z.string() });
 const ClockSchema = z.object({ now: awareDatetime.nullable() });
+const MemberSchema = z.object({ member_id: z.string() });
 
 export const CONTROL_HEADER = "x-workspace-control";
 /** What `FAKE_WORKSPACE_CONTROL_TOKEN` defaults to, as in `.env.example`. Public, like the dev bearer tokens. */
@@ -154,6 +155,25 @@ export function controlRoutes(app: Hono, rt: Runtime): void {
     const site = controlSite(c);
     site.delete(c.req.param("itemId"));
     changed(site);
+    return c.body(null, 204);
+  });
+
+  /** Directory membership, in memory until the next reset. Users only: subgroups follow their paths. */
+  const groupMembers = "/_control/sites/:site/groups/:groupId/members";
+
+  app.post(groupMembers, async (c) => {
+    const data = await readJson(c);
+    const site = controlSite(c);
+    const { member_id } = parseBody(MemberSchema, data);
+    const directory = rt.workspace.directories.get(site.name)!;
+    directory.setMembership(directory.group(c.req.param("groupId")), member_id, true);
+    return c.body(null, 201);
+  });
+
+  app.delete(`${groupMembers}/:memberId`, (c) => {
+    const site = controlSite(c);
+    const directory = rt.workspace.directories.get(site.name)!;
+    directory.setMembership(directory.group(c.req.param("groupId")), c.req.param("memberId"), false);
     return c.body(null, 204);
   });
 
