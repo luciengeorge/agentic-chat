@@ -18,6 +18,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
@@ -406,4 +407,189 @@ export const rateLimitBuckets = pgTable(
     }).onDelete("cascade"),
     tenantIsolation(),
   ],
+);
+
+/** An agent run (section 14). Its state is its event log, `run_events`; `status` and `version` are kept here so a
+ * writer can check both in the statement that appends. `version` counts appends: a writer that read version n
+ * appends only while it is still n. */
+export const runs = pgTable(
+  "runs",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id").notNull(),
+    conversationId: uuid("conversation_id"),
+    parentRunId: uuid("parent_run_id"),
+    kind: text("kind").notNull(),
+    status: text("status").notNull(),
+    version: integer("version").notNull().default(0),
+    workflowRunId: text("workflow_run_id"),
+    caps: jsonb("caps")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    /** Time spent running, in ms. Waiting on a message or an approval doesn't count. */
+    activeMs: bigint("active_ms", { mode: "number" }).notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("runs_tenant_id_id_key").on(t.tenantId, t.id),
+    check("runs_kind_check", sql`kind IN ('chat', 'automation', 'subagent')`),
+    check(
+      "runs_status_check",
+      sql`status IN ('queued', 'running', 'waiting', 'succeeded', 'failed', 'cancelled', 'timed_out')`,
+    ),
+    check("runs_caps_check", sql`jsonb_typeof(caps) = 'object'`),
+    foreignKey({
+      name: "runs_tenant_id_user_id_fkey",
+      columns: [t.tenantId, t.userId],
+      foreignColumns: [principals.tenantId, principals.id],
+    }),
+    foreignKey({
+      name: "runs_tenant_id_conversation_id_fkey",
+      columns: [t.tenantId, t.conversationId],
+      foreignColumns: [conversations.tenantId, conversations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "runs_tenant_id_parent_run_id_fkey",
+      columns: [t.tenantId, t.parentRunId],
+      foreignColumns: [t.tenantId, t.id],
+    }).onDelete("cascade"),
+    index("runs_user_idx").on(t.userId, t.createdAt),
+    index("runs_conversation_idx").on(t.conversationId),
+    index("runs_parent_idx").on(t.parentRunId),
+    tenantIsolation(),
+  ],
+);
+
+/** A run's append-only log. `seq` starts at 1 and has no gaps. `step_key` is the Workflow step that wrote the
+ * event (section 15), so a replayed step can't write it twice; it's null for events written outside Workflow.
+ * A user message's `messageId` is the client's idempotency key, unique per run. */
+export const runEvents = pgTable(
+  "run_events",
+  {
+    tenantId: tenantId(),
+    runId: uuid("run_id").notNull(),
+    seq: integer("seq").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    type: text("type").notNull(),
+    data: jsonb("data").notNull(),
+    stepKey: text("step_key"),
+  },
+  (t) => [
+    primaryKey({ name: "run_events_pkey", columns: [t.runId, t.seq] }),
+    unique("run_events_run_id_step_key_key").on(t.runId, t.stepKey),
+    uniqueIndex("run_events_run_id_message_id_key")
+      .on(t.runId, sql`(data ->> 'messageId')`)
+      .where(sql`type = 'user_message'`),
+    check("run_events_seq_check", sql`seq >= 1`),
+    check(
+      "run_events_type_check",
+      sql`type IN ('user_message', 'assistant_turn', 'tool_result', 'approval_requested', 'approval_decided', 'status', 'compaction', 'error')`,
+    ),
+    check("run_events_data_check", sql`jsonb_typeof(data) = 'object' AND data ->> 'type' = type`),
+    foreignKey({
+      name: "run_events_tenant_id_run_id_fkey",
+      columns: [t.tenantId, t.runId],
+      foreignColumns: [runs.tenantId, runs.id],
+    }).onDelete("cascade"),
+    tenantIsolation(),
+  ],
+);
+
+/** A write tool call waiting on its user. The run's log has the same story as events; this row is what the
+ * inbox lists and what a decision updates, once (`status` leaves `pending` only once). */
+export const approvals = pgTable(
+  "approvals",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    runId: uuid("run_id").notNull(),
+    callId: text("call_id").notNull(),
+    tool: text("tool").notNull(),
+    input: jsonb("input").notNull(),
+    status: text("status").notNull().default("pending"),
+    decidedBy: uuid("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("approvals_run_id_call_id_key").on(t.runId, t.callId),
+    check("approvals_status_check", sql`status IN ('pending', 'approved', 'rejected', 'expired')`),
+    check("approvals_decided_check", sql`(status = 'pending') = (decided_at IS NULL)`),
+    foreignKey({
+      name: "approvals_tenant_id_run_id_fkey",
+      columns: [t.tenantId, t.runId],
+      foreignColumns: [runs.tenantId, runs.id],
+    }).onDelete("cascade"),
+    index("approvals_pending_idx")
+      .on(t.expiresAt)
+      .where(sql`status = 'pending'`),
+    tenantIsolation(),
+  ],
+);
+
+/** Short notes a user's runs keep about them (the `remember` tool), loaded when a run starts. `source_run_id` is
+ * provenance only, so it has no foreign key: deleting a run keeps its notes. */
+export const memoryNotes = pgTable(
+  "memory_notes",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id").notNull(),
+    text: text("text").notNull(),
+    sourceRunId: uuid("source_run_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("memory_notes_text_check", sql`char_length(text) BETWEEN 1 AND 500`),
+    foreignKey({
+      name: "memory_notes_tenant_id_user_id_fkey",
+      columns: [t.tenantId, t.userId],
+      foreignColumns: [principals.tenantId, principals.id],
+    }).onDelete("cascade"),
+    index("memory_notes_user_idx").on(t.userId, t.createdAt),
+    tenantIsolation(),
+  ],
+);
+
+/** A user's agent tokens for one UTC day (section 13): checked before each model turn, charged after it. */
+export const agentBudgets = pgTable(
+  "agent_budgets",
+  {
+    tenantId: tenantId(),
+    userId: uuid("user_id").notNull(),
+    day: date("day").notNull(),
+    tokensUsed: bigint("tokens_used", { mode: "number" }).notNull().default(0),
+    tokenLimit: bigint("token_limit", { mode: "number" }).notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ name: "agent_budgets_pkey", columns: [t.tenantId, t.userId, t.day] }),
+    check("agent_budgets_tokens_check", sql`tokens_used >= 0 AND token_limit >= 0`),
+    foreignKey({
+      name: "agent_budgets_tenant_id_user_id_fkey",
+      columns: [t.tenantId, t.userId],
+      foreignColumns: [principals.tenantId, principals.id],
+    }).onDelete("cascade"),
+    tenantIsolation(),
+  ],
+);
+
+/** The per-tenant agent kill switch (section 13). No row means enabled. */
+export const agentSwitches = pgTable(
+  "agent_switches",
+  {
+    tenantId: uuid("tenant_id")
+      .primaryKey()
+      .references(() => organization.id),
+    enabled: boolean("enabled").notNull(),
+    reason: text("reason"),
+    /** The user who flipped it, or null for a script. */
+    updatedBy: uuid("updated_by"),
+    updatedAt: updatedAt(),
+  },
+  () => [tenantIsolation()],
 );

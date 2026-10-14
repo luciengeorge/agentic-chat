@@ -22,7 +22,8 @@ export function echoModel({ delayMs = 25 }: { delayMs?: number } = {}): ChatMode
   return {
     id: "fake:echo",
     async *stream(request): AsyncGenerator<ChatEvent> {
-      const prompt = request.messages.at(-1)?.content ?? "";
+      const last = request.messages.at(-1);
+      const prompt = last?.role === "user" ? last.content : "";
       const sources = [...prompt.matchAll(/<source id="(S\d+)" title="([^"]*)"[^>]*>\n([\s\S]*?)\n<\/source>/g)];
       const lines = sources.slice(0, 2).map(([, label, title, text]) => {
         const sentence = firstSentence(text);

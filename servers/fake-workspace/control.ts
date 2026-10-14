@@ -73,10 +73,13 @@ export function controlRoutes(app: Hono, rt: Runtime): void {
     rt.notifier.changed(site.name, site.seq);
   }
 
-  /** Reload the manifest; drop faults, subscriptions, deliveries, the change log and the clock. */
+  /** Reload the manifest; drop faults, subscriptions, deliveries, the change log, the clock, sent mail and
+   * idempotency keys. */
   app.post("/_control/reset", async (c) => {
     await rt.notifier.reset();
     rt.faults.clear();
+    rt.mailroom.clear();
+    rt.idempotency.clear();
     rt.clock.pinned = null;
     try {
       rt.workspace.reset();

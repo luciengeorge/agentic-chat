@@ -1,7 +1,7 @@
 import { countTokens as count } from "gpt-tokenizer/encoding/o200k_base";
 
 import type { CitableSource } from "#learn/cite/citations";
-import type { ChatMessage } from "#learn/model/types";
+import type { TextMessage } from "#learn/model/types";
 import type { RetrievedChunk } from "#learn/retrieve/types";
 
 /** What the assistant says when the sources don't answer. It doesn't say whether anything was withheld: "you
@@ -27,7 +27,7 @@ export const DEFAULT_BUDGET: PromptBudget = { sources: 6000, history: 1500 };
 
 export interface Prompt {
   instructions: string;
-  messages: ChatMessage[];
+  messages: TextMessage[];
   /** The sources the model saw, labelled S1, S2… in rank order. */
   sources: CitableSource[];
   /** Retrieved chunks left out for the budget. */
@@ -81,7 +81,7 @@ export function buildPrompt({
 }: {
   question: string;
   chunks: RetrievedChunk[];
-  history?: ChatMessage[];
+  history?: TextMessage[];
   budget?: PromptBudget;
 }): Prompt {
   const sources: CitableSource[] = [];
@@ -110,7 +110,7 @@ export function buildPrompt({
     });
   }
 
-  const kept: ChatMessage[] = [];
+  const kept: TextMessage[] = [];
   let historyTokens = 0;
   for (const message of [...history].reverse()) {
     const content = message.role === "assistant" ? stripCitations(message.content) : message.content;

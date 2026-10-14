@@ -43,3 +43,62 @@ export function promptText(mock: MockLanguageModelV4, call = 0): string {
     )
     .join("\n");
 }
+
+export interface ScriptedTurn {
+  text?: string;
+  /** `input` is sent as JSON, or as given when it's a string (to script arguments that don't parse). */
+  toolCalls?: Array<{ callId: string; name: string; input: unknown }>;
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
+/**
+ * A scripted fake for agent tests: the AI SDK's mock model answers its nth call with the nth turn, text first and
+ * then each tool call whole. A call past the script fails the test.
+ */
+export function scriptedTurns(turns: ScriptedTurn[]): { model: ChatModel; mock: MockLanguageModelV4 } {
+  let call = 0;
+  const mock = new MockLanguageModelV4({
+    modelId: "scripted-turns",
+    doStream: async () => {
+      const turn = turns[call++];
+      if (!turn) throw new Error(`the script has ${turns.length} turns; the model was called again`);
+      const calls = turn.toolCalls ?? [];
+      return {
+        stream: simulateReadableStream({
+          chunks: [
+            ...(turn.text
+              ? [
+                  { type: "text-start" as const, id: "t" },
+                  { type: "text-delta" as const, id: "t", delta: turn.text },
+                  { type: "text-end" as const, id: "t" },
+                ]
+              : []),
+            ...calls.map((c) => ({
+              type: "tool-call" as const,
+              toolCallId: c.callId,
+              toolName: c.name,
+              input: typeof c.input === "string" ? c.input : JSON.stringify(c.input),
+            })),
+            {
+              type: "finish" as const,
+              finishReason: calls.length
+                ? { unified: "tool-calls" as const, raw: "tool_calls" }
+                : { unified: "stop" as const, raw: "stop" },
+              usage: {
+                inputTokens: {
+                  total: turn.inputTokens ?? 100,
+                  noCache: turn.inputTokens ?? 100,
+                  cacheRead: undefined,
+                  cacheWrite: undefined,
+                },
+                outputTokens: { total: turn.outputTokens ?? 10, text: turn.outputTokens ?? 10, reasoning: 0 },
+              },
+            },
+          ],
+        }),
+      };
+    },
+  });
+  return { model: aiSdkChatModel(mock), mock };
+}

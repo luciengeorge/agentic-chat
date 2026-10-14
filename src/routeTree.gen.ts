@@ -20,10 +20,15 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiChatIndexRouteImport } from './routes/api/chat/index'
 import { Route as ApiIngestOcrRouteImport } from './routes/api/ingest/ocr'
 import { Route as ApiIngestRasteriseRouteImport } from './routes/api/ingest/rasterise'
+import { Route as ApiMemoryIndexRouteImport } from './routes/api/memory/index'
+import { Route as ApiMemoryNoteIdRouteImport } from './routes/api/memory/$noteId'
+import { Route as ApiRunsIndexRouteImport } from './routes/api/runs/index'
 import { Route as ApiSpikeIndexRouteImport } from './routes/api/spike/index'
 import { Route as ApiSpikeResumeRouteImport } from './routes/api/spike/resume'
 import { Route as ApiWebhooksWorkspaceRouteImport } from './routes/api/webhooks/workspace'
 import { Route as ApiChatDocumentsDocumentIdRouteImport } from './routes/api/chat/documents.$documentId'
+import { Route as ApiRunsRunIdMessagesRouteImport } from './routes/api/runs/$runId.messages'
+import { Route as ApiRunsRunIdStreamRouteImport } from './routes/api/runs/$runId.stream'
 import { Route as ApiSpikeRunIdIndexRouteImport } from './routes/api/spike/$runId/index'
 import { Route as ApiSpikeRunIdStreamRouteImport } from './routes/api/spike/$runId/stream'
 
@@ -82,6 +87,21 @@ const ApiIngestRasteriseRoute = ApiIngestRasteriseRouteImport.update({
   path: '/api/ingest/rasterise',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMemoryIndexRoute = ApiMemoryIndexRouteImport.update({
+  id: '/api/memory/',
+  path: '/api/memory/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMemoryNoteIdRoute = ApiMemoryNoteIdRouteImport.update({
+  id: '/api/memory/$noteId',
+  path: '/api/memory/$noteId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRunsIndexRoute = ApiRunsIndexRouteImport.update({
+  id: '/api/runs/',
+  path: '/api/runs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSpikeIndexRoute = ApiSpikeIndexRouteImport.update({
   id: '/api/spike/',
   path: '/api/spike/',
@@ -103,6 +123,16 @@ const ApiChatDocumentsDocumentIdRoute =
     path: '/api/chat/documents/$documentId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiRunsRunIdMessagesRoute = ApiRunsRunIdMessagesRouteImport.update({
+  id: '/api/runs/$runId/messages',
+  path: '/api/runs/$runId/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRunsRunIdStreamRoute = ApiRunsRunIdStreamRouteImport.update({
+  id: '/api/runs/$runId/stream',
+  path: '/api/runs/$runId/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSpikeRunIdIndexRoute = ApiSpikeRunIdIndexRouteImport.update({
   id: '/api/spike/$runId/',
   path: '/api/spike/$runId/',
@@ -125,11 +155,16 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
+  '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/chat/': typeof ApiChatIndexRoute
+  '/api/memory/': typeof ApiMemoryIndexRoute
+  '/api/runs/': typeof ApiRunsIndexRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
   '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
+  '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
+  '/api/runs/$runId/stream': typeof ApiRunsRunIdStreamRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
@@ -143,11 +178,16 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
+  '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/chat': typeof ApiChatIndexRoute
+  '/api/memory': typeof ApiMemoryIndexRoute
+  '/api/runs': typeof ApiRunsIndexRoute
   '/api/spike': typeof ApiSpikeIndexRoute
   '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
+  '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
+  '/api/runs/$runId/stream': typeof ApiRunsRunIdStreamRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId': typeof ApiSpikeRunIdIndexRoute
 }
@@ -163,11 +203,16 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
+  '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/chat/': typeof ApiChatIndexRoute
+  '/api/memory/': typeof ApiMemoryIndexRoute
+  '/api/runs/': typeof ApiRunsIndexRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
   '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
+  '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
+  '/api/runs/$runId/stream': typeof ApiRunsRunIdStreamRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
@@ -184,11 +229,16 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
+    | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
     | '/api/chat/'
+    | '/api/memory/'
+    | '/api/runs/'
     | '/api/spike/'
     | '/api/chat/documents/$documentId'
+    | '/api/runs/$runId/messages'
+    | '/api/runs/$runId/stream'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId/'
   fileRoutesByTo: FileRoutesByTo
@@ -202,11 +252,16 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
+    | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
     | '/api/chat'
+    | '/api/memory'
+    | '/api/runs'
     | '/api/spike'
     | '/api/chat/documents/$documentId'
+    | '/api/runs/$runId/messages'
+    | '/api/runs/$runId/stream'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId'
   id:
@@ -221,11 +276,16 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
+    | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
     | '/api/chat/'
+    | '/api/memory/'
+    | '/api/runs/'
     | '/api/spike/'
     | '/api/chat/documents/$documentId'
+    | '/api/runs/$runId/messages'
+    | '/api/runs/$runId/stream'
     | '/api/spike/$runId/stream'
     | '/api/spike/$runId/'
   fileRoutesById: FileRoutesById
@@ -239,11 +299,16 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiIngestOcrRoute: typeof ApiIngestOcrRoute
   ApiIngestRasteriseRoute: typeof ApiIngestRasteriseRoute
+  ApiMemoryNoteIdRoute: typeof ApiMemoryNoteIdRoute
   ApiSpikeResumeRoute: typeof ApiSpikeResumeRoute
   ApiWebhooksWorkspaceRoute: typeof ApiWebhooksWorkspaceRoute
   ApiChatIndexRoute: typeof ApiChatIndexRoute
+  ApiMemoryIndexRoute: typeof ApiMemoryIndexRoute
+  ApiRunsIndexRoute: typeof ApiRunsIndexRoute
   ApiSpikeIndexRoute: typeof ApiSpikeIndexRoute
   ApiChatDocumentsDocumentIdRoute: typeof ApiChatDocumentsDocumentIdRoute
+  ApiRunsRunIdMessagesRoute: typeof ApiRunsRunIdMessagesRoute
+  ApiRunsRunIdStreamRoute: typeof ApiRunsRunIdStreamRoute
   ApiSpikeRunIdStreamRoute: typeof ApiSpikeRunIdStreamRoute
   ApiSpikeRunIdIndexRoute: typeof ApiSpikeRunIdIndexRoute
 }
@@ -327,6 +392,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIngestRasteriseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/memory/': {
+      id: '/api/memory/'
+      path: '/api/memory'
+      fullPath: '/api/memory/'
+      preLoaderRoute: typeof ApiMemoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/memory/$noteId': {
+      id: '/api/memory/$noteId'
+      path: '/api/memory/$noteId'
+      fullPath: '/api/memory/$noteId'
+      preLoaderRoute: typeof ApiMemoryNoteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/runs/': {
+      id: '/api/runs/'
+      path: '/api/runs'
+      fullPath: '/api/runs/'
+      preLoaderRoute: typeof ApiRunsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/spike/': {
       id: '/api/spike/'
       path: '/api/spike'
@@ -353,6 +439,20 @@ declare module '@tanstack/react-router' {
       path: '/api/chat/documents/$documentId'
       fullPath: '/api/chat/documents/$documentId'
       preLoaderRoute: typeof ApiChatDocumentsDocumentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/runs/$runId/messages': {
+      id: '/api/runs/$runId/messages'
+      path: '/api/runs/$runId/messages'
+      fullPath: '/api/runs/$runId/messages'
+      preLoaderRoute: typeof ApiRunsRunIdMessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/runs/$runId/stream': {
+      id: '/api/runs/$runId/stream'
+      path: '/api/runs/$runId/stream'
+      fullPath: '/api/runs/$runId/stream'
+      preLoaderRoute: typeof ApiRunsRunIdStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/spike/$runId/': {
@@ -395,11 +495,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiIngestOcrRoute: ApiIngestOcrRoute,
   ApiIngestRasteriseRoute: ApiIngestRasteriseRoute,
+  ApiMemoryNoteIdRoute: ApiMemoryNoteIdRoute,
   ApiSpikeResumeRoute: ApiSpikeResumeRoute,
   ApiWebhooksWorkspaceRoute: ApiWebhooksWorkspaceRoute,
   ApiChatIndexRoute: ApiChatIndexRoute,
+  ApiMemoryIndexRoute: ApiMemoryIndexRoute,
+  ApiRunsIndexRoute: ApiRunsIndexRoute,
   ApiSpikeIndexRoute: ApiSpikeIndexRoute,
   ApiChatDocumentsDocumentIdRoute: ApiChatDocumentsDocumentIdRoute,
+  ApiRunsRunIdMessagesRoute: ApiRunsRunIdMessagesRoute,
+  ApiRunsRunIdStreamRoute: ApiRunsRunIdStreamRoute,
   ApiSpikeRunIdStreamRoute: ApiSpikeRunIdStreamRoute,
   ApiSpikeRunIdIndexRoute: ApiSpikeRunIdIndexRoute,
 }
