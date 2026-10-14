@@ -1,4 +1,4 @@
-import type { ChatModel, FinishReason, ReasoningEffort, Usage } from "./types";
+import type { ChatMessage, ChatModel, FinishReason, ReasoningEffort, ToolChoice, Usage } from "./types";
 
 /**
  * A hand-written client for OpenAI's Responses API (`POST /v1/responses`), streaming only. It shows the wire
@@ -23,6 +23,7 @@ export interface ResponsesRequest {
   instructions?: string;
   input: ResponsesInputItem[];
   tools?: ResponsesTool[];
+  toolChoice?: ToolChoice;
   reasoningEffort: ReasoningEffort;
   maxOutputTokens?: number;
 }
@@ -64,6 +65,14 @@ export function buildRequestBody(request: ResponsesRequest) {
             parameters: { ...tool.parameters, additionalProperties: tool.parameters.additionalProperties ?? false },
             strict: true,
           })),
+          ...(request.toolChoice === undefined
+            ? {}
+            : {
+                tool_choice:
+                  typeof request.toolChoice === "string"
+                    ? request.toolChoice
+                    : { type: "function" as const, name: request.toolChoice.tool },
+              }),
         }
       : {}),
     reasoning: { effort: request.reasoningEffort },
@@ -231,6 +240,50 @@ async function httpError(response: Response): Promise<ResponsesApiError> {
   return new ResponsesApiError(`HTTP ${response.status}`, response.status, undefined);
 }
 
+/**
+ * Our messages as Responses input items. With `store: false` nothing is kept between turns, so an assistant turn's
+ * calls go back as `function_call` items and their results as `function_call_output`, which is always a string.
+ */
+export function toInputItems(messages: ChatMessage[]): ResponsesInputItem[] {
+  return messages.flatMap((message): ResponsesInputItem[] => {
+    switch (message.role) {
+      case "user":
+        return [{ role: "user", content: message.content }];
+      case "assistant":
+        return [
+          ...(message.content || !message.toolCalls?.length
+            ? [{ role: "assistant" as const, content: message.content }]
+            : []),
+          ...(message.toolCalls ?? []).map((call) => ({
+            type: "function_call" as const,
+            call_id: call.callId,
+            name: call.name,
+            arguments: typeof call.input === "string" ? call.input : JSON.stringify(call.input),
+          })),
+        ];
+      case "tool":
+        return [
+          {
+            type: "function_call_output",
+            call_id: message.callId,
+            output: message.isError
+              ? JSON.stringify({ error: String(message.output) })
+              : JSON.stringify(message.output ?? null),
+          },
+        ];
+    }
+  });
+}
+
+/** Arguments that aren't JSON stay a string, so the loop can answer the call with a validation error. */
+function parseArguments(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
 /** The hand-written client as a `ChatModel`. */
 export function responsesChatModel(deps: Omit<ResponsesDeps, "signal"> & { model: string }): ChatModel {
   return {
@@ -240,7 +293,13 @@ export function responsesChatModel(deps: Omit<ResponsesDeps, "signal"> & { model
         {
           model: deps.model,
           instructions: request.instructions,
-          input: request.messages.map((m) => ({ role: m.role, content: m.content })),
+          input: toInputItems(request.messages),
+          tools: request.tools?.map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.inputSchema,
+          })),
+          toolChoice: request.toolChoice,
           reasoningEffort: request.reasoningEffort,
           maxOutputTokens: request.maxOutputTokens,
         },
@@ -248,6 +307,8 @@ export function responsesChatModel(deps: Omit<ResponsesDeps, "signal"> & { model
       );
       for await (const event of events) {
         if (event.type === "text-delta") yield event;
+        else if (event.type === "tool-call")
+          yield { type: "tool-call", callId: event.callId, name: event.name, input: parseArguments(event.arguments) };
         else if (event.type === "finish")
           yield { type: "finish", finishReason: event.finishReason, usage: event.usage };
       }

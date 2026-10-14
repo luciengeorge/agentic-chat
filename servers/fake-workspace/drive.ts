@@ -46,7 +46,7 @@ export function driveItem(site: Site, item: Item, delta = false): Json {
   return body;
 }
 
-function permission(site: Site, item: Item, { grant, source }: Effective): Json {
+export function permission(site: Site, item: Item, { grant, source }: Effective): Json {
   const grantedBy = source ?? item;
   const key = `permission:${grantedBy.id}:${grant.principal_type}:${grant.principal_id}`;
   const grantedToV2 =
