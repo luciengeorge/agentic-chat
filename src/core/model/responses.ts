@@ -1,4 +1,16 @@
-import type { ChatMessage, ChatModel, FinishReason, ReasoningEffort, ToolChoice, Usage } from "./types";
+import { z } from "zod";
+
+import type {
+  ChatMessage,
+  ChatModel,
+  FinishReason,
+  ObjectRequest,
+  ObjectResult,
+  ReasoningEffort,
+  StructuredModel,
+  ToolChoice,
+  Usage,
+} from "./types";
 
 /**
  * A hand-written client for OpenAI's Responses API (`POST /v1/responses`), streaming only. It shows the wire
@@ -284,10 +296,95 @@ function parseArguments(text: string): unknown {
   }
 }
 
+/**
+ * The JSON Schema OpenAI's strict mode takes from a zod schema. zod already closes every object
+ * (`additionalProperties: false`) and lists its fields as required; the `$schema` key is dropped.
+ */
+export function strictJsonSchema(schema: z.ZodType): Record<string, unknown> {
+  const { $schema: _, ...json } = z.toJSONSchema(schema) as Record<string, unknown>;
+  return json;
+}
+
+/**
+ * Structured output: the same request with `stream: false` and `text.format` set to a strict JSON Schema, so the
+ * model can only write an object that matches it.
+ */
+export function buildObjectRequestBody(
+  request: Omit<ResponsesRequest, "tools" | "toolChoice">,
+  format: { name: string; schema: Record<string, unknown> },
+) {
+  return {
+    ...buildRequestBody(request),
+    stream: false,
+    text: { format: { type: "json_schema" as const, name: format.name, schema: format.schema, strict: true } },
+  };
+}
+
+interface WireOutputItem {
+  type: string;
+  content?: Array<{ type: string; text?: string; refusal?: string }>;
+}
+
+/**
+ * One structured-output call: the text of the reply's message item, parsed as JSON and checked with `schema`.
+ * Throws `ResponsesApiError` for an HTTP error, a refusal or a reply cut off before it closed the object, and
+ * zod's error for an object that doesn't match.
+ */
+export async function createObject<T>(
+  request: Omit<ResponsesRequest, "tools" | "toolChoice"> & { name: string },
+  schema: z.ZodType<T>,
+  deps: ResponsesDeps,
+): Promise<ObjectResult<T>> {
+  const fetch = deps.fetch ?? globalThis.fetch;
+  const response = await fetch(`${deps.baseUrl ?? "https://api.openai.com/v1"}/responses`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${deps.apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify(buildObjectRequestBody(request, { name: request.name, schema: strictJsonSchema(schema) })),
+    signal: deps.signal,
+  });
+  if (!response.ok) throw await httpError(response);
+  const body = (await response.json()) as WireResponse & { status?: string; output?: WireOutputItem[] };
+  if (body.status !== "completed") {
+    throw new ResponsesApiError(
+      `the response is ${body.status ?? "unknown"}${body.incomplete_details?.reason ? `: ${body.incomplete_details.reason}` : ""}`,
+      undefined,
+      body.error?.code,
+    );
+  }
+  const parts = (body.output ?? []).filter((item) => item.type === "message").flatMap((item) => item.content ?? []);
+  const refusal = parts.find((part) => part.type === "refusal");
+  if (refusal) throw new ResponsesApiError(`the model refused: ${refusal.refusal ?? ""}`, undefined, "refusal");
+  const text = parts.flatMap((part) => (part.type === "output_text" ? [part.text ?? ""] : [])).join("");
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new ResponsesApiError("the reply isn't JSON", undefined, undefined);
+  }
+  return { object: schema.parse(json), usage: toUsage(body.usage) };
+}
+
 /** The hand-written client as a `ChatModel`. */
-export function responsesChatModel(deps: Omit<ResponsesDeps, "signal"> & { model: string }): ChatModel {
+export function responsesChatModel(
+  deps: Omit<ResponsesDeps, "signal"> & { model: string },
+): ChatModel & StructuredModel {
   return {
     id: `responses:${deps.model}`,
+
+    object: <T>(request: ObjectRequest, schema: z.ZodType<T>) =>
+      createObject(
+        {
+          model: deps.model,
+          name: request.name,
+          instructions: request.instructions,
+          input: toInputItems(request.messages),
+          reasoningEffort: request.reasoningEffort,
+          maxOutputTokens: request.maxOutputTokens,
+        },
+        schema,
+        { ...deps, signal: request.abortSignal },
+      ),
+
     async *stream(request) {
       const events = streamResponses(
         {

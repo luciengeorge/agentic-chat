@@ -1,4 +1,5 @@
 import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { v5 as uuidv5 } from "uuid";
 
 import type { Db } from "./create";
 import type { Tx } from "./tenant";
@@ -104,6 +105,42 @@ export async function claim(tx: Tx, id: string, runId: string): Promise<boolean>
     .where(and(eq(outbox.id, id), or(isNull(outbox.claimedBy), eq(outbox.claimedBy, runId))))
     .returning({ id: outbox.id });
   return rows.length === 1;
+}
+
+const RECORD_NAMESPACE = "6f6c1d2a-4b0e-4c55-9a51-2f9d8e0c7b13";
+
+/** The id of the record a workflow-first run writes for `key` (say `ingest:<document>:<version>`): the same key
+ * always gives the same id, so a second run for the same work finds the first one's record. */
+export const recordIdFor = (key: string) => uuidv5(key, RECORD_NAMESPACE);
+
+/**
+ * The workflow-first shape: the run started first, and its first step writes the record, already published (no
+ * relay delivers it) and claimed by this run. A second run for the same work (a retried start) finds the record
+ * claimed by the first and gets false, as a duplicate delivery does with `claim`. A retried step of the same run
+ * gets true again.
+ */
+export async function recordStart(
+  tx: Tx,
+  tenantId: string,
+  message: OutboxMessage,
+  partitionKey: string,
+  id: string,
+  runId: string,
+): Promise<boolean> {
+  await tx
+    .insert(outbox)
+    .values({
+      id,
+      tenantId,
+      kind: message.kind,
+      payload: message.payload,
+      partitionKey,
+      publishedAt: new Date(),
+      claimedBy: runId,
+      claimedAt: new Date(),
+    })
+    .onConflictDoNothing();
+  return claim(tx, id, runId);
 }
 
 /** The delivery can't succeed for this row: it's marked failed at once. */

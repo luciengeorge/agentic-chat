@@ -2,6 +2,7 @@ import { type SQL, sql } from "drizzle-orm";
 
 import type { Tx } from "@/db/tenant";
 
+import { cachedPrincipals, type PrincipalCache, sharedPrincipalCache } from "#learn/acl/principal-cache";
 import { uuidArray } from "#learn/search/sql";
 
 /** The viewer is not a principal of this tenant: the directory hasn't synced them, or they belong elsewhere. */
@@ -15,8 +16,22 @@ export interface ViewerPrincipals {
   principalIds: string[];
 }
 
-/** The user plus every group they're in, directly or through nesting (`group_closure`). */
-export async function viewerPrincipals(tx: Tx, userId: string): Promise<ViewerPrincipals> {
+/**
+ * The user plus every group they're in, directly or through nesting (`group_closure`). Read through the principal
+ * cache, which reuses a set until directory sync bumps the tenant's version; pass `null` to read it every time.
+ */
+export async function viewerPrincipals(
+  tx: Tx,
+  userId: string,
+  cache: PrincipalCache | null = sharedPrincipalCache,
+): Promise<ViewerPrincipals> {
+  const principalIds = cache
+    ? await cachedPrincipals(tx, userId, cache, loadPrincipals)
+    : await loadPrincipals(tx, userId);
+  return { userId, principalIds };
+}
+
+async function loadPrincipals(tx: Tx, userId: string): Promise<string[]> {
   const rows = await tx.execute<{ id: string; kind: string }>(sql`
     SELECT id, kind FROM principals WHERE id = ${userId}
     UNION ALL
@@ -24,7 +39,7 @@ export async function viewerPrincipals(tx: Tx, userId: string): Promise<ViewerPr
   if (!rows.some((row) => row.id === userId && row.kind === "user")) {
     throw new UnknownViewerError(`no user principal ${userId} in this tenant`);
   }
-  return { userId, principalIds: rows.map((row) => row.id) };
+  return rows.map((row) => row.id);
 }
 
 /**

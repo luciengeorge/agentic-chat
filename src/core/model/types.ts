@@ -1,3 +1,5 @@
+import type { z } from "zod";
+
 /** OpenAI's effort levels for gpt-6-luna. There is no default on purpose: every call names one. */
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -67,4 +69,32 @@ export type ChatEvent =
 export interface ChatModel {
   readonly id: string;
   stream(request: ChatRequest): AsyncIterable<ChatEvent>;
+}
+
+/**
+ * A request for one JSON object instead of prose (structured output). The provider constrains the model to the
+ * schema; the result is still checked against it, since a refusal or a cut-off reply can't match.
+ */
+export interface ObjectRequest {
+  instructions: string;
+  messages: ChatMessage[];
+  /** The schema's name, sent to the provider: letters, digits, `_` and `-`. */
+  name: string;
+  reasoningEffort: ReasoningEffort;
+  maxOutputTokens?: number;
+  abortSignal?: AbortSignal;
+}
+
+export interface ObjectResult<T> {
+  object: T;
+  usage: Usage;
+}
+
+/**
+ * A model that can answer with an object matching a zod schema. Both implementations of `ChatModel` are one too.
+ * OpenAI's strict mode needs every field required: write an optional one as `.nullable()`.
+ */
+export interface StructuredModel {
+  readonly id: string;
+  object<T>(request: ObjectRequest, schema: z.ZodType<T>): Promise<ObjectResult<T>>;
 }

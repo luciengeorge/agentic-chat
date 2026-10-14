@@ -1,13 +1,13 @@
 # Golden set: 2026-10-14 (retrieval-only)
 
-Started 2026-10-14T16:00:09.215Z. Embeddings `text-embedding-3-small@1536`, reranker `cohere/rerank-v4.0-fast`, rewriter `gpt-6-luna (medium)`, answers `not run`. Retrieval at k = 10 (40 per list, 60 candidates, 30 reranked); answers from the first 8.
+Started 2026-10-14T16:46:02.357Z. Embeddings `text-embedding-3-small@1536`, reranker `cohere/rerank-v4.0-fast`, rewriter `gpt-6-luna (medium)`, answers `not run`. Retrieval at k = 10 (40 per list, 60 candidates, 30 reranked); answers from the first 8.
 
 ```
 golden set, retrieval-only: 46 questions
 gates PASS: leaks [], cross-tenant [], abstentions missed [], errors []
 scores PASS: recall@10 1.000 (bar 0.85), MRR 0.931 (bar 0.6), NDCG@10 0.938
 answers: not run
-cost: $0.0028; embeddings 2614 tokens; rewrites 8728 in / 3817 out; answers 0 in / 0 out; 45 rerank calls
+cost: $0.0029; embeddings 2624 tokens; rewrites 8728 in / 3867 out; answers 0 in / 0 out; 45 rerank calls
 ```
 
 ## Scores by trap (answer cases)
@@ -85,7 +85,7 @@ kestrel/leo.martin: How much can I claim a day for meals when I travel for work?
 
 Labels: [0] /HR/Policies/Travel and Expenses Policy v2.pdf p2
 
-Rewrites: "business travel daily meal allowance claim limit", "per diem rates for meals during work travel", "employee travel expense reimbursement meal limits per day"
+Rewrites: "daily meal allowance limit for business travel", "work travel meals per diem reimbursement policy", "maximum daily claim for meals while travelling for work"
 
 Top 10:
 
@@ -106,20 +106,20 @@ kestrel/rachel.obi: What is the nightly limit for a hotel in London?
 
 Labels: [0] /HR/Policies/Travel and Expenses Policy v2.pdf p2
 
-Rewrites: "London hotel nightly rate limit or accommodation cap in the travel expense policy", "maximum allowable hotel cost per night in London; lodging and accommodation reimbursement limits", "business travel hotel nightly spending limit for London"
+Rewrites: "London hotel maximum nightly rate limit", "lodging accommodation per-night cap or reimbursement limit for London", "London hotel nightly limit"
 
 Top 10:
 
 1. /HR/Policies/Travel and Expenses Policy.pdf p2 (0.851)
 2. /HR/Policies/Travel and Expenses Policy v2.pdf p2 (0.85) finds [0]
 3. /HR/Policies/Travel and Expenses Policy v2.pdf p4 (0.836)
-4. /HR/Policies/Travel and Expenses Policy v2.pdf p2 (0.71)
-5. /HR/Policies/Travel and Expenses Policy.pdf p2 (0.687)
+4. /HR/Policies/Travel and Expenses Policy v2.pdf p2 (0.712)
+5. /HR/Policies/Travel and Expenses Policy.pdf p2 (0.689)
 6. /HR/Policies/Travel and Expenses Policy.pdf p2 (0.42)
 7. /HR/Policies/Travel and Expenses Policy v2.pdf p2 (0.409)
-8. /Company/Code of Conduct.pdf p2-3 (0.315)
+8. /Company/Code of Conduct.pdf p2-3 (0.319)
 9. /Company/Code of Conduct.pdf p1 (0.302)
-10. /HR/Policies/Travel and Expenses Policy.pdf p1 (0.232)
+10. /HR/Policies/Travel and Expenses Policy.pdf p1 (0.235)
 
 ### ocr-msa-received
 
@@ -127,7 +127,7 @@ kestrel/tom.whitfield: When did Kestrel Legal receive the signed Ashgrove master
 
 Labels: [0] /Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf p3
 
-Rewrites: "Date Kestrel Legal received the executed Ashgrove master services agreement", "Kestrel Legal receipt of signed master services agreement (MSA) for Ashgrove", "Ashgrove signed master services agreement received by Kestrel Legal date"
+Rewrites: "Kestrel Legal receipt date of signed Ashgrove master services agreement", "When was the executed Ashgrove MSA received by Kestrel Legal?", "Ashgrove master services agreement signed copy received date Kestrel Legal"
 
 Top 10:
 
@@ -148,7 +148,7 @@ kestrel/daniel.reyes: What enterprise value is the board asked to approve for Pr
 
 Labels: [0] /Exec/Project Heron Board Memo.pdf p1; [1] /Exec/Project Heron Board Memo.pdf p3; [2] /Exec/Exec Offsite Notes Sept 2026.pdf p1
 
-Rewrites: "Project Heron enterprise value submitted for board approval and completion cash funding sources", "Project Heron transaction valuation enterprise value, cash consideration at completion, and funding arrangements", "Board approval request for Project Heron: enterprise value and financing of completion cash"
+Rewrites: "Project Heron enterprise value submitted for board approval and completion cash funding", "Project Heron transaction valuation enterprise value approval; sources of funds for completion cash", "Project Heron board approval purchase price enterprise value cash at completion funding sources"
 
 Top 10:
 
@@ -158,9 +158,9 @@ Top 10:
 4. /Exec/Project Heron Integration Plan v0.4.docx (0.791)
 5. /Exec/Exec Offsite Notes Sept 2026.pdf p1-2 (0.686) finds [2]
 6. /Exec/Project Heron Board Memo.pdf p3 (0.6) finds [1]
-7. /Exec/Board Pack 2026-07-22.pdf p1 (0.55)
+7. /Exec/Board Pack 2026-07-22.pdf p1 (0.552)
 8. /Exec/Project Heron Board Memo.pdf p4-5 (0.548)
-9. /Exec/Board Pack 2026-07-22.pdf p2 (0.468)
+9. /Exec/Board Pack 2026-07-22.pdf p2 (0.466)
 10. /Exec/Project Heron Board Memo.pdf p1 (0.451)
 
 ### fraud-rule-payments
@@ -169,7 +169,7 @@ kestrel/lena.fischer: What does Kestrel Shield fraud rule FR-110 do?
 
 Labels: [0] /Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf p2
 
-Rewrites: "Kestrel Shield FR-110 fraud rule description and action", "FR-110 fraud detection rule trigger conditions and response", "Kestrel Shield fraud rule FR-110 purpose behavior"
+Rewrites: "Kestrel Shield FR-110 fraud rule purpose and actions", "FR-110 fraud detection rule behavior triggers outcomes", "Kestrel Shield fraud screening rule FR-110 configuration"
 
 Top 10:
 
@@ -182,12 +182,12 @@ Top 10:
 7. /Engineering/Runbooks/Payments API Error Code Catalogue.pdf p3 (0.496)
 8. /Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf p2-3 (0.476)
 9. /Company/Kestrel Pay Employee Handbook 2026.docx (0.409)
-10. /HR/Policies/Travel and Expenses Policy.pdf p2-3 (0.347)
+10. /Engineering/architecture-overview.md (0.386)
 
 ## Usage
 
-- Embeddings: 2614 tokens ($0.00005)
-- Query rewrites: 46 calls, 8728 input (0 cached) and 3817 output tokens ($0.00278)
+- Embeddings: 2624 tokens ($0.00005)
+- Query rewrites: 46 calls, 8728 input (0 cached) and 3867 output tokens ($0.00281)
 - Answers: 0 calls, 0 input and 0 output tokens, 0 of them reasoning ($0.00000, priced uncached)
 - Rerank: 45 calls (a Cohere trial key bills nothing)
-- Total: $0.0028
+- Total: $0.0029

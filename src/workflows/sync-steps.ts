@@ -1,15 +1,17 @@
 import { and, eq, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
+import { getWorkflowMetadata } from "workflow";
 
+import { setSyncRun } from "#learn/acl/audit";
 import { deltaSync, fullSync } from "#learn/connectors/drive-sync";
-import { GraphRequestError, ResyncRequiredError } from "#learn/connectors/graph";
+import { ConnectorError, ResyncRequiredError } from "#learn/connectors/types";
 import { applyDirectory, fetchDirectory } from "#learn/directory/sync";
 import { claim, documentPartition, enqueue, kickRelay, syncPartition } from "@/db/outbox";
 import { syncState } from "@/db/schema";
 import { type Tx, withTenant } from "@/db/tenant";
 import { createLogger } from "@/lib/logger";
 
-import { appUrl, asStep, CONNECTOR, graphFor, sha256Hex } from "./sync-common";
+import { appUrl, asStep, CONNECTOR, connectorFor, graphFor, ingestStart, sha256Hex } from "./sync-common";
 
 const logger = createLogger("workflows.sync");
 
@@ -46,7 +48,11 @@ export async function syncDirectory(tenantId: string) {
   "use step";
   return asStep(async () => {
     const snapshot = await fetchDirectory(await graphFor(tenantId));
-    const result = await withTenant(tenantId, (tx) => applyDirectory(tx, tenantId, snapshot, new Date()));
+    const runId = getWorkflowMetadata().workflowRunId;
+    const result = await withTenant(tenantId, async (tx) => {
+      await setSyncRun(tx, runId);
+      return applyDirectory(tx, tenantId, snapshot, new Date());
+    });
     logger.info("directory synced", { tenantId, ...result });
     return result;
   });
@@ -56,27 +62,30 @@ syncDirectory.maxRetries = 5;
 /**
  * The drive's changes since the last sync (or everything, for a full sync, a first sync, or an expired delta
  * link), written with their ACLs, and an outbox row per document to ingest, in one transaction. The relay
- * starts the ingest runs after it commits.
+ * starts the ingest runs after it commits. With `INGEST_START=workflow-first` there are no rows: the step
+ * returns the versions to ingest, and the workflow starts their runs next.
  */
 export async function syncDrive(tenantId: string, mode: "full" | "delta") {
   "use step";
   const summary = await asStep(async () => {
-    const graph = await graphFor(tenantId);
+    const source = await connectorFor(tenantId);
+    const runId = getWorkflowMetadata().workflowRunId;
     return withTenant(tenantId, async (tx) => {
       await lockTenantSync(tx, tenantId);
+      await setSyncRun(tx, runId);
       const state = await driveState(tx);
       let ran: "full" | "delta" = mode === "delta" && state?.deltaToken ? "delta" : "full";
       let report;
       if (ran === "delta") {
         try {
-          report = await deltaSync(tx, tenantId, graph, state!.deltaToken!);
+          report = await deltaSync(tx, tenantId, source, state!.deltaToken!);
         } catch (error) {
           if (!(error instanceof ResyncRequiredError)) throw error;
           logger.warn("delta link expired: resyncing", { tenantId });
           ran = "full";
         }
       }
-      report ??= await fullSync(tx, tenantId, graph);
+      report ??= await fullSync(tx, tenantId, source);
 
       const now = new Date();
       await tx
@@ -85,27 +94,31 @@ export async function syncDrive(tenantId: string, mode: "full" | "delta") {
           tenantId,
           connector: CONNECTOR,
           scope: DRIVE,
-          deltaToken: report.deltaLink,
+          deltaToken: report.cursor,
           ...(ran === "full" ? { lastFullCrawlAt: now } : { lastDeltaAt: now }),
         })
         .onConflictDoUpdate({
           target: [syncState.tenantId, syncState.connector, syncState.scope],
           set: {
-            deltaToken: report.deltaLink,
+            deltaToken: report.cursor,
             updatedAt: now,
             ...(ran === "full" ? { lastFullCrawlAt: now } : { lastDeltaAt: now }),
           },
         });
-      for (const { documentId, version } of report.ingest) {
-        await enqueue(
-          tx,
-          tenantId,
-          { kind: "ingest", payload: { documentId, version } },
-          documentPartition(documentId),
-        );
+      const workflowFirst = ingestStart() === "workflow-first";
+      if (!workflowFirst) {
+        for (const { documentId, version } of report.ingest) {
+          await enqueue(
+            tx,
+            tenantId,
+            { kind: "ingest", payload: { documentId, version } },
+            documentPartition(documentId),
+          );
+        }
       }
-      const { ingest, deltaLink: _, ...counts } = report;
-      return { ran, ...counts, ingest: ingest.length };
+      const { ingest, cursor: _, ...counts } = report;
+      // Workflow-first: the sync workflow starts these runs in its next step (`startIngestRuns`).
+      return { ran, ...counts, ingest: ingest.length, ...(workflowFirst ? { startRuns: ingest } : {}) };
     });
   });
   kickRelay();
@@ -122,13 +135,13 @@ syncDrive.maxRetries = 5;
 export async function ensureSubscription(tenantId: string) {
   "use step";
   return asStep(async () => {
-    const graph = await graphFor(tenantId);
+    const source = await connectorFor(tenantId);
     const state = await withTenant(tenantId, driveState);
     const now = Date.now();
     const expiration = new Date(now + SUBSCRIPTION_DAYS * DAY_MS);
     if (state?.subscriptionId && state.subscriptionExpiresAt && state.subscriptionExpiresAt.getTime() > now) {
       try {
-        await graph.renew(state.subscriptionId, expiration);
+        await source.renew(state.subscriptionId, expiration);
         await withTenant(tenantId, (tx) =>
           tx
             .update(syncState)
@@ -140,12 +153,12 @@ export async function ensureSubscription(tenantId: string) {
         return { subscriptionId: state.subscriptionId, renewed: true };
       } catch (error) {
         // fake-workspace forgets subscriptions when it restarts: make a new one.
-        if (!(error instanceof GraphRequestError && error.status === 404)) throw error;
+        if (!(error instanceof ConnectorError && error.status === 404)) throw error;
       }
     }
     const clientState = randomBytes(32).toString("hex");
     const notificationUrl = `${appUrl()}/api/webhooks/workspace?tenant=${tenantId}`;
-    const subscription = await graph.subscribe({ notificationUrl, clientState, expirationDateTime: expiration });
+    const subscription = await source.subscribe({ notificationUrl, clientState, expiresAt: expiration });
     await withTenant(tenantId, (tx) =>
       tx
         .insert(syncState)

@@ -1,11 +1,10 @@
 import { and, eq, ne, notInArray } from "drizzle-orm";
 
+import type { Connector, SourceFile } from "#learn/connectors/types";
 import type { Tx } from "@/db/tenant";
 
-import { clearAcl, grantedIds, stampAcl } from "#learn/acl/stamp";
+import { clearAcl, stampAcl } from "#learn/acl/stamp";
 import { chunks, documents } from "@/db/schema";
-
-import { type DriveItem, type GraphClient, GraphRequestError, itemPath, sha256Of } from "./graph";
 
 /** `documents.source` for the drive. */
 export const SOURCE = "workspace";
@@ -29,10 +28,10 @@ export interface DriveSyncReport {
   /** Grants to principals the directory doesn't have yet, left out of the ACLs. */
   unknownPrincipals: string[];
   /** Where the next delta starts. */
-  deltaLink: string;
+  cursor: string;
 }
 
-function emptyReport(deltaLink: string): DriveSyncReport {
+function emptyReport(cursor: string): DriveSyncReport {
   return {
     files: 0,
     created: 0,
@@ -42,21 +41,23 @@ function emptyReport(deltaLink: string): DriveSyncReport {
     aclChanged: 0,
     ingest: [],
     unknownPrincipals: [],
-    deltaLink,
+    cursor,
   };
 }
 
 /**
- * Every file in the drive, written to `documents` with its ACL; documents the drive no longer has are deleted.
- * The delta link is taken before the crawl, so a change that lands during it is read again by the next delta,
- * and applying it twice changes nothing.
+ * Every file in the source, written to `documents` with its ACL; documents the source no longer has are deleted.
+ * The cursor is taken before the crawl, so a change that lands during it is read again by the next delta, and
+ * applying it twice changes nothing.
  */
-export async function fullSync(tx: Tx, tenantId: string, graph: GraphClient): Promise<DriveSyncReport> {
-  const report = emptyReport(await graph.latestDeltaLink());
+export async function fullSync(tx: Tx, tenantId: string, source: Connector): Promise<DriveSyncReport> {
+  const report = emptyReport(await source.latestCursor());
   const seen: string[] = [];
-  for await (const { item, path } of graph.crawl()) {
-    seen.push(item.id);
-    await applyFile(tx, tenantId, graph, item, path, report);
+  for await (const page of source.crawl()) {
+    for (const file of page) {
+      seen.push(file.id);
+      await applyFile(tx, tenantId, source, file, report);
+    }
   }
   const gone = await tx
     .select({ externalId: documents.externalId })
@@ -73,37 +74,15 @@ export async function fullSync(tx: Tx, tenantId: string, graph: GraphClient): Pr
 }
 
 /**
- * The changes since `deltaLink`. Delta lists a changed item without its path, and a renamed or moved folder
- * without its contents, so a file is read again for its path and a folder's files are crawled again. Throws
- * `ResyncRequiredError` (410) when the link has expired: the caller runs a full sync instead.
+ * The changes since `cursor`. Throws `ResyncRequiredError` when the cursor has expired: the caller runs a full
+ * sync instead.
  */
-export async function deltaSync(
-  tx: Tx,
-  tenantId: string,
-  graph: GraphClient,
-  deltaLink: string,
-): Promise<DriveSyncReport> {
-  const { changes, deltaLink: next } = await graph.delta(deltaLink);
+export async function deltaSync(tx: Tx, tenantId: string, source: Connector, cursor: string): Promise<DriveSyncReport> {
+  const { changes, cursor: next } = await source.delta(cursor);
   const report = emptyReport(next);
   for (const change of changes) {
-    if (change.deleted) {
-      await deleteFile(tx, change.id, report);
-    } else if ("root" in change && change.root) {
-      continue;
-    } else if ("folder" in change && change.folder) {
-      for await (const { item, path } of graph.crawl(change.id))
-        await applyFile(tx, tenantId, graph, item, path, report);
-    } else {
-      let item: DriveItem;
-      try {
-        item = await graph.item(change.id);
-      } catch (error) {
-        // Deleted since the delta was read: the next delta brings its tombstone.
-        if (error instanceof GraphRequestError && error.status === 404) continue;
-        throw error;
-      }
-      await applyFile(tx, tenantId, graph, item, itemPath(item), report);
-    }
+    if (change.type === "deleted") await deleteFile(tx, change.id, report);
+    else await applyFile(tx, tenantId, source, change.file, report);
   }
   return report;
 }
@@ -112,33 +91,30 @@ export async function deltaSync(
 async function applyFile(
   tx: Tx,
   tenantId: string,
-  graph: GraphClient,
-  item: DriveItem,
-  path: string,
+  source: Connector,
+  file: SourceFile,
   report: DriveSyncReport,
 ): Promise<void> {
-  const sha256 = sha256Of(item);
-  if (!item.file || !sha256) throw new Error(`item ${item.id} at ${path} isn't a file`);
   report.files += 1;
   const fields = {
-    title: item.name,
-    path,
-    mimeType: item.file.mimeType,
-    sourceVersion: item.eTag,
-    contentHash: sha256,
+    title: file.name,
+    path: file.path,
+    mimeType: file.mimeType,
+    sourceVersion: file.version,
+    contentHash: file.contentHash,
   };
 
   const [existing] = await tx
     .select()
     .from(documents)
-    .where(and(eq(documents.source, SOURCE), eq(documents.externalId, item.id)))
+    .where(and(eq(documents.source, SOURCE), eq(documents.externalId, file.id)))
     .for("update");
 
   let documentId: string;
   if (!existing) {
     const [row] = await tx
       .insert(documents)
-      .values({ tenantId, source: SOURCE, externalId: item.id, version: 1, status: "pending", ...fields })
+      .values({ tenantId, source: SOURCE, externalId: file.id, version: 1, status: "pending", ...fields })
       .returning({ id: documents.id });
     documentId = row.id;
     report.created += 1;
@@ -146,9 +122,10 @@ async function applyFile(
   } else {
     documentId = existing.id;
     // A failed ingest is tried again, as a deleted document comes back.
-    const newContent = existing.contentHash !== sha256 || existing.status === "deleted" || existing.status === "failed";
+    const newContent =
+      existing.contentHash !== file.contentHash || existing.status === "deleted" || existing.status === "failed";
     const version = newContent ? existing.version + 1 : existing.version;
-    if (existing.path !== path || existing.title !== item.name) report.moved += 1;
+    if (existing.path !== file.path || existing.title !== file.name) report.moved += 1;
     await tx
       .update(documents)
       .set({ ...fields, version, deletedAt: null, ...(newContent ? { status: "pending" } : {}) })
@@ -159,7 +136,7 @@ async function applyFile(
     }
   }
 
-  const stamp = await stampAcl(tx, documentId, grantedIds(await graph.permissions(item.id)));
+  const stamp = await stampAcl(tx, documentId, await source.permissions(file.id));
   if (stamp.changed) report.aclChanged += 1;
   for (const id of stamp.unknown) if (!report.unknownPrincipals.includes(id)) report.unknownPrincipals.push(id);
 }

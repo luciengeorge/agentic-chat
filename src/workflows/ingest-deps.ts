@@ -3,11 +3,20 @@ import { FatalError } from "workflow";
 
 import type { ParseDeps } from "#learn/parse/types";
 
+import { DEFAULT_OCR_REVIEW_THRESHOLD } from "#learn/parse/review";
+
 import { INTERNAL_HEADER, internalToken } from "./ingest-internal";
 import { appUrl } from "./sync-common";
 
 /** Chunk ordinals per page range: a range's chunks are numbered from `index * ORDINALS_PER_RANGE`. */
 export const ORDINALS_PER_RANGE = 100_000;
+
+/** OCR'd pages under this mean confidence are queued for review: `OCR_REVIEW_THRESHOLD` (0 turns it off), else
+ * `DEFAULT_OCR_REVIEW_THRESHOLD`. */
+export function ocrReviewThreshold(env: Record<string, string | undefined> = process.env): number {
+  const value = Number(env.OCR_REVIEW_THRESHOLD);
+  return env.OCR_REVIEW_THRESHOLD && Number.isFinite(value) ? value : DEFAULT_OCR_REVIEW_THRESHOLD;
+}
 
 /** A page route didn't answer: worth a retry, unlike a parse that failed on the bytes themselves. */
 export class PageRouteError extends Error {

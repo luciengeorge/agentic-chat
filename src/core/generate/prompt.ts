@@ -1,8 +1,8 @@
-import { countTokens as count } from "gpt-tokenizer/encoding/o200k_base";
-
 import type { CitableSource } from "#learn/cite/citations";
 import type { TextMessage } from "#learn/model/types";
 import type { RetrievedChunk } from "#learn/retrieve/types";
+
+import { countTokens } from "#learn/model/tokens";
 
 /** What the assistant says when the sources don't answer. It doesn't say whether anything was withheld: "you
  * can't see that" would leak that it exists. */
@@ -35,8 +35,7 @@ export interface Prompt {
   tokens: { instructions: number; sources: number; history: number };
 }
 
-const NO_SPECIAL = { disallowedSpecial: new Set<string>() };
-export const countTokens = (text: string) => count(text, NO_SPECIAL);
+export { countTokens };
 
 export const INSTRUCTIONS = `You answer questions for employees using only the numbered sources in the user's message.
 

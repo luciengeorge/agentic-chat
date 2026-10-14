@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { fullSync } from "#learn/connectors/drive-sync";
-import { createGraphClient } from "#learn/connectors/graph";
+import { createGraphClient, graphConnector } from "#learn/connectors/graph";
 import { applyDirectory, fetchDirectory } from "#learn/directory/sync";
 import { withTenantOn } from "@/db/tenant";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
@@ -35,7 +35,7 @@ describe.skipIf(!postgresAvailable)("checkIngestion", () => {
       const snapshot = await fetchDirectory(graph);
       await withTenantOn(t.appDb, id, async (tx) => {
         await applyDirectory(tx, id, snapshot, new Date());
-        await fullSync(tx, id, graph);
+        await fullSync(tx, id, graphConnector(graph));
       });
     }
   }, 60_000);

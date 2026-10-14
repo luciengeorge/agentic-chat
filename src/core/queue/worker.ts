@@ -4,12 +4,25 @@
  */
 import { randomUUID } from "node:crypto";
 
-import { claim, complete, type Exec, fail, heartbeat, type Job, reclaimExpired } from "./queue";
+import {
+  claim,
+  claimWithinLimits,
+  type ClassLimits,
+  complete,
+  type Exec,
+  fail,
+  heartbeat,
+  type Job,
+  reclaimExpired,
+  type Transactor,
+} from "./queue";
 
 export interface WorkerOptions<P> {
   /** Runs each statement on its own (the owner's pool: a worker crosses tenants). */
-  db: Exec;
+  db: Exec | (Exec & Transactor);
   queue: string;
+  /** Caps per job class, so a backfill can't take every worker (`claimWithinLimits`). Needs `db` to be a pool. */
+  classLimits?: ClassLimits;
   /** Does the job. `signal` aborts when the worker stops or loses the lease. A throw fails the attempt. */
   handler: (job: Job<P>, signal: AbortSignal) => Promise<void>;
   workerId?: string;
@@ -57,10 +70,18 @@ export async function workJob<P>(options: WorkerOptions<P>, job: Job<P>, workerI
   }
 }
 
+function pool(db: WorkerOptions<unknown>["db"]): Transactor {
+  if (!("transaction" in db)) throw new Error("class limits claim in a transaction: give the worker a pool");
+  return db;
+}
+
 /** Claims and works one due job. False when there was none. */
 export async function workOnce<P>(options: WorkerOptions<P>, workerId = options.workerId ?? randomUUID()) {
   await reclaimExpired(options.db, options.queue);
-  const job = await claim<P>(options.db, options.queue, workerId, options.leaseMs ?? DEFAULT_LEASE_MS);
+  const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
+  const job = options.classLimits
+    ? await claimWithinLimits<P>(pool(options.db), options.queue, workerId, leaseMs, options.classLimits)
+    : await claim<P>(options.db, options.queue, workerId, leaseMs);
   if (!job) return false;
   await workJob(options, job, workerId);
   return true;

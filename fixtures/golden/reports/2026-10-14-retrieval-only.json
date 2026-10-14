@@ -1,7 +1,7 @@
 {
   "run": {
     "date": "2026-10-14",
-    "startedAt": "2026-10-14T16:00:09.215Z",
+    "startedAt": "2026-10-14T16:46:02.357Z",
     "mode": "retrieval-only",
     "models": {
       "rewriter": "gpt-6-luna (medium)",
@@ -24,12 +24,12 @@
       "mrr": 0.6
     },
     "usage": {
-      "embeddingTokens": 2614,
+      "embeddingTokens": 2624,
       "rewrite": {
         "calls": 46,
         "inputTokens": 8728,
         "cachedInputTokens": 0,
-        "outputTokens": 3817
+        "outputTokens": 3867
       },
       "hyde": {
         "calls": 0,
@@ -46,11 +46,11 @@
       "rerankCalls": 45
     },
     "costUsd": {
-      "rewrite": 0.0027813,
+      "rewrite": 0.0028063000000000003,
       "hyde": 0,
       "answers": 0,
-      "embeddings": 0.00005228,
-      "total": 0.00283358
+      "embeddings": 0.000052480000000000006,
+      "total": 0.0028587800000000004
     }
   },
   "summary": {
@@ -142,9 +142,9 @@
         }
       ],
       "rewritten": [
-        "KPC-2026-0142 contract owner and initial term end date",
-        "KPC-2026-0142 contract ownership responsible party and expiration of initial term",
-        "KPC-2026-0142 agreement owner contract term end date"
+        "KPC-2026-0142 contract owner and initial term expiration date",
+        "KPC-2026-0142 contract responsible party, contract administrator, and end date of initial term",
+        "KPC-2026-0142 agreement ownership and initial term end date"
       ],
       "ranked": [
         {
@@ -227,7 +227,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 4.153
+      "seconds": 5.549
     },
     {
       "id": "kpc-2025-0142-subject",
@@ -245,9 +245,9 @@
         }
       ],
       "rewritten": [
-        "KPC-2025-0142 contract scope and counterparty",
-        "KPC-2025-0142 purpose of agreement and contracting party",
-        "KPC-2025-0142 services or goods provided by vendor"
+        "KPC-2025-0142 contract scope purpose and counterparty",
+        "KPC-2025-0142 statement of work goods or services provided and contracting party",
+        "KPC-2025-0142 agreement description and other party name"
       ],
       "ranked": [
         {
@@ -330,7 +330,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.324
+      "seconds": 6.469
     },
     {
       "id": "kpc-2026-0412-break",
@@ -348,9 +348,9 @@
         }
       ],
       "rewritten": [
-        "KPC-2026-0412 Dublin office lease break date and notice deadline",
-        "Kestrel lease termination or break option exercise period required notice",
-        "KPC-2026-0412 break clause notice service date"
+        "KPC-2026-0412 Dublin office lease Kestrel break clause notice deadline",
+        "Kestrel Dublin lease termination break date notice period service deadline",
+        "KPC-2026-0412 tenant break option earliest date notice must be given"
       ],
       "ranked": [
         {
@@ -433,7 +433,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.608
+      "seconds": 6.517
     },
     {
       "id": "kp-4031-retry",
@@ -451,9 +451,9 @@
         }
       ],
       "rewritten": [
-        "KP-4031 error meaning and procedure for retrying payment",
-        "Payment error code KP-4031: explanation and retry instructions",
-        "KP-4031 payment failure troubleshooting, retry method and timing"
+        "KP-4031 error meaning payment retry procedure",
+        "KP-4031 payment failure definition and steps to retry transaction",
+        "KP-4031 declined or failed payment guidance for resubmitting payment"
       ],
       "ranked": [
         {
@@ -536,7 +536,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.592
+      "seconds": 6.487
     },
     {
       "id": "kp-9007-wait",
@@ -555,8 +555,8 @@
       ],
       "rewritten": [
         "KP-9007 HTTP status code and recommended wait time before checking payment",
-        "KP-9007 merchant payment verification delay after response",
-        "KP-9007 response status and payment check timing"
+        "KP-9007 merchant payment status retry delay",
+        "KP-9007 payment check waiting period HTTP response"
       ],
       "ranked": [
         {
@@ -639,7 +639,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 36.564
+      "seconds": 6.796
     },
     {
       "id": "kc-pro-12-price",
@@ -661,9 +661,9 @@
         }
       ],
       "rewritten": [
-        "KC-PRO-12 monthly fee and charges for UK consumer cards",
-        "KC-PRO-12 monthly subscription or service fee; transaction pricing for United Kingdom consumer cards",
-        "KC-PRO-12 pricing schedule: monthly charge and card processing fees for UK consumer debit and credit cards"
+        "KC-PRO-12 monthly fee and UK consumer card charges",
+        "KC-PRO-12 subscription price and transaction fees for United Kingdom consumer cards",
+        "KC-PRO-12 monthly plan cost UK domestic consumer credit and debit card processing rates"
       ],
       "ranked": [
         {
@@ -746,7 +746,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 16.394
+      "seconds": 6.213
     },
     {
       "id": "ka-plus-12-billing",
@@ -769,8 +769,8 @@
       ],
       "rewritten": [
         "KA-PLUS-12 monthly billing frequency",
-        "KA-PLUS-12 subscription payment schedule billed per month",
-        "KA-PLUS-12 invoicing and billing terms"
+        "KA-PLUS-12 subscription payment schedule monthly invoice",
+        "KA-PLUS-12 billing cycle recurring charges"
       ],
       "ranked": [
         {
@@ -853,7 +853,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 9.786
+      "seconds": 6.501
     },
     {
       "id": "kp-bulk-500-overage",
@@ -875,9 +875,9 @@
         }
       ],
       "rewritten": [
-        "KP-BULK-500 bundle price and fee for payouts beyond included amount",
-        "KP-BULK-500 cost, included payouts, and additional payout charges",
-        "KP-BULK-500 pricing terms for excess or out-of-bundle payouts"
+        "KP-BULK-500 pricing and fee for payouts exceeding the bundle",
+        "KP-BULK-500 package cost, included payouts, and per-payout overage charge",
+        "KP-BULK-500 price and additional payout charges beyond the allowance"
       ],
       "ranked": [
         {
@@ -960,7 +960,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 3.927
+      "seconds": 6.563
     },
     {
       "id": "q3-revenue-by-product",
@@ -983,8 +983,8 @@
       ],
       "rewritten": [
         "Q3 2026 revenue by product",
-        "third quarter 2026 product revenue breakdown",
-        "product-level revenue for Q3 2026"
+        "third-quarter 2026 product revenue breakdown",
+        "2026 Q3 sales revenue for each product"
       ],
       "ranked": [
         {
@@ -1067,7 +1067,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.585
+      "seconds": 6.476
     },
     {
       "id": "q3-lisbon-headcount",
@@ -1085,9 +1085,9 @@
         }
       ],
       "rewritten": [
-        "Lisbon office headcount as at 30 September 2026",
-        "number of employees working in the Lisbon office on 30 September 2026",
-        "Lisbon office staffing figures 30 September 2026"
+        "Lisbon office employee headcount as at 30 September 2026",
+        "Number of staff working in the Lisbon office on 30 September 2026",
+        "Lisbon office personnel count, workforce, employees at reporting date 30 September 2026"
       ],
       "ranked": [
         {
@@ -1120,45 +1120,45 @@
         },
         {
           "rank": 5,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.556
+        },
+        {
+          "rank": 6,
           "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
           "pages": null,
           "label": null,
           "score": 0.486
         },
         {
-          "rank": 6,
+          "rank": 7,
           "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
           "pages": "2",
           "label": null,
           "score": 0.424
         },
         {
-          "rank": 7,
+          "rank": 8,
           "path": "/Company/Office Guide.pdf",
           "pages": "1",
           "label": null,
           "score": 0.394
         },
         {
-          "rank": 8,
+          "rank": 9,
           "path": "/Company/Office Guide.pdf",
           "pages": "2",
           "label": null,
           "score": 0.347
         },
         {
-          "rank": 9,
+          "rank": 10,
           "path": "/HR/Policies/Leave Policy.pdf",
           "pages": "1",
           "label": null,
           "score": 0.339
-        },
-        {
-          "rank": 10,
-          "path": "/Finance/Month-End Close Checklist.md",
-          "pages": null,
-          "label": null,
-          "score": 0.261
         }
       ],
       "scores": {
@@ -1170,7 +1170,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.58
+      "seconds": 6.584
     },
     {
       "id": "q3-cash",
@@ -1192,9 +1192,9 @@
         }
       ],
       "rewritten": [
-        "Kestrel cash balance as at 30 September 2026, including or excluding customer funds",
-        "Kestrel cash and cash equivalents 30 September 2026 customer money held",
-        "Kestrel cash holdings reporting date customer funds included"
+        "Kestrel cash and cash equivalents held at 30 September 2026 customer funds included",
+        "Kestrel cash balance as of 30 September 2026, including or excluding customer funds",
+        "30 September 2026 Kestrel cash customer funds"
       ],
       "ranked": [
         {
@@ -1277,7 +1277,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 7.329
+      "seconds": 6.473
     },
     {
       "id": "q3-professional-fees",
@@ -1295,9 +1295,9 @@
         }
       ],
       "rewritten": [
-        "Q3 2026 explanation for professional fees exceeding budget",
-        "professional services expenses variance over budget third quarter 2026 causes",
-        "Q3 2026 professional fees budget variance drivers and actual spend"
+        "Q3 2026 professional fees budget variance explanation",
+        "Q3 2026 consulting and other professional services expenses exceeded budget causes",
+        "Q3 2026 professional fees unfavorable expense variance drivers"
       ],
       "ranked": [
         {
@@ -1380,7 +1380,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 5.71
+      "seconds": 6.474
     },
     {
       "id": "expenses-meals",
@@ -1398,9 +1398,9 @@
         }
       ],
       "rewritten": [
-        "business travel daily meal allowance claim limit",
-        "per diem rates for meals during work travel",
-        "employee travel expense reimbursement meal limits per day"
+        "daily meal allowance limit for business travel",
+        "work travel meals per diem reimbursement policy",
+        "maximum daily claim for meals while travelling for work"
       ],
       "ranked": [
         {
@@ -1483,7 +1483,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.384
+      "seconds": 6.412
     },
     {
       "id": "expenses-london-hotel",
@@ -1501,9 +1501,9 @@
         }
       ],
       "rewritten": [
-        "London hotel nightly rate limit or accommodation cap in the travel expense policy",
-        "maximum allowable hotel cost per night in London; lodging and accommodation reimbursement limits",
-        "business travel hotel nightly spending limit for London"
+        "London hotel maximum nightly rate limit",
+        "lodging accommodation per-night cap or reimbursement limit for London",
+        "London hotel nightly limit"
       ],
       "ranked": [
         {
@@ -1532,14 +1532,14 @@
           "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
           "pages": "2",
           "label": null,
-          "score": 0.71
+          "score": 0.712
         },
         {
           "rank": 5,
           "path": "/HR/Policies/Travel and Expenses Policy.pdf",
           "pages": "2",
           "label": null,
-          "score": 0.687
+          "score": 0.689
         },
         {
           "rank": 6,
@@ -1560,7 +1560,7 @@
           "path": "/Company/Code of Conduct.pdf",
           "pages": "2-3",
           "label": null,
-          "score": 0.315
+          "score": 0.319
         },
         {
           "rank": 9,
@@ -1574,7 +1574,7 @@
           "path": "/HR/Policies/Travel and Expenses Policy.pdf",
           "pages": "1",
           "label": null,
-          "score": 0.232
+          "score": 0.235
         }
       ],
       "scores": {
@@ -1586,7 +1586,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 8.898
+      "seconds": 6.693
     },
     {
       "id": "expenses-old-policy",
@@ -1608,9 +1608,9 @@
         }
       ],
       "rewritten": [
-        "expenses policy in force before July 2026 London hotel accommodation limit receipt required threshold",
-        "London hotel nightly cap and receipt submission amount under pre-July 2026 expense rules",
-        "expense claim lodging receipt requirement London hotel limit before July 2026"
+        "Expenses policy in force before July 2026: London hotel accommodation limit and receipt requirement threshold",
+        "London hotel rate cap, lodging expenses, and minimum amount requiring a receipt under the pre-July 2026 expenses policy",
+        "Expense claim receipts: London hotel limit and receipt threshold before July 2026"
       ],
       "ranked": [
         {
@@ -1693,7 +1693,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 4.104
+      "seconds": 6.312
     },
     {
       "id": "expenses-receipt-taxi",
@@ -1712,8 +1712,8 @@
       ],
       "rewritten": [
         "Taxi fare expense claim receipt requirements for fares of £30",
-        "Itemised receipt or proof of payment required for taxi and cab expense reimbursement",
-        "£30 taxi fare claim documentation and receipt policy"
+        "Itemised receipt or proof of payment required for taxi expenses",
+        "£30 taxi fare reimbursement receipt policy"
       ],
       "ranked": [
         {
@@ -1796,7 +1796,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.854
+      "seconds": 6.493
     },
     {
       "id": "ocr-invoice-hold",
@@ -1816,7 +1816,7 @@
       "rewritten": [
         "Brindle Print & Post invoice hold reason AP batch B-2026-117",
         "Accounts payable invoice hold status and reason for Brindle Print & Post, batch B-2026-117",
-        "Brindle Print & Post payment block or exception details B-2026-117"
+        "B-2026-117 Brindle Print & Post payment block, exception, or approval issue"
       ],
       "ranked": [
         {
@@ -1899,7 +1899,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.237
+      "seconds": 6.55
     },
     {
       "id": "ocr-payment-run",
@@ -1917,9 +1917,9 @@
         }
       ],
       "rewritten": [
-        "Amount released from AP batch B-2026-117 in the 24/09/2026 payment run",
-        "Accounts payable batch B-2026-117 payment release amount 24/09/2026",
-        "B-2026-117 scheduled payment run 24/09/2026 released total"
+        "AP batch B-2026-117 amount released in payment run 24/09/2026",
+        "Accounts payable batch B-2026-117 release amount payment processing on 24/09/2026",
+        "B-2026-117 24/09/2026 payment run release total"
       ],
       "ranked": [
         {
@@ -2002,7 +2002,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.395
+      "seconds": 6.5
     },
     {
       "id": "ocr-msa-received",
@@ -2020,9 +2020,9 @@
         }
       ],
       "rewritten": [
-        "Date Kestrel Legal received the executed Ashgrove master services agreement",
-        "Kestrel Legal receipt of signed master services agreement (MSA) for Ashgrove",
-        "Ashgrove signed master services agreement received by Kestrel Legal date"
+        "Kestrel Legal receipt date of signed Ashgrove master services agreement",
+        "When was the executed Ashgrove MSA received by Kestrel Legal?",
+        "Ashgrove master services agreement signed copy received date Kestrel Legal"
       ],
       "ranked": [
         {
@@ -2105,7 +2105,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.474
+      "seconds": 6.501
     },
     {
       "id": "ocr-order-form-total",
@@ -2124,8 +2124,8 @@
       ],
       "rewritten": [
         "Marlow & Finch order form OF-2026-0388 monthly total",
-        "OF-2026-0388 monthly total amount",
-        "Marlow & Finch order form recurring monthly charges total"
+        "OF-2026-0388 monthly amount recurring charges total",
+        "Marlow & Finch order form monthly fees subscription total"
       ],
       "ranked": [
         {
@@ -2208,7 +2208,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.582
+      "seconds": 6.487
     },
     {
       "id": "ocr-incident-duplicates",
@@ -2234,9 +2234,9 @@
         }
       ],
       "rewritten": [
-        "Incident INC-2026-0817 duplicate authorisations caused and resolution",
-        "INC-2026-0817 duplicate approvals authorisations handling remediation",
-        "Count of duplicate authorisations linked to incident INC-2026-0817 and how they were dealt with"
+        "INC-2026-0817 duplicate authorisations count and resolution",
+        "incident INC-2026-0817 duplicate authorizations how handled",
+        "INC-2026-0817 duplicate approvals remedial action"
       ],
       "ranked": [
         {
@@ -2319,7 +2319,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.527
+      "seconds": 6.499
     },
     {
       "id": "ocr-offsite-backfills",
@@ -2342,8 +2342,8 @@
       ],
       "rewritten": [
         "September 2026 offsite executive team decision on backfilling roles",
-        "September 2026 offsite staffing replacement hiring and vacant positions",
-        "executive team decision regarding filling vacated roles at the September 2026 offsite"
+        "September 2026 offsite leadership discussion replacement hiring for vacant positions",
+        "September 2026 offsite decisions on filling vacated roles and headcount"
       ],
       "ranked": [
         {
@@ -2376,45 +2376,45 @@
         },
         {
           "rank": 5,
-          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "4",
-          "label": null,
-          "score": 0.48
-        },
-        {
-          "rank": 6,
           "path": "/Finance/Reports/Management Accounts August 2026.pdf",
           "pages": "2",
           "label": null,
           "score": 0.432
         },
         {
-          "rank": 7,
+          "rank": 6,
           "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
           "pages": "6",
           "label": null,
           "score": 0.413
         },
         {
-          "rank": 8,
+          "rank": 7,
           "path": "/Exec/Project Heron Integration Plan v0.4.docx",
           "pages": null,
           "label": null,
           "score": 0.375
         },
         {
-          "rank": 9,
+          "rank": 8,
           "path": "/Exec/Exec Offsite Notes Sept 2026.pdf",
           "pages": "2",
           "label": null,
           "score": 0.339
         },
         {
-          "rank": 10,
+          "rank": 9,
           "path": "/Exec/Project Heron Board Memo.pdf",
           "pages": "1",
           "label": null,
           "score": 0.312
+        },
+        {
+          "rank": 10,
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.309
         }
       ],
       "scores": {
@@ -2426,7 +2426,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 13.881
+      "seconds": 6.5
     },
     {
       "id": "ocr-grievance-asks",
@@ -2444,9 +2444,9 @@
         }
       ],
       "rewritten": [
-        "Requested remedy or resolution in grievance HR-CASE-2026-014",
-        "Chris Dunn's requested action, relief, or outcome in grievance HR-CASE-2026-014",
-        "Grievance filing and supporting documents for HR-CASE-2026-014"
+        "Chris Dunn requested remedy or resolution in grievance HR-CASE-2026-014",
+        "grievance HR-CASE-2026-014 Chris Dunn requested action, relief, or outcome",
+        "Chris Dunn grievance HR-CASE-2026-014 what is being sought"
       ],
       "ranked": [
         {
@@ -2510,14 +2510,14 @@
           "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
           "pages": null,
           "label": null,
-          "score": 0.224
+          "score": 0.227
         },
         {
           "rank": 10,
           "path": "/Company/2026 Holiday Calendar.pdf",
           "pages": "2",
           "label": null,
-          "score": 0.218
+          "score": 0.221
         }
       ],
       "scores": {
@@ -2529,7 +2529,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 2.896
+      "seconds": 6.478
     },
     {
       "id": "filing-sg-2025-02",
@@ -2547,9 +2547,9 @@
         }
       ],
       "rewritten": [
-        "SG-2025-02 safeguarding breach cause and FCA reporting date",
-        "SG-2025-02 incident root cause, notification to Financial Conduct Authority (FCA)",
-        "SG-2025-02 breach details and date reported to FCA"
+        "SG-2025-02 safeguarding breach cause and date reported to the FCA",
+        "SG-2025-02 root cause of safeguarding failure and FCA notification date",
+        "SG-2025-02 incident report safeguarding breach circumstances and Financial Conduct Authority reporting date"
       ],
       "ranked": [
         {
@@ -2632,7 +2632,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.324
+      "seconds": 6.574
     },
     {
       "id": "filing-mi-2026-03",
@@ -2650,9 +2650,9 @@
         }
       ],
       "rewritten": [
-        "MI-2026-03 number of declined card authorisations and root cause",
-        "MI-2026-03 payment card authorization declines incident impact cause",
-        "MI-2026-03 declined transactions count contributing factors"
+        "MI-2026-03 declined card authorisations major incident cause",
+        "MI-2026-03 payment card authorization declines incident root cause",
+        "MI-2026-03 number of rejected card authorisations and cause"
       ],
       "ranked": [
         {
@@ -2700,30 +2700,30 @@
         {
           "rank": 7,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "884",
+          "pages": "885",
           "label": null,
-          "score": 0.568
+          "score": 0.611
         },
         {
           "rank": 8,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "884",
           "label": null,
-          "score": 0.531
+          "score": 0.568
         },
         {
           "rank": 9,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "889",
+          "pages": "884",
           "label": null,
-          "score": 0.527
+          "score": 0.531
         },
         {
           "rank": 10,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "881",
+          "pages": "889",
           "label": null,
-          "score": 0.502
+          "score": 0.527
         }
       ],
       "scores": {
@@ -2735,7 +2735,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.597
+      "seconds": 6.514
     },
     {
       "id": "filing-fos-decision",
@@ -2757,9 +2757,9 @@
         }
       ],
       "rewritten": [
-        "Financial Ombudsman Service decision outcome for complaint CMP-2026-01171",
-        "FOS complaint CMP-2026-01171 findings decision and reasons",
-        "CMP-2026-01171 final decision uphold reject complaint"
+        "Financial Ombudsman Service decision and outcome for complaint CMP-2026-01171",
+        "ombudsman complaint ruling, findings, and redress CMP-2026-01171",
+        "CMP-2026-01171 final decision upheld rejected or resolved"
       ],
       "ranked": [
         {
@@ -2779,58 +2779,58 @@
         {
           "rank": 3,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "845",
+          "label": null,
+          "score": 0.724
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "843",
+          "label": null,
+          "score": 0.67
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "846",
           "label": null,
           "score": 0.665
         },
         {
-          "rank": 4,
+          "rank": 6,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "840",
           "label": null,
           "score": 0.649
         },
         {
-          "rank": 5,
+          "rank": 7,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "845",
           "label": null,
           "score": 0.647
         },
         {
-          "rank": 6,
+          "rank": 8,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "842",
           "label": null,
           "score": 0.637
         },
         {
-          "rank": 7,
+          "rank": 9,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "841",
           "label": null,
           "score": 0.628
         },
         {
-          "rank": 8,
+          "rank": 10,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "834",
           "label": null,
           "score": 0.626
-        },
-        {
-          "rank": 9,
-          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "837",
-          "label": null,
-          "score": 0.618
-        },
-        {
-          "rank": 10,
-          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "838",
-          "label": null,
-          "score": 0.611
         }
       ],
       "scores": {
@@ -2842,7 +2842,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 8.048
+      "seconds": 6.511
     },
     {
       "id": "filing-largest-payroll",
@@ -2861,8 +2861,8 @@
       ],
       "rewritten": [
         "Kestrel largest single payroll file processed during the 2026 regulatory return period",
-        "Kestrel maximum payroll file size, payroll batch or submission volume for the 2026 regulatory return period",
-        "2026 regulatory return period Kestrel payroll processing file size"
+        "Kestrel payroll file maximum size or volume processed 2026 regulatory return",
+        "2026 regulatory return period Kestrel largest payroll submission"
       ],
       "ranked": [
         {
@@ -2889,49 +2889,49 @@
         {
           "rank": 4,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "130",
-          "label": null,
-          "score": 0.554
-        },
-        {
-          "rank": 5,
-          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "836",
           "label": null,
           "score": 0.546
         },
         {
-          "rank": 6,
+          "rank": 5,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "827",
           "label": null,
           "score": 0.546
         },
         {
-          "rank": 7,
+          "rank": 6,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "838",
           "label": null,
           "score": 0.546
         },
         {
-          "rank": 8,
+          "rank": 7,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "815",
           "label": null,
           "score": 0.546
         },
         {
-          "rank": 9,
+          "rank": 8,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "820",
           "label": null,
           "score": 0.546
         },
         {
-          "rank": 10,
+          "rank": 9,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "797",
+          "label": null,
+          "score": 0.546
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "831",
           "label": null,
           "score": 0.546
         }
@@ -2945,7 +2945,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 4.93
+      "seconds": 6.429
     },
     {
       "id": "filing-merchant-exit",
@@ -2963,9 +2963,9 @@
         }
       ],
       "rewritten": [
-        "Merchant M-221449 exit reason and reserve held",
-        "M-221449 merchant termination offboarding rationale reserve amount",
-        "M-221449 account exit decision and funds withheld as reserve"
+        "merchant M-221449 exit rationale reserve held",
+        "M-221449 merchant termination reason and reserve amount",
+        "M-221449 account closure decision reserve withholding"
       ],
       "ranked": [
         {
@@ -2992,51 +2992,51 @@
         {
           "rank": 4,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "2870",
+          "pages": "2858",
           "label": null,
-          "score": 0.496
+          "score": 0.521
         },
         {
           "rank": 5,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "2927",
+          "pages": "2870",
           "label": null,
           "score": 0.496
         },
         {
           "rank": 6,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "2948",
+          "pages": "2927",
           "label": null,
-          "score": 0.49
+          "score": 0.496
         },
         {
           "rank": 7,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2874",
+          "label": null,
+          "score": 0.492
+        },
+        {
+          "rank": 8,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "2877",
           "label": null,
           "score": 0.488
         },
         {
-          "rank": 8,
+          "rank": 9,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "2995",
           "label": null,
           "score": 0.474
         },
         {
-          "rank": 9,
+          "rank": 10,
           "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
           "pages": "2965",
           "label": null,
           "score": 0.468
-        },
-        {
-          "rank": 10,
-          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
-          "pages": "2905",
-          "label": null,
-          "score": 0.447
         }
       ],
       "scores": {
@@ -3048,7 +3048,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.608
+      "seconds": 6.593
     },
     {
       "id": "heron-intern",
@@ -3062,9 +3062,9 @@
       ],
       "labels": [],
       "rewritten": [
-        "Project Heron scope and contract value payable by Kestrel",
-        "Kestrel payment amount, fees, or consideration for Project Heron",
-        "Project Heron description and total cost to Kestrel"
+        "Project Heron project description and Kestrel payment amount",
+        "Project Heron scope of work contract fees paid by Kestrel",
+        "Kestrel payment, cost, or contract value for Project Heron"
       ],
       "ranked": [
         {
@@ -3098,44 +3098,44 @@
         {
           "rank": 5,
           "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
-          "pages": "2",
-          "label": null,
-          "score": 0.398
-        },
-        {
-          "rank": 6,
-          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
           "pages": "4",
           "label": null,
           "score": 0.372
         },
         {
-          "rank": 7,
+          "rank": 6,
           "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
           "pages": null,
           "label": null,
           "score": 0.361
         },
         {
-          "rank": 8,
+          "rank": 7,
           "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
           "pages": "2",
           "label": null,
           "score": 0.354
         },
         {
-          "rank": 9,
+          "rank": 8,
           "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
           "pages": "3",
           "label": null,
           "score": 0.329
         },
         {
-          "rank": 10,
-          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
-          "pages": "4",
+          "rank": 9,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
           "label": null,
-          "score": 0.329
+          "score": 0.326
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.319
         }
       ],
       "scores": null,
@@ -3143,7 +3143,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 11.912
+      "seconds": 7.02
     },
     {
       "id": "heron-engineer",
@@ -3156,9 +3156,9 @@
       ],
       "labels": [],
       "rewritten": [
-        "Kestrel planned acquisition of Lumen Ledger",
-        "Kestrel acquisition plans, merger discussions, or purchase of Lumen Ledger",
-        "Kestrel intent to acquire Lumen Ledger"
+        "Kestrel plans or intention to acquire Lumen Ledger",
+        "Kestrel Lumen Ledger acquisition merger purchase",
+        "Potential acquisition of Lumen Ledger by Kestrel"
       ],
       "ranked": [
         {
@@ -3237,7 +3237,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 10.171
+      "seconds": 5.891
     },
     {
       "id": "heron-cfo",
@@ -3263,9 +3263,9 @@
         }
       ],
       "rewritten": [
-        "Project Heron enterprise value submitted for board approval and completion cash funding sources",
-        "Project Heron transaction valuation enterprise value, cash consideration at completion, and funding arrangements",
-        "Board approval request for Project Heron: enterprise value and financing of completion cash"
+        "Project Heron enterprise value submitted for board approval and completion cash funding",
+        "Project Heron transaction valuation enterprise value approval; sources of funds for completion cash",
+        "Project Heron board approval purchase price enterprise value cash at completion funding sources"
       ],
       "ranked": [
         {
@@ -3315,7 +3315,7 @@
           "path": "/Exec/Board Pack 2026-07-22.pdf",
           "pages": "1",
           "label": null,
-          "score": 0.55
+          "score": 0.552
         },
         {
           "rank": 8,
@@ -3329,7 +3329,7 @@
           "path": "/Exec/Board Pack 2026-07-22.pdf",
           "pages": "2",
           "label": null,
-          "score": 0.468
+          "score": 0.466
         },
         {
           "rank": 10,
@@ -3348,7 +3348,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 9.491
+      "seconds": 6.52
     },
     {
       "id": "heron-controller-cost",
@@ -3366,9 +3366,9 @@
         }
       ],
       "rewritten": [
-        "Project Heron estimated business combination cost and cost breakdown",
-        "Project Heron business combination transaction expenses fees and other costs",
-        "Project Heron estimated costs associated with the business combination composition"
+        "Project Heron estimated business combination cost and cost components",
+        "Project Heron projected transaction expenses for the business combination, including breakdown",
+        "Project Heron business combination total estimated costs fees and expenses"
       ],
       "ranked": [
         {
@@ -3394,52 +3394,52 @@
         },
         {
           "rank": 4,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.255
+        },
+        {
+          "rank": 5,
           "path": "/Exec/Project Heron Integration Plan v0.4.docx",
           "pages": null,
           "label": null,
           "score": 0.232
         },
         {
-          "rank": 5,
+          "rank": 6,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.232
+        },
+        {
+          "rank": 7,
           "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
           "pages": "2-3",
           "label": null,
           "score": 0.218
         },
         {
-          "rank": 6,
+          "rank": 8,
           "path": "/Exec/Project Heron Integration Plan v0.4.docx",
           "pages": null,
           "label": null,
           "score": 0.205
         },
         {
-          "rank": 7,
+          "rank": 9,
           "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
           "pages": "3",
           "label": null,
           "score": 0.193
         },
         {
-          "rank": 8,
+          "rank": 10,
           "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
           "pages": "7",
           "label": null,
           "score": 0.176
-        },
-        {
-          "rank": 9,
-          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
-          "pages": "1",
-          "label": null,
-          "score": 0.174
-        },
-        {
-          "rank": 10,
-          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
-          "pages": "2",
-          "label": null,
-          "score": 0.172
         }
       ],
       "scores": {
@@ -3451,7 +3451,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 7.861
+      "seconds": 6.575
     },
     {
       "id": "heron-controller-loan",
@@ -3470,8 +3470,8 @@
       ],
       "rewritten": [
         "Project Heron Tamar Bank loan drawdown date and covenants",
-        "Tamar Bank financing for Project Heron: loan funding schedule, conditions and covenant terms",
-        "Project Heron loan agreement with Tamar Bank draw date financial and other covenants"
+        "Tamar Bank financing facility for Project Heron availability, funding date, and financial or operational covenants",
+        "Project Heron loan drawdown timing covenant obligations and loan terms from Tamar Bank"
       ],
       "ranked": [
         {
@@ -3518,31 +3518,31 @@
         },
         {
           "rank": 7,
-          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
-          "pages": null,
-          "label": null,
-          "score": 0.159
-        },
-        {
-          "rank": 8,
           "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
           "pages": "2",
           "label": null,
           "score": 0.159
         },
         {
-          "rank": 9,
-          "path": "/Legal/Contracts/KPC-2025-0231 Sorrel Identity DPA.docx",
+          "rank": 8,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
           "pages": null,
           "label": null,
-          "score": 0.155
+          "score": 0.159
         },
         {
-          "rank": 10,
+          "rank": 9,
           "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
           "pages": null,
           "label": null,
           "score": 0.151
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/Month-End Close Checklist.md",
+          "pages": null,
+          "label": null,
+          "score": 0.147
         }
       ],
       "scores": {
@@ -3554,7 +3554,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 7.468
+      "seconds": 6.455
     },
     {
       "id": "nda-restricted-intern",
@@ -3573,9 +3573,9 @@
         }
       ],
       "rewritten": [
-        "KPC-2026-0298 contract details and scope",
-        "Agreement or contract KPC-2026-0298 parties, terms, and purpose",
-        "KPC-2026-0298 contract summary"
+        "KPC-2026-0298 contract description and scope of work",
+        "Agreement KPC-2026-0298 parties, term, and key obligations",
+        "Contract record KPC-2026-0298 purpose and details"
       ],
       "ranked": [
         {
@@ -3658,7 +3658,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.245
+      "seconds": 6.545
     },
     {
       "id": "nda-restricted-exec",
@@ -3681,9 +3681,9 @@
         }
       ],
       "rewritten": [
-        "deal associated with restricted non-disclosure agreement KPC-2026-0298",
-        "KPC-2026-0298 restricted NDA deal name",
-        "which transaction or deal is covered by the restricted NDA KPC-2026-0298"
+        "KPC-2026-0298 restricted NDA associated deal",
+        "KPC-2026-0298 non-disclosure agreement deal name",
+        "KPC-2026-0298 contract records deal or transaction"
       ],
       "ranked": [
         {
@@ -3766,7 +3766,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.453
+      "seconds": 6.438
     },
     {
       "id": "fraud-rule-payments",
@@ -3784,9 +3784,9 @@
         }
       ],
       "rewritten": [
-        "Kestrel Shield FR-110 fraud rule description and action",
-        "FR-110 fraud detection rule trigger conditions and response",
-        "Kestrel Shield fraud rule FR-110 purpose behavior"
+        "Kestrel Shield FR-110 fraud rule purpose and actions",
+        "FR-110 fraud detection rule behavior triggers outcomes",
+        "Kestrel Shield fraud screening rule FR-110 configuration"
       ],
       "ranked": [
         {
@@ -3854,10 +3854,10 @@
         },
         {
           "rank": 10,
-          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
-          "pages": "2-3",
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
           "label": null,
-          "score": 0.347
+          "score": 0.386
         }
       ],
       "scores": {
@@ -3869,7 +3869,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.479
+      "seconds": 6.563
     },
     {
       "id": "fraud-rule-platform",
@@ -3883,8 +3883,8 @@
       "labels": [],
       "rewritten": [
         "Kestrel Shield fraud rule FR-110 condition",
-        "FR-110 rule criteria trigger condition Kestrel Shield",
-        "Kestrel Shield FR-110 fraud detection rule requirements"
+        "FR-110 rule trigger criteria and conditions",
+        "Kestrel Shield fraud detection rule condition and requirements"
       ],
       "ranked": [
         {
@@ -3945,17 +3945,17 @@
         },
         {
           "rank": 9,
-          "path": "/Company/Code of Conduct.pdf",
-          "pages": "1",
-          "label": null,
-          "score": 0.305
-        },
-        {
-          "rank": 10,
           "path": "/Engineering/architecture-overview.md",
           "pages": null,
           "label": null,
           "score": 0.286
+        },
+        {
+          "rank": 10,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.273
         }
       ],
       "scores": null,
@@ -3963,7 +3963,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.549
+      "seconds": 6.41
     },
     {
       "id": "grievance-hr-partner",
@@ -3976,9 +3976,9 @@
       ],
       "labels": [],
       "rewritten": [
-        "Chris Dunn grievance HR-CASE-2026-014",
-        "HR-CASE-2026-014 grievance details",
-        "Chris Dunn employee complaint or grievance subject"
+        "Chris Dunn grievance details in HR-CASE-2026-014",
+        "HR-CASE-2026-014 employee complaint and alleged workplace issue",
+        "Chris Dunn grievance, complaint, or employment dispute"
       ],
       "ranked": [
         {
@@ -4025,29 +4025,29 @@
         },
         {
           "rank": 7,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.211
+        },
+        {
+          "rank": 8,
           "path": "/HR/Policies/Travel and Expenses Policy.pdf",
           "pages": "3",
           "label": null,
           "score": 0.19
         },
         {
-          "rank": 8,
+          "rank": 9,
           "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
           "pages": "3",
           "label": null,
           "score": 0.186
         },
         {
-          "rank": 9,
+          "rank": 10,
           "path": "/HR/Policies/Leave Policy.pdf",
           "pages": "2",
-          "label": null,
-          "score": 0.183
-        },
-        {
-          "rank": 10,
-          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
-          "pages": null,
           "label": null,
           "score": 0.183
         }
@@ -4057,7 +4057,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.652
+      "seconds": 6.484
     },
     {
       "id": "brightwell-go-live",
@@ -4075,9 +4075,9 @@
         }
       ],
       "rewritten": [
-        "Brightwell partnership general availability date and pay run cut-off",
-        "Brightwell launch timeline generally available (GA) and payroll processing deadline",
-        "Brightwell partnership go-live date; pay run cutoff timing"
+        "Brightwell partnership general availability launch date",
+        "Brightwell partnership go-live date and pay run cut-off",
+        "Brightwell payroll pay run cutoff deadline general availability"
       ],
       "ranked": [
         {
@@ -4160,7 +4160,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.277
+      "seconds": 6.509
     },
     {
       "id": "harbour-meals",
@@ -4178,9 +4178,9 @@
         }
       ],
       "rewritten": [
-        "daily meal expense allowance for business travel",
-        "work travel meals per diem reimbursement limits",
-        "meal claim amount per day while traveling for work"
+        "Daily meal allowance or per diem limit for business travel",
+        "Work travel meal reimbursement rates and daily claim limits",
+        "Maximum amount claimable per day for meals on work trips"
       ],
       "ranked": [
         {
@@ -4263,7 +4263,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.483
+      "seconds": 6.488
     },
     {
       "id": "harbour-hotel",
@@ -4281,9 +4281,9 @@
         }
       ],
       "rewritten": [
-        "Maximum permitted hotel cost per night and approval authority for overnight accommodation",
-        "Lodging expense cap nightly hotel rate who must authorize an overnight stay",
-        "Hotel nightly limit approval requirement overnight stay"
+        "Nightly hotel rate limit and required approval for an overnight stay",
+        "Lodging reimbursement maximum per night and authorization for overnight travel",
+        "Hotel accommodation cap per night; who must approve an overnight stay"
       ],
       "ranked": [
         {
@@ -4366,7 +4366,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.521
+      "seconds": 6.489
     },
     {
       "id": "harbour-purchase-approval",
@@ -4384,9 +4384,9 @@
         }
       ],
       "rewritten": [
-        "purchase order approval authority £15,000 delegated authority threshold",
-        "who is authorised to approve a £15,000 purchase order",
-        "procurement approval limits purchase order sign-off £15,000"
+        "purchase order approval authority for a £15,000 commitment",
+        "delegated spending limits and approvers for purchase orders",
+        "who is authorized to approve a £15,000 purchase order"
       ],
       "ranked": [
         {
@@ -4469,7 +4469,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.523
+      "seconds": 6.506
     },
     {
       "id": "harbour-asks-kestrel",
@@ -4482,9 +4482,9 @@
       ],
       "labels": [],
       "rewritten": [
-        "Kestrel Checkout Pro monthly price or subscription fee on KC-PRO-12",
-        "KC-PRO-12 Kestrel Checkout Pro monthly cost billing rate",
-        "Kestrel Checkout Pro plan pricing per month KC-PRO-12"
+        "Kestrel Checkout Pro monthly cost on KC-PRO-12",
+        "KC-PRO-12 monthly subscription price for Kestrel Checkout Pro",
+        "Kestrel Checkout Pro recurring monthly fee, plan pricing, and charges for KC-PRO-12"
       ],
       "ranked": [
         {
@@ -4563,7 +4563,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.452
+      "seconds": 6.579
     },
     {
       "id": "disabled-user",
@@ -4574,9 +4574,9 @@
       "traps": [],
       "labels": [],
       "rewritten": [
-        "FY2026 budget workforce headcount assumptions staffing plan",
-        "FY2026 budget employee count hiring and attrition assumptions",
-        "FY2026 budget personnel headcount projections"
+        "FY2026 budget headcount assumptions",
+        "FY2026 budget staffing and personnel planning assumptions",
+        "FY2026 budget employee count, hiring, and workforce assumptions"
       ],
       "ranked": [],
       "scores": null,
@@ -4584,7 +4584,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 3.272
+      "seconds": 2.41
     },
     {
       "id": "leave-london",
@@ -4600,9 +4600,9 @@
         }
       ],
       "rewritten": [
-        "London staff annual leave entitlement days and carry over allowance",
-        "London employees holiday entitlement days annual leave carried forward",
-        "London annual leave policy permitted carryover days"
+        "London employees annual leave entitlement days and carry-over allowance",
+        "London staff holiday leave policy annual entitlement and unused leave rollover",
+        "Annual leave policy for London-based employees: days per year and maximum days carried forward"
       ],
       "ranked": [
         {
@@ -4685,7 +4685,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 5.144
+      "seconds": 4.026
     },
     {
       "id": "deploy-freeze",
@@ -4702,8 +4702,8 @@
       ],
       "rewritten": [
         "winter deployment freeze dates and change approval process",
-        "winter deploy freeze change approvals and approvers",
-        "deployment freeze period exceptions approval authority for changes"
+        "winter deploy freeze change management approver",
+        "deployment freeze period during winter and approval for changes"
       ],
       "ranked": [
         {
@@ -4764,14 +4764,14 @@
         },
         {
           "rank": 9,
-          "path": "/Engineering/Runbooks/on-call-runbook.md",
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
           "pages": null,
           "label": null,
           "score": 0.2
         },
         {
           "rank": 10,
-          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "path": "/Engineering/Runbooks/on-call-runbook.md",
           "pages": null,
           "label": null,
           "score": 0.2
@@ -4786,7 +4786,7 @@
       "crossTenant": [],
       "answer": null,
       "error": null,
-      "seconds": 6.594
+      "seconds": 6.572
     }
   ]
 }

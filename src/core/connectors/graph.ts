@@ -2,7 +2,17 @@
  * A client for a Microsoft Graph-style drive and directory (fake-workspace plays SharePoint and Entra ID). It
  * pages with `@odata.nextLink`, backs off on 429 as `Retry-After` says, reads changes with delta, and lists
  * permissions, content and the directory. It holds no state: the caller keeps the delta link (in `sync_state`).
+ * `graphConnector` wraps it as a `Connector` (`#learn/connectors/types`), which is all drive sync sees.
  */
+import {
+  type Change,
+  type Connector,
+  ConnectorError,
+  ResyncRequiredError,
+  type SourceFile,
+} from "#learn/connectors/types";
+
+export { ResyncRequiredError };
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -21,29 +31,10 @@ export interface GraphClientOptions {
   pageSize?: number;
 }
 
-/** A Graph error answer, or a request that never got one (`status` 0). */
-export class GraphRequestError extends Error {
+/** A Graph error answer, or a request that never got one (`status` 0). A 410 on a delta link is a
+ * `ResyncRequiredError` instead: enumerate everything again. */
+export class GraphRequestError extends ConnectorError {
   override name = "GraphRequestError";
-
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-    /** From `Retry-After`, when the answer had one. */
-    readonly retryAfterMs: number | null = null,
-  ) {
-    super(message);
-  }
-
-  /** Worth trying again later: throttling, an outage, or no answer at all. */
-  get retryable(): boolean {
-    return this.status === 0 || this.status === 429 || this.status >= 500;
-  }
-}
-
-/** The delta link is no longer valid (410): enumerate everything again. */
-export class ResyncRequiredError extends GraphRequestError {
-  override name = "ResyncRequiredError";
 }
 
 export interface DriveItem {
@@ -161,17 +152,24 @@ export function createGraphClient(options: GraphClientOptions) {
     return (await (await send(path, init)).json()) as T;
   }
 
-  /** Every entry of a paged listing, following `@odata.nextLink`; and the `@odata.deltaLink` it ends on, if any. */
+  type Page<T> = { value: T[]; "@odata.nextLink"?: string; "@odata.deltaLink"?: string };
+
+  /** Each page of a listing in turn, following `@odata.nextLink` until a page has none. */
+  async function* pages<T>(path: string, headers?: Record<string, string>): AsyncGenerator<Page<T>> {
+    let next: string | undefined = path;
+    while (next) {
+      const page: Page<T> = await json(next, { headers });
+      yield page;
+      next = page["@odata.nextLink"];
+    }
+  }
+
+  /** Every entry of a paged listing; and the `@odata.deltaLink` it ends on, if any. */
   async function all<T>(path: string, headers?: Record<string, string>) {
     const value: T[] = [];
-    let next: string | undefined = path;
     let deltaLink: string | undefined;
-    while (next) {
-      const page: { value: T[]; "@odata.nextLink"?: string; "@odata.deltaLink"?: string } = await json(next, {
-        headers,
-      });
+    for await (const page of pages<T>(path, headers)) {
       value.push(...page.value);
-      next = page["@odata.nextLink"];
       deltaLink = page["@odata.deltaLink"];
     }
     return { value, deltaLink };
@@ -206,6 +204,30 @@ export function createGraphClient(options: GraphClientOptions) {
           seen.add(item.id);
           if (item.folder) queue.push(item.id);
           else yield { item, path: itemPath(item) };
+        }
+      }
+    },
+
+    /**
+     * The files under `folderId` a listing page at a time, walking folders breadth first: what a crawl of a big
+     * drive looks like, so a caller can commit or report progress per page. Each file comes once.
+     */
+    async *crawlPages(folderId = "root"): AsyncGenerator<CrawledFile[]> {
+      const seen = new Set<string>();
+      const queue = [folderId];
+      while (queue.length) {
+        const folder = queue.shift()!;
+        for await (const page of pages<DriveItem>(
+          `${sitePath}/drive/items/${encodeURIComponent(folder)}/children?${top}`,
+        )) {
+          const files: CrawledFile[] = [];
+          for (const item of page.value) {
+            if (seen.has(item.id)) continue;
+            seen.add(item.id);
+            if (item.folder) queue.push(item.id);
+            else files.push({ item, path: itemPath(item) });
+          }
+          if (files.length) yield files;
         }
       }
     },
@@ -272,6 +294,90 @@ export function createGraphClient(options: GraphClientOptions) {
 }
 
 export type GraphClient = ReturnType<typeof createGraphClient>;
+
+/**
+ * The directory ids an item's effective permissions grant, own and inherited alike (Graph lists both). Read and
+ * write both let a person find the document, so both count. Sharing links and anything without a user or group
+ * grant nobody.
+ */
+export function grantedIds(permissions: readonly Permission[]): string[] {
+  const ids = new Set<string>();
+  for (const { grantedToV2 } of permissions) {
+    const id = grantedToV2.user?.id ?? grantedToV2.group?.id;
+    if (id) ids.add(id);
+  }
+  return [...ids].sort();
+}
+
+/** A drive item as a `SourceFile`. Only files are: a folder isn't a document. */
+export function toSourceFile(item: DriveItem, path: string): SourceFile {
+  const contentHash = sha256Of(item);
+  if (!item.file || !contentHash) throw new Error(`item ${item.id} at ${path} isn't a file`);
+  return {
+    id: item.id,
+    name: item.name,
+    path,
+    mimeType: item.file.mimeType,
+    version: item.eTag,
+    contentHash,
+  };
+}
+
+/**
+ * The Graph client as a `Connector`. Graph's delta lists a changed item without its path, and a renamed or moved
+ * folder without its contents, so a changed file is read again for its path and a changed folder's files are
+ * crawled again (which re-paths what a folder rename moved). A file deleted between the delta and the read is
+ * skipped: the next delta brings its tombstone.
+ */
+export function graphConnector(graph: GraphClient): Connector {
+  return {
+    async *crawl() {
+      for await (const page of graph.crawlPages()) yield page.map(({ item, path }) => toSourceFile(item, path));
+    },
+
+    latestCursor: () => graph.latestDeltaLink(),
+
+    async delta(cursor) {
+      const { changes, deltaLink } = await graph.delta(cursor);
+      const out: Change[] = [];
+      for (const change of changes) {
+        if (change.deleted) {
+          out.push({ type: "deleted", id: change.id });
+        } else if ("root" in change && change.root) {
+          continue;
+        } else if ("folder" in change && change.folder) {
+          for await (const page of graph.crawlPages(change.id)) {
+            for (const { item, path } of page) out.push({ type: "file", file: toSourceFile(item, path) });
+          }
+        } else {
+          let item: DriveItem;
+          try {
+            item = await graph.item(change.id);
+          } catch (error) {
+            if (error instanceof GraphRequestError && error.status === 404) continue;
+            throw error;
+          }
+          out.push({ type: "file", file: toSourceFile(item, itemPath(item)) });
+        }
+      }
+      return { changes: out, cursor: deltaLink };
+    },
+
+    permissions: async (fileId) => grantedIds(await graph.permissions(fileId)),
+
+    content: (fileId) => graph.content(fileId),
+
+    async subscribe({ notificationUrl, clientState, expiresAt }) {
+      const subscription = await graph.subscribe({ notificationUrl, clientState, expirationDateTime: expiresAt });
+      return { id: subscription.id, expiresAt: new Date(subscription.expirationDateTime) };
+    },
+
+    async renew(subscriptionId, expiresAt) {
+      const subscription = await graph.renew(subscriptionId, expiresAt);
+      return { id: subscription.id, expiresAt: new Date(subscription.expirationDateTime) };
+    },
+  };
+}
 
 async function errorFrom(response: Response, path: string, retryAfter: number | null): Promise<GraphRequestError> {
   let code = "unknown";
