@@ -7,7 +7,7 @@
     "#learn/*": "./src/core/*.ts"
   },
   "scripts": {
-    "dev": "dotenv -e .env.local -- vite dev --port 3000",
+    "dev": "dotenv -e .env.local -- vite dev --port 3000 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production node .output/server/index.mjs",
@@ -25,13 +25,19 @@
     "sync": "dotenv -e .env.local -- tsx src/db/request-sync.ts",
     "db:embed": "dotenv -e .env.local -- tsx src/db/embed-main.ts",
     "eval": "dotenv -e .env.local -- tsx scripts/eval.ts",
+    "agent:kill-proof": "dotenv -e .env.local -- tsx scripts/agent-kill-proof.ts",
+    "redteam": "dotenv -e .env.local -- tsx scripts/redteam.ts",
+    "agent:scenarios": "dotenv -e .env.local -- tsx scripts/agent-scenarios.ts",
     "auth:generate": "dotenv -e .env.local -- auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts --yes",
     "fake-workspace": "dotenv -e .env.local -- tsx watch servers/fake-workspace/main.ts"
   },
   "dependencies": {
     "@ai-sdk/cohere": "4.0.60",
     "@ai-sdk/openai": "^4.0.93",
+    "@ai-sdk/provider": "4.0.27",
+    "@ai-sdk/provider-utils": "5.0.59",
     "@ai-sdk/react": "^4.0.142",
+    "@ai-sdk/workflow": "2.0.71",
     "@base-ui/react": "^1.9.0",
     "@better-auth/drizzle-adapter": "1.7.7",
     "@fontsource-variable/geist": "^5.3.0",
@@ -51,6 +57,7 @@
     "@tanstack/router-plugin": "^1.168.45",
     "@tesseract.js-data/eng": "1.0.0",
     "ai": "^7.0.139",
+    "ajv": "8.20.0",
     "better-auth": "1.7.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

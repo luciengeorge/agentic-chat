@@ -74,6 +74,7 @@ const STACK_DOWN = {
   appUrl: "http://localhost:3000",
   workspaceUrl: "http://localhost:8100",
   corpusDir: "fixtures/corpus/build",
+  readyTimeoutMs: 0,
   fetch: refused,
 };
 
@@ -529,28 +530,29 @@ describe("gate", SPAWNS_VITEST, () => {
 
 describe("smoke", SPAWNS_VITEST, () => {
   const app = "failed (ECONNREFUSED); is `pnpm dev` running?";
+  const notReady = `the app isn't ready: GET http://localhost:3000/api/me ${app}`;
+  const workspaceDown = "GET http://localhost:8100/health failed (ECONNREFUSED); is `pnpm fake-workspace` running?";
 
   it("reports each check on its own, and wants the gate to cover _smoke.2", async () => {
     const { ex } = setup();
     const out = await ex(["smoke"], { ok: false });
     expect(out.passed).toBe(false);
     expect(out.checks.map((check: { duration_s: unknown }) => check.duration_s)).toEqual(
-      Array(9).fill(expect.any(Number)),
+      Array(12).fill(expect.any(Number)),
     );
     expect(out.checks.map(({ name, passed, detail }: Record<string, unknown>) => [name, passed, detail])).toEqual([
       ["paradedb extensions and queries", false, "nothing answers at 127.0.0.1:1; `pnpm ex up` starts ParadeDB"],
-      ["sign in and /api/me", false, `POST http://localhost:3000/api/auth/sign-in/email ${app}`],
-      ["banned user refused", false, `POST http://localhost:3000/api/auth/sign-in/email ${app}`],
-      [
-        "fake-workspace sharing and directory",
-        false,
-        "GET http://localhost:8100/health failed (ECONNREFUSED); is `pnpm fake-workspace` running?",
-      ],
-      ["spike workflow", false, `POST http://localhost:3000/api/spike ${app}`],
+      ["sign in and /api/me", false, notReady],
+      ["banned user refused", false, notReady],
+      ["fake-workspace sharing and directory", false, workspaceDown],
+      ["spike workflow", false, notReady],
       ["ex gate", false, "the gate didn't check _smoke.2"],
-      ["ingestion", false, "GET http://localhost:8100/health failed (ECONNREFUSED); is `pnpm fake-workspace` running?"],
+      ["ingestion", false, workspaceDown],
       ["retrieval", false, "nothing answers at 127.0.0.1:1; `pnpm ex up` starts ParadeDB"],
-      ["answer", false, `POST http://localhost:3000/api/auth/sign-in/email ${app}`],
+      ["answer", false, notReady],
+      ["agent", false, notReady],
+      ["approval", false, notReady],
+      ["red-team", false, workspaceDown],
     ]);
   });
 

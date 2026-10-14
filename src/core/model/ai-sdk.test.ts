@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { ChatEvent } from "./types";
 
 import { aiSdkChatModel } from "./ai-sdk";
+import { scriptedTurns } from "./testing";
 
 const finish = {
   type: "finish" as const,
@@ -119,5 +120,107 @@ describe("aiSdkChatModel", () => {
     await expect(run).rejects.toThrow();
     expect(seen.length).toBeLessThan(10);
     expect(seen.some((e) => e.type === "finish")).toBe(false);
+  });
+
+  describe("tool calling", () => {
+    const search = {
+      name: "search",
+      description: "Search the documents",
+      inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+    };
+
+    it("sends the tools and the choice, and yields each call whole before the finish", async () => {
+      const { model, mock } = scriptedTurns([
+        {
+          text: "Looking.",
+          toolCalls: [
+            { callId: "c1", name: "search", input: { query: "expenses" } },
+            { callId: "c2", name: "search", input: { query: "hotels" } },
+          ],
+        },
+      ]);
+      const events = await collect(
+        model.stream({
+          instructions: "x",
+          messages: [{ role: "user", content: "Find it" }],
+          tools: [search],
+          toolChoice: "required",
+          reasoningEffort: "low",
+        }),
+      );
+      expect(events).toEqual([
+        { type: "text-delta", delta: "Looking." },
+        { type: "tool-call", callId: "c1", name: "search", input: { query: "expenses" } },
+        { type: "tool-call", callId: "c2", name: "search", input: { query: "hotels" } },
+        {
+          type: "finish",
+          finishReason: "tool-calls",
+          usage: { inputTokens: 100, outputTokens: 10, reasoningTokens: 0 },
+        },
+      ]);
+      const call = mock.doStreamCalls[0];
+      expect(call.tools).toEqual([
+        expect.objectContaining({ type: "function", name: "search", description: "Search the documents" }),
+      ]);
+      expect(call.toolChoice).toEqual({ type: "required" });
+    });
+
+    it("passes arguments that don't parse through, for the loop to answer", async () => {
+      const { model } = scriptedTurns([{ toolCalls: [{ callId: "c1", name: "search", input: "{not json" }] }]);
+      const events = await collect(
+        model.stream({
+          instructions: "x",
+          messages: [{ role: "user", content: "q" }],
+          tools: [search],
+          reasoningEffort: "low",
+        }),
+      );
+      expect(events.find((e) => e.type === "tool-call")).toMatchObject({ callId: "c1", name: "search" });
+    });
+
+    it("sends earlier calls and their results (and errors) back as tool-call and tool-result parts", async () => {
+      const { model, mock } = scriptedTurns([{ text: "Done." }]);
+      await collect(
+        model.stream({
+          instructions: "x",
+          messages: [
+            { role: "user", content: "Find it" },
+            { role: "assistant", content: "", toolCalls: [{ callId: "c1", name: "search", input: { query: "a" } }] },
+            { role: "tool", callId: "c1", toolName: "search", output: { hits: 1 } },
+            {
+              role: "assistant",
+              content: "Again.",
+              toolCalls: [{ callId: "c2", name: "search", input: { query: "b" } }],
+            },
+            { role: "tool", callId: "c2", toolName: "search", output: "boom", isError: true },
+          ],
+          tools: [search],
+          reasoningEffort: "low",
+        }),
+      );
+      const prompt = mock.doStreamCalls[0].prompt;
+      expect(prompt.map((m) => m.role)).toEqual(["system", "user", "assistant", "tool", "assistant", "tool"]);
+      expect(prompt[2].content).toEqual([
+        expect.objectContaining({ type: "tool-call", toolCallId: "c1", toolName: "search", input: { query: "a" } }),
+      ]);
+      expect(prompt[3].content).toEqual([
+        expect.objectContaining({
+          type: "tool-result",
+          toolCallId: "c1",
+          output: { type: "json", value: { hits: 1 } },
+        }),
+      ]);
+      expect(prompt[4].content).toEqual([
+        expect.objectContaining({ type: "text", text: "Again." }),
+        expect.objectContaining({ type: "tool-call", toolCallId: "c2" }),
+      ]);
+      expect(prompt[5].content).toEqual([
+        expect.objectContaining({
+          type: "tool-result",
+          toolCallId: "c2",
+          output: { type: "error-text", value: "boom" },
+        }),
+      ]);
+    });
   });
 });

@@ -185,12 +185,21 @@ export async function finishIngest(tenantId: string, documentId: string, version
 }
 finishIngest.maxRetries = 3;
 
+/** Marks the version failed, unless it's gone, superseded, or already ready (a step after `finishIngest` that
+ * failed doesn't undo it). */
 export async function failIngest(tenantId: string, documentId: string, version: number, reason: string) {
   "use step";
   logger.error("ingest failed", { documentId, version, reason });
   await withTenant(tenantId, async (tx) => {
     const found = await current(tx, documentId, version);
-    if (!found.skip) await tx.update(documents).set({ status: "failed" }).where(eq(documents.id, documentId));
+    if (found.skip || found.document!.status === "ready") return;
+    await tx.update(documents).set({ status: "failed" }).where(eq(documents.id, documentId));
   });
 }
 failIngest.maxRetries = 3;
+
+/** The document is ready, but firing its drive-change automations failed for good: logged, nothing else. */
+export async function driveChangeFailed(tenantId: string, documentId: string, version: number, reason: string) {
+  "use step";
+  logger.error("drive-change automations failed to fire", { tenantId, documentId, version, reason });
+}

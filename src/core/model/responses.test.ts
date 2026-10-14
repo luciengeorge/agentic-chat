@@ -242,4 +242,40 @@ describe("responsesChatModel", () => {
     ]);
     expect(events.map((e) => e.type)).toEqual(["text-delta", "text-delta", "finish"]);
   });
+
+  it("sends tools and calls back as function_call items with their outputs, and yields parsed calls", async () => {
+    const { fetch, calls } = fakeFetch(TOOL_STREAM);
+    const model = responsesChatModel({ model: "gpt-6-luna", apiKey: "k", fetch });
+    const events = await collect(
+      model.stream({
+        instructions: "x",
+        messages: [
+          { role: "user", content: "Find it" },
+          { role: "assistant", content: "", toolCalls: [{ callId: "c1", name: "search", input: { query: "a" } }] },
+          { role: "tool", callId: "c1", toolName: "search", output: { hits: 1 } },
+          { role: "assistant", content: "Again.", toolCalls: [{ callId: "c2", name: "search", input: "{bad" }] },
+          { role: "tool", callId: "c2", toolName: "search", output: "invalid input", isError: true },
+        ],
+        tools: [{ name: "search", description: "Search", inputSchema: { type: "object", properties: {} } }],
+        toolChoice: { tool: "search" },
+        reasoningEffort: "low",
+      }),
+    );
+    const body = JSON.parse(String(calls[0].init.body));
+    expect(body.store).toBe(false);
+    expect(body.tool_choice).toEqual({ type: "function", name: "search" });
+    expect(body.tools[0]).toMatchObject({ type: "function", name: "search", strict: true });
+    expect(body.input).toEqual([
+      { role: "user", content: "Find it" },
+      { type: "function_call", call_id: "c1", name: "search", arguments: '{"query":"a"}' },
+      { type: "function_call_output", call_id: "c1", output: '{"hits":1}' },
+      { role: "assistant", content: "Again." },
+      { type: "function_call", call_id: "c2", name: "search", arguments: "{bad" },
+      { type: "function_call_output", call_id: "c2", output: '{"error":"invalid input"}' },
+    ]);
+    expect(events).toEqual([
+      { type: "tool-call", callId: "call_abc", name: "search", input: { query: "expenses" } },
+      expect.objectContaining({ type: "finish", finishReason: "tool-calls" }),
+    ]);
+  });
 });

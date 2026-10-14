@@ -5,10 +5,12 @@ import { getWorld } from "workflow/runtime";
 import { relayOnce } from "@/db/outbox";
 import { postgresAvailable } from "@/db/testing";
 import { loadWorld } from "@/fixtures/world";
+import { type AgentRuntime, setAgentRuntime } from "@/lib/agent-runtime";
 import { deliver } from "@/server/plugins/relay-deliver";
 
 import { ingestWorkflow } from "./ingest";
 import { ORDINALS_PER_RANGE } from "./ingest-deps";
+import { failIngest } from "./ingest-steps";
 import { type Stack, startStack } from "./ingest-testing";
 import { syncWorkflow } from "./sync";
 
@@ -151,6 +153,31 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
     const second = await start(ingestWorkflow, [kestrel, document.id, 1, outboxId]);
     expect(await second.returnValue).toEqual({ status: "duplicate", chunks: 0 });
   }, 60_000);
+
+  it("keeps a document ready when firing its drive-change automations fails", async () => {
+    const path = "/Company/2026 Holiday Calendar.pdf";
+    const broken = {
+      transaction: async () => {
+        throw new Error("automations unreachable");
+      },
+    } as unknown as AgentRuntime["db"];
+    setAgentRuntime({ db: broken, loop: () => ({}) as never });
+    try {
+      const { result } = await ingest(path);
+      expect(result).toMatchObject({ status: "ready" });
+    } finally {
+      setAgentRuntime(null);
+    }
+    expect(await documentAt(path)).toMatchObject({ status: "ready" });
+  }, 60_000);
+
+  it("never marks a ready version failed", async () => {
+    const path = "/Finance/Month-End Close Checklist.md";
+    const document = await documentAt(path);
+    expect(document.status).toBe("ready");
+    await failIngest(kestrel, document.id, document.version, "late failure");
+    expect(await documentAt(path)).toMatchObject({ status: "ready" });
+  });
 
   it("fans a long PDF out to child runs by page range, numbering chunks per range", async () => {
     const path = "/Finance/Reports/Q3 2026 Quarterly Report.pdf";

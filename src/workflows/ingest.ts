@@ -1,7 +1,16 @@
 import { defineHook, getWorkflowMetadata } from "workflow";
 import { start } from "workflow/api";
 
-import { embedChunks, failIngest, finishIngest, parseAndChunk, startIngest, storeBlob } from "./ingest-steps";
+import { fireDriveChange } from "./automation-steps";
+import {
+  driveChangeFailed,
+  embedChunks,
+  failIngest,
+  finishIngest,
+  parseAndChunk,
+  startIngest,
+  storeBlob,
+} from "./ingest-steps";
 import { claimOutboxRow } from "./sync-steps";
 
 export interface IngestOptions {
@@ -27,8 +36,9 @@ export function pageRanges(pages: number, size: number): { from: number; to: num
 
 /**
  * Ingests one version of a document: claim the outbox row, store the bytes, parse, chunk, write the chunks, embed
- * them, mark it ready. A long PDF fans out to one child run per page range, each resuming this run's hook when it's done.
- * Any failure marks the document failed.
+ * them, mark it ready, and fire the drive-change automations watching its folder. A long PDF fans out to one child
+ * run per page range, each resuming this run's hook when it's done. A failure before the document is ready marks it
+ * failed; a failure to fire its automations is only logged.
  */
 export async function ingestWorkflow(
   tenantId: string,
@@ -46,6 +56,7 @@ export async function ingestWorkflow(
   const started = await startIngest(tenantId, documentId, version);
   if (started.skip) return { status: started.skip, chunks: 0 };
 
+  let finished: Awaited<ReturnType<typeof finishIngest>>;
   try {
     const stored = await storeBlob(tenantId, documentId, version);
     if (stored.skip) return { status: stored.skip, chunks: 0 };
@@ -70,11 +81,20 @@ export async function ingestWorkflow(
       await parseAndChunk(tenantId, documentId, version, null, 0);
     }
     await embedChunks(tenantId, documentId, version);
-    return await finishIngest(tenantId, documentId, version);
+    finished = await finishIngest(tenantId, documentId, version);
   } catch (error) {
     await failIngest(tenantId, documentId, version, error instanceof Error ? error.message : String(error));
     throw error;
   }
+  // Outside the try: the document is ready whatever happens to the automations watching it.
+  if (finished.status === "ready") {
+    try {
+      await fireDriveChange(tenantId, documentId, version);
+    } catch (error) {
+      await driveChangeFailed(tenantId, documentId, version, error instanceof Error ? error.message : String(error));
+    }
+  }
+  return finished;
 }
 
 /** A child run: one page range of a long PDF. It always resumes its parent, with its chunk count or its error. */

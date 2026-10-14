@@ -73,6 +73,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     group: string;
     document: string;
     conversation: string;
+    run: string;
   }
 
   // One row of each kind that other tables point at, in the tenant.
@@ -81,7 +82,9 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     const group = await principal(sql, tenantId, "group", "/Finance");
     const [conversation] = await sql`
       INSERT INTO conversations (tenant_id, user_id) VALUES (${tenantId}, ${user}) RETURNING id`;
-    return { user, group, document: await document(sql, tenantId), conversation: conversation.id };
+    const [run] = await sql`
+      INSERT INTO runs (tenant_id, user_id, kind, status) VALUES (${tenantId}, ${user}, 'chat', 'queued') RETURNING id`;
+    return { user, group, document: await document(sql, tenantId), conversation: conversation.id, run: run.id };
   }
 
   it("enables and forces RLS with the tenant policy on every app table, and on no auth table", async () => {
@@ -109,9 +112,14 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     }
   });
 
-  it("covers the tables the M0b schema had, and M1's document_blobs and rate_limit_buckets", () => {
+  it("covers the tables the M0b schema had, M1's document_blobs and rate_limit_buckets, and M2's agent tables, jobs and automations", () => {
     expect(tableNames(app)).toEqual(
       [
+        "agent_budgets",
+        "agent_switches",
+        "approvals",
+        "automation_fires",
+        "automations",
         "chunks",
         "conversations",
         "document_acl",
@@ -119,11 +127,15 @@ describe.skipIf(!postgresAvailable)("schema", () => {
         "documents",
         "group_closure",
         "group_members",
+        "jobs",
+        "memory_notes",
         "messages",
         "outbox",
         "principals",
         "rate_limit_buckets",
         "retrieval_audit",
+        "run_events",
+        "runs",
         "sync_state",
       ].sort(),
     );
@@ -241,6 +253,61 @@ describe.skipIf(!postgresAvailable)("schema", () => {
       (sql, _own, other) => sql`
         INSERT INTO rate_limit_buckets (tenant_id, user_id, bucket, tokens, refilled_at)
         VALUES (${harbour}, ${other.user}, 'chat', 1, now())`,
+    ],
+    [
+      "runs_tenant_id_user_id_fkey",
+      (sql, _own, other) =>
+        sql`INSERT INTO runs (tenant_id, user_id, kind, status) VALUES (${harbour}, ${other.user}, 'chat', 'queued')`,
+    ],
+    [
+      "runs_tenant_id_conversation_id_fkey",
+      (sql, own, other) => sql`
+        INSERT INTO runs (tenant_id, user_id, conversation_id, kind, status)
+        VALUES (${harbour}, ${own.user}, ${other.conversation}, 'chat', 'queued')`,
+    ],
+    [
+      "runs_tenant_id_parent_run_id_fkey",
+      (sql, own, other) => sql`
+        INSERT INTO runs (tenant_id, user_id, parent_run_id, kind, status)
+        VALUES (${harbour}, ${own.user}, ${other.run}, 'subagent', 'queued')`,
+    ],
+    [
+      "run_events_tenant_id_run_id_fkey",
+      (sql, _own, other) => sql`
+        INSERT INTO run_events (tenant_id, run_id, seq, type, data)
+        VALUES (${harbour}, ${other.run}, 1, 'status', '{"type": "status"}')`,
+    ],
+    [
+      "approvals_tenant_id_run_id_fkey",
+      (sql, _own, other) => sql`
+        INSERT INTO approvals (tenant_id, run_id, call_id, tool, input, expires_at)
+        VALUES (${harbour}, ${other.run}, 'c1', 'send_mail', '{}', now())`,
+    ],
+    [
+      "memory_notes_tenant_id_user_id_fkey",
+      (sql, _own, other) =>
+        sql`INSERT INTO memory_notes (tenant_id, user_id, text) VALUES (${harbour}, ${other.user}, 'note')`,
+    ],
+    [
+      "agent_budgets_tenant_id_user_id_fkey",
+      (sql, _own, other) => sql`
+        INSERT INTO agent_budgets (tenant_id, user_id, day, token_limit)
+        VALUES (${harbour}, ${other.user}, current_date, 1)`,
+    ],
+    [
+      "automations_tenant_id_owner_id_fkey",
+      (sql, _own, other) => sql`
+        INSERT INTO automations (tenant_id, owner_id, name, prompt, trigger, cron)
+        VALUES (${harbour}, ${other.user}, 'a', 'p', 'schedule', '0 9 * * *')`,
+    ],
+    [
+      "automation_fires_tenant_id_automation_id_fkey",
+      (sql, _own, other) => sql`
+        WITH theirs AS (
+          INSERT INTO automations (tenant_id, owner_id, name, prompt, trigger, cron)
+          VALUES (${kestrel}, ${other.user}, 'a', 'p', 'schedule', '0 9 * * *') RETURNING id
+        )
+        INSERT INTO automation_fires (tenant_id, automation_id, fire_key) SELECT ${harbour}, id, 'k' FROM theirs`,
     ],
   ];
 

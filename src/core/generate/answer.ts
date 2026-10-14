@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatModel, FinishReason, ReasoningEffort, Usage } from "#learn/model/types";
+import type { ChatModel, FinishReason, ReasoningEffort, TextMessage, Usage } from "#learn/model/types";
 import type { Retrieval } from "#learn/retrieve/types";
 
 import { validateCitations, type CitableSource, type CitationReport } from "#learn/cite/citations";
@@ -23,7 +23,7 @@ export interface AnswerResult {
 
 export interface AnswerInput {
   question: string;
-  history?: ChatMessage[];
+  history?: TextMessage[];
   retrieval: Retrieval;
   model: ChatModel;
   reasoningEffort: ReasoningEffort;
@@ -76,7 +76,7 @@ export async function* answer(input: AnswerInput): AsyncGenerator<AnswerEvent> {
     if (event.type === "text-delta") {
       text += event.delta;
       yield event;
-    } else {
+    } else if (event.type === "finish") {
       finishReason = event.finishReason;
       usage = event.usage;
     }
