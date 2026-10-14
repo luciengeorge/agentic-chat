@@ -1,4 +1,7 @@
 import { createHook, getWorkflowMetadata, sleep } from "workflow";
+import { start } from "workflow/api";
+
+import type { ToolCall } from "#learn/agent/types";
 
 import {
   approvalStep,
@@ -11,7 +14,12 @@ import {
   recordStep,
   type RunRef,
   toolStep,
+  type ToolOutcome,
 } from "./agent-run-steps";
+import { childResultStep, doneToken, notifyDoneStep, prepareChildStep, runDone } from "./orchestrator-steps";
+
+/** The orchestrator's tool (`#learn/agent/orchestrate`). Named here: the body can't import modules with Node in them. */
+const DELEGATE_TOOL = "delegate";
 
 /** What wakes a run: something landed in its log (a message), or the user cancelled it. Ids only: the change is
  * already in Postgres. */
@@ -57,6 +65,26 @@ export async function agentRunWorkflow(tenantId: string, userId: string, runId: 
         return null;
       }
     }
+  }
+
+  /**
+   * A delegate call (section 16.3): the child run is made, its workflow started as a child workflow, and this run
+   * waits on the hook the child resumes when it ends, then reads only its outcome. The hook exists before the child
+   * starts, so the child can't end unheard. A cancel stops the wait; the cancel itself reaches the child too.
+   */
+  async function delegate(call: ToolCall, siblings: number): Promise<ToolOutcome> {
+    const prepared = await prepareChildStep(ref, call, siblings);
+    if (prepared.kind !== "child" || controller.signal.aborted) {
+      return prepared.kind === "child" ? { kind: "skipped" } : prepared;
+    }
+    using done = runDone.create({ token: doneToken(prepared.childRunId) });
+    await start(agentRunWorkflow, [tenantId, userId, prepared.childRunId]);
+    const stopped = new Promise<"cancelled">((resolve) => {
+      if (controller.signal.aborted) resolve("cancelled");
+      controller.signal.addEventListener("abort", () => resolve("cancelled"), { once: true });
+    });
+    if ((await Promise.race([done, stopped])) === "cancelled") return { kind: "skipped" };
+    return childResultStep(ref, call, prepared.childRunId);
   }
 
   /** Waits for whatever the run waits on: its approval (or the approval's expiry), a message, a cancel. */
@@ -110,8 +138,15 @@ export async function agentRunWorkflow(tenantId: string, userId: string, runId: 
           break;
         }
       } else {
+        const delegates = action.calls.filter((call) => call.tool === DELEGATE_TOOL && !("denied" in call)).length;
         const done = await unlessCancelled(
-          Promise.all(action.calls.map((call) => toolStep(ref, call, controller.signal))),
+          Promise.all(
+            action.calls.map((call) =>
+              call.tool === DELEGATE_TOOL && !("denied" in call)
+                ? delegate(call, delegates)
+                : toolStep(ref, call, controller.signal),
+            ),
+          ),
         );
         if (!done) {
           status = "cancelled";
@@ -131,5 +166,6 @@ export async function agentRunWorkflow(tenantId: string, userId: string, runId: 
     status = "failed";
   }
   await closeTokens();
+  await notifyDoneStep(ref, status);
   return { status };
 }

@@ -14,6 +14,7 @@ import { backoffMs, isRetryable, withIdempotencyKey } from "#learn/agent/durable
 import { append, readEvents, VersionConflictError } from "#learn/agent/events";
 import { approvalNeeded, decide, declinedResult, modelTurn, type RunGuard, runTools } from "#learn/agent/loop";
 import { listNotes } from "#learn/agent/memory";
+import { DELEGATE_TOOL } from "#learn/agent/orchestrate";
 import { isFinal } from "#learn/agent/state";
 import { approvals, runs } from "@/db/schema";
 import { type Tx, withTenantOn } from "@/db/tenant";
@@ -36,6 +37,8 @@ export interface RunRow {
   version: number;
   /** The Workflow run driving it, when the workflow runner does. */
   workflowRunId: string | null;
+  /** The automation that started it, for `kind: automation`. */
+  automationId: string | null;
   caps: Record<string, unknown>;
   activeMs: number;
   createdAt: Date;
@@ -83,6 +86,7 @@ export async function loadRun(tx: Tx, viewer: Viewer, runId: string): Promise<Ru
     status: row.status as RunStatus,
     version: row.version,
     workflowRunId: row.workflowRunId,
+    automationId: row.automationId,
     caps: row.caps as Record<string, unknown>,
     activeMs: row.activeMs,
     createdAt: row.createdAt,
@@ -172,6 +176,7 @@ export interface StartRun {
   kind?: RunKind;
   conversationId?: string | null;
   parentRunId?: string | null;
+  automationId?: string | null;
   caps?: Record<string, unknown>;
   message: NewMessage;
 }
@@ -190,6 +195,7 @@ export async function startRun(db: Db, viewer: Viewer, start: StartRun): Promise
         userId: viewer.userId,
         conversationId: start.conversationId ?? null,
         parentRunId: start.parentRunId ?? null,
+        automationId: start.automationId ?? null,
         kind: start.kind ?? "chat",
         status: "queued",
         caps: start.caps ?? {},
@@ -319,41 +325,79 @@ export async function decideApproval(
   return result.kind === "ok" ? "ok" : "not-pending";
 }
 
+export interface CancelOptions {
+  /** Why, for the status event. */
+  reason?: string;
+  /** Whether the user did it: their pending approvals are then rejected by them, otherwise by nobody. */
+  byUser?: boolean;
+}
+
 /**
- * Cancels the viewer's run: its pending approvals are rejected (by them) and the run moves to `cancelled`, in one
- * transaction. `wake` then tells the runner, which aborts a model turn or tool call in flight. A finished run is
- * `final`; another user's or tenant's is `not-found`.
+ * Cancels the viewer's run and every sub-agent run under it that's still live: their pending approvals are
+ * rejected and each moves to `cancelled`, in one transaction. `wake` then tells the runners, which abort a model
+ * turn or tool call in flight. A finished run is `final`; another user's or tenant's is `not-found`.
  */
 export async function cancelRun(
   db: Db,
   viewer: Viewer,
   runId: string,
   wake?: RunWaker,
+  { reason = "cancelled by the user", byUser = true }: CancelOptions = {},
 ): Promise<"ok" | "not-found" | "final"> {
   if (!UUID.test(runId)) return "not-found";
+  const by = byUser ? viewer.userId : null;
   const result = await inTenant(db, viewer, async (tx) => {
     const run = await loadRun(tx, viewer, runId);
-    if (!run) return "not-found" as const;
-    if (isFinal(run.status)) return "final" as const;
-    const pending = await tx
-      .update(approvals)
-      .set({ status: "rejected", decidedBy: viewer.userId, decidedAt: new Date() })
-      .where(and(eq(approvals.runId, runId), eq(approvals.status, "pending")))
-      .returning({ id: approvals.id });
-    const appended = await appendRetrying(tx, runId, ({ status }) =>
-      isFinal(status)
-        ? null
-        : [
-            ...pending.map(
-              (p) => ({ type: "approval_decided", approvalId: p.id, decision: "rejected", by: viewer.userId }) as const,
-            ),
-            { type: "status", from: status, to: "cancelled", reason: "cancelled by the user" },
-          ],
-    );
-    return appended ? ("ok" as const) : ("final" as const);
+    if (!run) return { kind: "not-found" } as const;
+    if (isFinal(run.status)) return { kind: "final" } as const;
+    const children = await tx.execute<{ id: string }>(sql`
+      WITH RECURSIVE tree AS (
+        SELECT id FROM runs WHERE parent_run_id = ${runId} AND user_id = ${viewer.userId}
+        UNION SELECT r.id FROM runs r JOIN tree ON r.parent_run_id = tree.id WHERE r.user_id = ${viewer.userId}
+      )
+      SELECT tree.id FROM tree JOIN runs r ON r.id = tree.id
+      WHERE r.status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')`);
+    const cancelled: string[] = [];
+    for (const id of [runId, ...children.map((c) => c.id)]) {
+      const pending = await tx
+        .update(approvals)
+        .set({ status: "rejected", decidedBy: by, decidedAt: new Date() })
+        .where(and(eq(approvals.runId, id), eq(approvals.status, "pending")))
+        .returning({ id: approvals.id });
+      const appended = await appendRetrying(tx, id, ({ status }) =>
+        isFinal(status)
+          ? null
+          : [
+              ...pending.map(
+                (p) => ({ type: "approval_decided", approvalId: p.id, decision: "rejected", by }) as const,
+              ),
+              {
+                type: "status",
+                from: status,
+                to: "cancelled",
+                reason: id === runId ? reason : "its parent run was cancelled",
+              },
+            ],
+      );
+      if (appended) cancelled.push(id);
+    }
+    return cancelled.includes(runId) ? ({ kind: "ok", cancelled } as const) : ({ kind: "final" } as const);
   });
-  if (result === "ok") await wakeSafely(wake, viewer, runId, { kind: "cancel" });
-  return result;
+  if (result.kind !== "ok") return result.kind;
+  for (const id of result.cancelled) await wakeSafely(wake, viewer, id, { kind: "cancel" });
+  return "ok";
+}
+
+/** The conversation's agent run that is still running or waiting, newest first; null when there's none. A
+ * message routed to the agent goes into it instead of starting another. */
+export async function liveRunIn(tx: Tx, viewer: Viewer, conversationId: string): Promise<RunRow | null> {
+  const [row] = await tx.execute<{ id: string }>(sql`
+    SELECT id FROM runs
+    WHERE conversation_id = ${conversationId} AND user_id = ${viewer.userId} AND kind = 'chat'
+      AND status IN ('queued', 'running', 'waiting')
+    ORDER BY created_at DESC
+    LIMIT 1`);
+  return row ? loadRun(tx, viewer, row.id) : null;
 }
 
 /** The viewer's approvals, newest first (at most 100). `pending` keeps the ones still waiting on them: not
@@ -440,14 +484,21 @@ export interface LoopSettings {
 /** Lane A's loop (`#learn/agent/loop`), bound to one viewer's tools, model and guard, as the runner calls it. The
  * run's caps are its `caps` column over `DEFAULT_CAPS`. */
 export function createRunnerLoop(viewer: Viewer, settings: LoopSettings): RunnerLoop {
-  const { model, tools, reasoningEffort, guard } = settings;
+  const { model, reasoningEffort, guard } = settings;
+  // A sub-agent can't hand work on: one level of children, so a run's tree stays bounded.
+  const subagentTools = settings.tools.filter((t) => t.name !== DELEGATE_TOOL);
+  const toolsFor = (run: RunRow) => (run.kind === "subagent" ? subagentTools : settings.tools);
   return {
     decide: (events, run) =>
-      decide(events, { ...DEFAULT_CAPS, ...(run.caps as Partial<Caps>) }, approvalNeeded(tools, viewer, run.id)),
-    modelTurn: (context, { signal, onTextDelta }) =>
+      decide(
+        events,
+        { ...DEFAULT_CAPS, ...(run.caps as Partial<Caps>) },
+        approvalNeeded(toolsFor(run), viewer, run.id),
+      ),
+    modelTurn: (context, { run, signal, onTextDelta }) =>
       modelTurn(context, {
         model,
-        tools,
+        tools: toolsFor(run),
         reasoningEffort,
         guard,
         signal,
@@ -456,7 +507,7 @@ export function createRunnerLoop(viewer: Viewer, settings: LoopSettings): Runner
       }),
     runTools: (calls, { run, signal, idempotencyKey }) =>
       runTools(calls, {
-        tools: idempotencyKey === undefined ? tools : withIdempotencyKey(tools, idempotencyKey),
+        tools: idempotencyKey === undefined ? toolsFor(run) : withIdempotencyKey(toolsFor(run), idempotencyKey),
         viewer,
         runId: run.id,
         signal,

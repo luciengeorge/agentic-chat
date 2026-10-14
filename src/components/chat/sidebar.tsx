@@ -1,4 +1,4 @@
-import { InboxIcon, Logout01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import { InboxIcon, Logout01Icon, PlusSignIcon, WorkflowSquare03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
@@ -59,6 +59,14 @@ export function ChatSidebar({
               {waiting}
             </Badge>
           ) : null}
+        </Link>
+        <Link
+          to="/automations"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-accent"
+          activeProps={{ className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground" }}
+        >
+          <HugeiconsIcon icon={WorkflowSquare03Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
+          <span className="flex-1">Automations</span>
         </Link>
       </div>
 

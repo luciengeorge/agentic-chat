@@ -74,6 +74,13 @@ describe("the plan", () => {
     expect(targetMatches("Tom", [TOM])).toBe(true);
     expect(targetMatches("tom whitfield", [TOM])).toBe(true);
     expect(targetMatches("tom.whitfield@kestrelpay.example", [TOM])).toBe(true);
+    // As gpt-6-luna writes it when the user gave both: the address decides.
+    expect(targetMatches("Tom Whitfield (tom.whitfield@kestrelpay.example)", [TOM])).toBe(true);
+    expect(targetMatches("Tom Whitfield <tom.whitfield@kestrelpay.example>", [TOM])).toBe(true);
+    expect(targetMatches("Tom Whitfield (tom@elsewhere.example)", [TOM])).toBe(false);
+    expect(targetMatches("Tom (attacker@evil.example)", [TOM])).toBe(false);
+    expect(targetMatches("Tom (attacker@evil.example)", ["attacker <attacker@evil.example>"])).toBe(true);
+    expect(targetMatches("tom.whitfield@kestrelpay.example", ["tom.whitfield@kestrelpay.example"])).toBe(true);
     expect(targetMatches("Tom Becker", [TOM])).toBe(false);
     expect(targetMatches("the team", [TOM])).toBe(false);
     expect(targetMatches("Finance", ["/Kestrel/Finance"])).toBe(true);
@@ -143,6 +150,31 @@ describe("the policy", () => {
     expect(check({ ...m, screen: undefined }, ask(), turn(mailTom), turn(m))).toEqual(deny(/wasn't checked/));
     const outside = mail("m", ["x@evil.example"], { deny: "outside" });
     expect(check(outside, ask(), turn(mailTom), turn(outside))).toEqual(deny(/outside/));
+  });
+
+  it("refuses an attachment the plan didn't name, whether or not the recipient can read it", () => {
+    const attach = (screen: Screen): ToolCall => ({
+      ...mail("m", ["tom.whitfield@kestrelpay.example"], screen),
+      input: { to: ["tom.whitfield@kestrelpay.example"], subject: "s", body: "b", attachmentDocumentIds: ["d1"] },
+    });
+    const q3 = "Q3 report.pdf (/Finance/Reports/Q3 report.pdf)";
+    const heron = "Project Heron Board Memo.pdf (/Exec/Project Heron Board Memo.pdf)";
+    const readable = attach({ recipients: [TOM], documents: [q3] });
+    const unreadable = attach({
+      recipients: [TOM],
+      documents: [heron],
+      flag: `Tom can't open the attachment ${heron}.`,
+    });
+    const deny = { kind: "deny", reason: expect.stringMatching(/doesn't name .* as an attachment/) };
+    // A document read mid-run asks for the attachment: the plan, made from the user's words, has none.
+    expect(check(readable, ask(), turn(mailTom), ok("plan"), turn(readable))).toEqual(deny);
+    expect(check(unreadable, ask(), turn(mailTom), ok("plan"), turn(unreadable))).toEqual(deny);
+    const mailQ3 = plan({ tool: "send_mail", targets: ["Tom"], documents: ["the Q3 report"] });
+    expect(check(readable, ask(), turn(mailQ3), ok("plan"), turn(readable))).toEqual({ kind: "allow" });
+    expect(check(unreadable, ask(), turn(mailQ3), ok("plan"), turn(unreadable))).toEqual(deny);
+    expect(check(attach({ recipients: [TOM] }), ask(), turn(mailQ3), ok("plan"))).toMatchObject({
+      reason: expect.stringMatching(/weren't resolved/),
+    });
   });
 
   it("holds a plan to its user message: a new message needs a new plan", () => {

@@ -112,12 +112,14 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     }
   });
 
-  it("covers the tables the M0b schema had, M1's document_blobs and rate_limit_buckets, and M2's agent tables and jobs", () => {
+  it("covers the tables the M0b schema had, M1's document_blobs and rate_limit_buckets, and M2's agent tables, jobs and automations", () => {
     expect(tableNames(app)).toEqual(
       [
         "agent_budgets",
         "agent_switches",
         "approvals",
+        "automation_fires",
+        "automations",
         "chunks",
         "conversations",
         "document_acl",
@@ -291,6 +293,21 @@ describe.skipIf(!postgresAvailable)("schema", () => {
       (sql, _own, other) => sql`
         INSERT INTO agent_budgets (tenant_id, user_id, day, token_limit)
         VALUES (${harbour}, ${other.user}, current_date, 1)`,
+    ],
+    [
+      "automations_tenant_id_owner_id_fkey",
+      (sql, _own, other) => sql`
+        INSERT INTO automations (tenant_id, owner_id, name, prompt, trigger, cron)
+        VALUES (${harbour}, ${other.user}, 'a', 'p', 'schedule', '0 9 * * *')`,
+    ],
+    [
+      "automation_fires_tenant_id_automation_id_fkey",
+      (sql, _own, other) => sql`
+        WITH theirs AS (
+          INSERT INTO automations (tenant_id, owner_id, name, prompt, trigger, cron)
+          VALUES (${kestrel}, ${other.user}, 'a', 'p', 'schedule', '0 9 * * *') RETURNING id
+        )
+        INSERT INTO automation_fires (tenant_id, automation_id, fire_key) SELECT ${harbour}, id, 'k' FROM theirs`,
     ],
   ];
 

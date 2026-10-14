@@ -19,7 +19,9 @@ const PlannedWrite = z.object({
   documents: z
     .array(z.string().min(1).max(200))
     .max(5)
-    .describe("For share_document: the documents to share, as the user named them. Otherwise empty."),
+    .describe(
+      "The documents the write touches, as the user named them: to share, or to attach to a mail. Otherwise empty.",
+    ),
 });
 
 export const PlanSchema = z.object({
@@ -40,8 +42,8 @@ export function planTool(): AgentTool<Plan, { planned: number }> {
     name: PLAN_TOOL,
     description:
       "Record your plan for the user's latest request before doing anything else: the goal, the steps, and every " +
-      "write (send_mail, share_document, remember) the user asked for, with its targets. Writes not in the plan " +
-      "are refused.",
+      "write (send_mail, share_document, remember) the user asked for, with its targets and the documents it " +
+      "shares or attaches. Writes, recipients and attachments not in the plan are refused.",
     input: PlanSchema,
     effect: "read",
     needsApproval: () => false,
@@ -105,15 +107,23 @@ export const words = (text: string) =>
     .split(/[^\p{L}\p{N}]+/u)
     .filter((w) => w && !STOPWORDS.has(w));
 
+const ADDRESS = /[^\s<>()[\],;:"']+@[^\s<>()[\],;:"']+/g;
+
 /**
- * Does a target the user named ("Tom", "tom.whitfield@kestrelpay.example", "Finance") match one of the labels the
- * guardrails resolved for a recipient ("Tom Whitfield <tom.whitfield@kestrelpay.example>")? An address must match
- * exactly; otherwise every word of the target must be a word of the label.
+ * Does a target the user named ("Tom", "tom.whitfield@kestrelpay.example", "Tom Whitfield (tom.whitfield@...)",
+ * "Finance") match one of the labels the guardrails resolved for a recipient ("Tom Whitfield
+ * <tom.whitfield@kestrelpay.example>")? A target with an address must match by that address exactly; otherwise
+ * every word of the target must be a word of the label.
  */
 export function targetMatches(target: string, labels: readonly string[]): boolean {
   const t = target.trim().toLowerCase();
-  if (t.includes("@"))
-    return labels.some((label) => label.toLowerCase().includes(`<${t}>`) || label.toLowerCase() === t);
+  const addresses = t.match(ADDRESS);
+  if (addresses) {
+    return labels.some((label) => {
+      const l = label.toLowerCase();
+      return addresses.some((address) => l.includes(`<${address}>`) || l === address);
+    });
+  }
   const wanted = words(t);
   if (wanted.length === 0) return false;
   return labels.some((label) => {
@@ -135,7 +145,8 @@ export function documentMatches(named: string, labels: readonly string[]): boole
 
 /**
  * Why the plan doesn't cover this write, or null when it does. A mail's every recipient must be a planned target
- * of a planned send_mail; a share's recipient and document must both be in one planned share_document.
+ * of a planned send_mail, and its every attachment a planned document of one; a share's recipient and document
+ * must both be in one planned share_document.
  */
 export function uncovered(plan: Plan, call: ToolCall): string | null {
   const planned = plan.writes.filter((w) => w.tool === call.tool);
@@ -150,6 +161,18 @@ export function uncovered(plan: Plan, call: ToolCall): string | null {
       const labels = recipients.filter((r) => r.toLowerCase().includes(`<${address.toLowerCase()}>`));
       const ok = planned.some((w) => w.targets.some((t) => targetMatches(t, labels.length ? labels : [address])));
       if (!ok) return `the plan doesn't name ${address} as a recipient.`;
+    }
+    // A document read mid-run mustn't add an attachment: one the recipient can read would go out unflagged, and
+    // one they can't would only be flagged to an approver.
+    const attachments = (call.input as { attachmentDocumentIds?: unknown }).attachmentDocumentIds;
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      const labels = call.screen?.documents ?? [];
+      if (labels.length !== attachments.length) return "the attachments weren't resolved, so they can't be checked.";
+      for (const label of labels) {
+        if (!planned.some((w) => w.documents.some((d) => documentMatches(d, [label])))) {
+          return `the plan doesn't name ${label} as an attachment.`;
+        }
+      }
     }
     return null;
   }

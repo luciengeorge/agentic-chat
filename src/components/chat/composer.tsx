@@ -30,7 +30,7 @@ export function Composer({
   onSend: (question: string) => void;
   onStop: () => void;
   autoFocus?: boolean;
-  /** "Run as agent": the message starts an agent run instead of a plain answer. Until section 16's router. */
+  /** "Run as agent": the message goes to the agent whatever the router would say. Off, the router decides. */
   agent?: boolean;
   onAgentChange?: (agent: boolean) => void;
 }) {
@@ -63,7 +63,7 @@ export function Composer({
                 rows={1}
                 autoFocus={autoFocus}
                 placeholder={
-                  agent ? "Ask the agent to find, email or share…" : "Ask about policies, contracts, error codes…"
+                  agent ? "Ask the agent to find, email or share…" : "Ask a question, or ask for something to be done…"
                 }
                 className={cn(
                   "max-h-48 min-h-12 resize-none border-0 bg-transparent py-3 pr-14 pl-4 text-[0.9375rem] shadow-none focus-visible:ring-0 dark:bg-transparent",
@@ -88,7 +88,7 @@ export function Composer({
                     variant={agent ? "secondary" : "ghost"}
                     aria-pressed={agent}
                     onClick={() => onAgentChange(!agent)}
-                    title="Let the agent use tools: search, read, look people up, and email or share after you approve"
+                    title="Always use the agent. Off, the assistant decides: a plain answer, or the agent when a message needs tools (email, share, look people up, compare documents)"
                   >
                     <HugeiconsIcon icon={AiMagicIcon} strokeWidth={2} data-icon="inline-start" />
                     Run as agent

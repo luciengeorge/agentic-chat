@@ -64,7 +64,7 @@ let starts = 0;
 async function startDevServer() {
   mkdirSync(LOG_DIR, { recursive: true });
   const log = openSync(join(LOG_DIR, `dev-${++starts}.log`), "w");
-  server = spawn("pnpm", ["dev", "--strictPort"], { cwd: ROOT, detached: true, stdio: ["ignore", log, log] });
+  server = spawn("pnpm", ["dev"], { cwd: ROOT, detached: true, stdio: ["ignore", log, log] });
   const started = Date.now();
   await until("the dev server", async () => (await fetch(`${target.appUrl}/login`)).ok, 120_000);
   // A cold server answers its first API calls with spurious 401s and 404s while routes compile.

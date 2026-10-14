@@ -3,6 +3,7 @@ import type { RunEvent, RunEventData } from "#learn/agent/types";
 import type { ChatModel, ReasoningEffort, Usage } from "#learn/model/types";
 
 import { countTokens, latestCompaction } from "#learn/agent/context";
+import { isPlanningCall, PLAN_TOOL } from "#learn/agent/plan";
 
 export interface CompactionSettings {
   /** Compact once the events after the last compaction pass this many tokens. */
@@ -112,8 +113,29 @@ function line({ data }: RunEvent): string | null {
 }
 
 /**
- * The facts a summary must never lose, written by code rather than the model: approvals still open, every
- * decision, and the ids of messages and calls.
+ * The plan for the latest user message, as its `make_plan` call made it. A summary that loses it leaves the model
+ * thinking it has no plan; it then calls `make_plan` again, which the policy refuses, and the user's write never
+ * happens.
+ */
+function planInForce(events: readonly RunEvent[]): string | null {
+  let message: string | null = null;
+  for (const { data } of events) if (data.type === "user_message") message = data.messageId;
+  for (const { data } of events) {
+    if (data.type !== "assistant_turn") continue;
+    const call = data.toolCalls.find((c) => c.tool === PLAN_TOOL && isPlanningCall(events, c));
+    if (!call) continue;
+    const writes = (call.input as { writes?: unknown }).writes ?? [];
+    return (
+      `Plan in force for user message ${message} (call ${call.callId}; it's already made, so don't call ` +
+      `${PLAN_TOOL} again): ${JSON.stringify(writes)}`
+    );
+  }
+  return null;
+}
+
+/**
+ * The facts a summary must never lose, written by code rather than the model: the plan in force, approvals still
+ * open, every decision, and the ids of messages and calls.
  */
 export function keptFacts(events: readonly RunEvent[]): string {
   const calls = new Map<string, { tool: string; input: unknown; outcome: string }>();
@@ -139,6 +161,8 @@ export function keptFacts(events: readonly RunEvent[]): string {
   }
 
   const out: string[] = [];
+  const plan = planInForce(events);
+  if (plan) out.push(plan);
   const open = [...approvals.entries()].filter(([, a]) => !a.decision);
   if (open.length > 0) {
     out.push("Open approvals:");

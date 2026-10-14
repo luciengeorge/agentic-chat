@@ -4,10 +4,9 @@ import { DefaultChatTransport } from "ai";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { startRun } from "@/components/agent/api";
+import { routeMessage } from "@/components/agent/api";
 import { RunView } from "@/components/agent/run-view";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ensureConversation } from "@/routes/chat/-functions";
 
 import type { OpenSource } from "./citations";
 import type { ChatUIMessage, StoredUIMessage } from "./types";
@@ -95,25 +94,37 @@ export function ChatView({
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  const runAgent = async (text: string) => {
+  /**
+   * The router (section 16.2) says where the message goes: a cited answer streams back through `useChat`; an agent
+   * run shows inline; a follow-up joins the conversation's live run, whose timeline shows it.
+   */
+  const send = async (question: string) => {
+    stick.current = true;
     setStarting(true);
     try {
-      if (!(await ensureConversation({ data: { id, title: text } }))) throw new Error("This conversation isn't yours.");
-      const runId = crypto.randomUUID();
-      await startRun({ id: runId, conversationId: id, message: { id: crypto.randomUUID(), text } });
-      setRuns((current) => [...current, { id: runId, afterMessages: messages.length }]);
+      const routed = await routeMessage({
+        conversationId: id,
+        runId: crypto.randomUUID(),
+        message: { id: crypto.randomUUID(), text: question },
+        agent,
+      });
+      if (routed.route === "answer") {
+        void sendMessage({ text: question });
+        return;
+      }
+      if (!routed.followUp) {
+        setRuns((current) =>
+          current.some((run) => run.id === routed.id)
+            ? current
+            : [...current, { id: routed.id, afterMessages: messages.length }],
+        );
+      }
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The run didn't start. Try again.");
+      toast.error(error instanceof Error ? error.message : "That didn't go through. Try again.");
     } finally {
       setStarting(false);
     }
-  };
-
-  const send = (question: string) => {
-    stick.current = true;
-    if (agent) void runAgent(question);
-    else void sendMessage({ text: question });
   };
 
   const last = messages.at(-1);
@@ -143,7 +154,7 @@ export function ChatView({
                   <button
                     key={suggestion}
                     type="button"
-                    onClick={() => send(suggestion)}
+                    onClick={() => void send(suggestion)}
                     className="rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                   >
                     {suggestion}
@@ -186,7 +197,7 @@ export function ChatView({
         <div className="mx-auto w-full max-w-3xl px-4 pb-4">
           <Composer
             busy={busy || starting}
-            onSend={send}
+            onSend={(question) => void send(question)}
             onStop={() => void stop()}
             autoFocus
             agent={agent}

@@ -424,6 +424,9 @@ export const runs = pgTable(
     status: text("status").notNull(),
     version: integer("version").notNull().default(0),
     workflowRunId: text("workflow_run_id"),
+    /** The automation that started it (section 16.4). Provenance only, so no foreign key: deleting an automation
+     * keeps its runs. */
+    automationId: uuid("automation_id"),
     caps: jsonb("caps")
       .notNull()
       .default(sql`'{}'::jsonb`),
@@ -459,6 +462,7 @@ export const runs = pgTable(
     index("runs_user_idx").on(t.userId, t.createdAt),
     index("runs_conversation_idx").on(t.conversationId),
     index("runs_parent_idx").on(t.parentRunId),
+    index("runs_automation_idx").on(t.automationId, t.createdAt),
     tenantIsolation(),
   ],
 );
@@ -632,6 +636,70 @@ export const jobs = pgTable(
     uniqueIndex("jobs_queued_key_idx")
       .on(t.queue, t.key)
       .where(sql`state = 'queued' AND key IS NOT NULL`),
+    tenantIsolation(),
+  ],
+);
+
+/**
+ * A prompt that runs as an agent on a trigger (section 16.4), acting as its owner: its runs' approvals land in the
+ * owner's inbox. `schedule` fires on `cron` (UTC), over the documents in `folder` when one is set; `drive_change`
+ * fires when a document in `folder` becomes ready.
+ */
+export const automations = pgTable(
+  "automations",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    ownerId: uuid("owner_id").notNull(),
+    name: text("name").notNull(),
+    prompt: text("prompt").notNull(),
+    trigger: text("trigger").notNull(),
+    cron: text("cron"),
+    folder: text("folder"),
+    enabled: boolean("enabled").notNull().default(true),
+    /** The latest fire claimed: a schedule's slot, or a drive change's time. */
+    lastFiredAt: timestamp("last_fired_at", { withTimezone: true }),
+    lastRunId: uuid("last_run_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("automations_tenant_id_id_key").on(t.tenantId, t.id),
+    check("automations_trigger_check", sql`trigger IN ('schedule', 'drive_change')`),
+    check("automations_cron_check", sql`(trigger = 'schedule') = (cron IS NOT NULL)`),
+    check("automations_folder_check", sql`trigger <> 'drive_change' OR folder IS NOT NULL`),
+    check("automations_name_check", sql`char_length(name) BETWEEN 1 AND 100`),
+    check("automations_prompt_check", sql`char_length(prompt) BETWEEN 1 AND 4000`),
+    foreignKey({
+      name: "automations_tenant_id_owner_id_fkey",
+      columns: [t.tenantId, t.ownerId],
+      foreignColumns: [principals.tenantId, principals.id],
+    }).onDelete("cascade"),
+    index("automations_owner_idx").on(t.ownerId, t.createdAt),
+    index("automations_enabled_idx")
+      .on(t.trigger)
+      .where(sql`enabled`),
+    tenantIsolation(),
+  ],
+);
+
+/** Each fire an automation has claimed, by its key (a schedule slot, or a document version). The primary key is
+ * what makes a fire happen once, whatever number of schedulers or ingest retries see it. */
+export const automationFires = pgTable(
+  "automation_fires",
+  {
+    tenantId: tenantId(),
+    automationId: uuid("automation_id").notNull(),
+    fireKey: text("fire_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "automation_fires_pkey", columns: [t.automationId, t.fireKey] }),
+    foreignKey({
+      name: "automation_fires_tenant_id_automation_id_fkey",
+      columns: [t.tenantId, t.automationId],
+      foreignColumns: [automations.tenantId, automations.id],
+    }).onDelete("cascade"),
     tenantIsolation(),
   ],
 );

@@ -1,5 +1,7 @@
 import {
   Alert02Icon,
+  ArrowDown01Icon,
+  ArrowRight01Icon,
   Brain02Icon,
   Cancel01Icon,
   CheckmarkCircle02Icon,
@@ -9,9 +11,11 @@ import {
   Share08Icon,
   StopCircleIcon,
   Task01Icon,
+  UserMultipleIcon,
   UserSearch01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { type ReactNode, useState } from "react";
 
 import type { RunStatus } from "#learn/agent/types";
 
@@ -34,6 +38,7 @@ const TOOL_ICONS: Record<string, typeof Search01Icon> = {
   send_mail: Mail01Icon,
   share_document: Share08Icon,
   remember: Brain02Icon,
+  delegate: UserMultipleIcon,
 };
 
 const STATUS: Record<RunStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -72,14 +77,36 @@ function Row({ icon, children, tone }: { icon: typeof Search01Icon; children: Re
   );
 }
 
+/** A sub-agent's own run, under the call that started it: collapsed until opened, so it streams only then. */
+function ChildRun({ runId, renderChild }: { runId: string; renderChild: (runId: string) => ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="ghost"
+        size="xs"
+        className="self-start"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <HugeiconsIcon icon={open ? ArrowDown01Icon : ArrowRight01Icon} strokeWidth={2} data-icon="inline-start" />
+        {open ? "Hide the sub-agent's steps" : "Show the sub-agent's steps"}
+      </Button>
+      {open ? <div className="rounded-lg border bg-muted/30 p-3">{renderChild(runId)}</div> : null}
+    </div>
+  );
+}
+
 function Item({
   item,
   busy,
   onDecide,
+  renderChild,
 }: {
   item: TimelineItem;
   busy: boolean;
   onDecide: (approvalId: string, decision: Decision) => void;
+  renderChild?: (call: TimelineItem & { kind: "tool" }) => ReactNode;
 }) {
   switch (item.kind) {
     case "user":
@@ -151,6 +178,7 @@ function Item({
               ) : null}
             </div>
           </details>
+          {renderChild?.(item)}
         </Row>
       );
     }
@@ -214,6 +242,9 @@ export function RunTimeline({
   busy = false,
   onDecide,
   onCancel,
+  childRunOf,
+  renderChild,
+  label = "Agent",
 }: {
   items: readonly TimelineItem[];
   status: RunStatus;
@@ -221,6 +252,11 @@ export function RunTimeline({
   busy?: boolean;
   onDecide: (approvalId: string, decision: Decision) => void;
   onCancel: () => void;
+  /** The sub-agent run a call started, if it's a delegate call. */
+  childRunOf?: (call: TimelineItem & { kind: "tool" }) => string | null;
+  /** Renders a sub-agent's run, nested under its call. */
+  renderChild?: (runId: string) => ReactNode;
+  label?: string;
 }) {
   const live = !FINAL.has(status);
   const [first, ...rest] = items;
@@ -234,7 +270,7 @@ export function RunTimeline({
       ) : null}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Agent</span>
+          <span className="text-xs font-medium text-muted-foreground">{label}</span>
           <Badge variant={STATUS[status].variant}>
             {status === "running" ? <Spinner data-icon="inline-start" /> : null}
             {STATUS[status].label}
@@ -250,7 +286,20 @@ export function RunTimeline({
 
       <ol className="relative flex flex-col gap-3 before:absolute before:top-3 before:bottom-3 before:left-3 before:w-px before:bg-border">
         {(opening ? rest : items).map((item) => (
-          <Item key={item.key} item={item} busy={busy} onDecide={onDecide} />
+          <Item
+            key={item.key}
+            item={item}
+            busy={busy}
+            onDecide={onDecide}
+            renderChild={
+              childRunOf && renderChild
+                ? (call) => {
+                    const runId = childRunOf(call);
+                    return runId ? <ChildRun runId={runId} renderChild={renderChild} /> : null;
+                  }
+                : undefined
+            }
+          />
         ))}
         {streamingText ? (
           <li className="prose prose-sm max-w-none pl-9 text-[0.9375rem] leading-relaxed text-foreground prose-zinc dark:prose-invert prose-p:my-2">
