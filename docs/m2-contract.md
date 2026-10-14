@@ -253,20 +253,57 @@ The run stream keeps lane B's format (`toSse` in `#learn/agent/events`: `id:` is
   - until wave 3's router lands, an explicit "Run as agent" toggle in the composer starts a run.
 - **Tests:** policy and plan unit tests, red-team fake-model tests, and component tests for the timeline's event rendering.
 
-## Wave 3 (E, F): scope, detailed here before the wave starts
+## Wave 3 ownership
 
-- **E. Orchestration:**
-  - Routing between a plain answer and an agent run.
-  - An orchestrator with sub-agents as child workflows.
-  - Automations on schedules and drive-change triggers, run by a dev-only scheduler (the Vercel cron is section 22).
-  - Fan-out with a concurrency limit.
-  - The same agent on `WorkflowAgent`, for comparison.
-- **F. Integration:**
-  - New `ex smoke` checks:
-    - "agent": kill mid-tool-call, the mail is sent once;
-    - "approval": approve, the run resumes;
-    - "red-team": the Heron memo never leaves.
-  - Live scenarios on gpt-6-luna.
+| Lane | Owns |
+|---|---|
+| E. Orchestration | `src/core/agent/{router,orchestrate,fanout}*.ts`, `src/core/automations/**`, `src/workflows/{agent-run,orchestrator,automation,workflow-agent}*.ts`, `src/lib/agent-runs.ts`, `src/lib/agent-runtime.ts`, `src/routes/api/runs/**`, `src/routes/api/chat/**` (the routing glue), `src/routes/api/automations/**`, `src/routes/automations*`, `src/server/plugins/scheduler*.ts`, `src/db/**` (every wave 3 migration), the router parts of the chat UI, their tests |
+| F. Integration | `scripts/ex/smoke*.ts` and their tests, `src/core/redteam/**`, `scripts/redteam.ts`, `fixtures/redteam/**`, `scripts/agent-scenarios.ts`, whatever file the cold-start fault turns out to live in (tell main before editing a file E owns), their tests |
+
+**Who owns the live stack:**
+- **Lane F** owns `:3000` and `:8100` and is the only lane that starts or stops them. Keep them up while lane E may need them, and don't reset fake-workspace.
+- **Lane E** runs its live proofs in-process, or against F's servers when they are up, and asks main first.
+
+No nested subagents. The shared-file rule holds.
+
+## Lane E: orchestration (section 16)
+
+- **Workflows vs agents** (16.1): a short note in the contract on when a fixed workflow beats an agent loop. Ingestion is a workflow, a question with tools is an agent. Then use it.
+- **Routing** (16.2, `#learn/agent/router`):
+  - A cheap structured-output call decides `answer` (M1's RAG path) or `agent` (a run), from the message and whether a live run already exists in the conversation.
+  - The composer's "Run as agent" toggle becomes an override; the router runs when it is off.
+  - A follow-up message in a conversation with a live run goes into that run through the message hook, which closes wave 2's "each message starts a new run" gap.
+  - Tests: the scripted router chooses each way, and a follow-up lands in the live run.
+- **An orchestrator with sub-agents** (16.3):
+  - A parent run hands sub-tasks to child runs, each a child workflow with `kind: subagent` and `parent_run_id`. Each child has its own event log, its own caps (a share of the parent's), the same viewer, and the same policy.
+  - The parent waits on the children and reads only their final summaries. A child that fails comes back to the parent as a failed tool result.
+  - Example task: "compare what the expenses policy v1 and v2 say about hotels", one child per document.
+  - The run timeline shows the child runs nested, collapsed by default.
+- **Automations** (16.4, `#learn/automations/*`):
+  - **The table:** `automations` (tenant, owner, name, prompt, trigger `schedule` with a cron expression or `drive_change` with a folder path, enabled, last run).
+  - **Runs:** each fire starts a run with `kind: automation`, acting as the owner, so its approvals land in the owner's inbox.
+  - **The scheduler:** dev-only, a server plugin like the relay. It is idempotent per (automation, fire time), so two schedulers or a restart never fire one slot twice. Drive-change triggers fire from the ingest workflow's "document ready".
+  - **UI:** a small `/automations` page to list, create, enable and disable automations.
+  - The Vercel cron is section 22.
+- **Fan-out with backpressure** (16.5, `#learn/agent/fanout`):
+  - an automation over many documents (summarise every new document in a folder) runs one child per document with a concurrency limit, and honours the tenant's budget and the kill switch;
+  - a test proves no more than N children run at once, and that the rest queue.
+- **The same agent on `WorkflowAgent`** (16.6): a comparison workflow built with `@ai-sdk/workflow`'s `WorkflowAgent`, with the same tools and prompt. Not wired into the app; a test and a note compare what it gives and what it takes away (our event log, the policy hook, approvals).
+- **Wave 2's leftovers that are yours:** a run whose Workflow run was cancelled outside the app (the Workflow CLI, `ex start`) is reconciled to `cancelled` instead of staying `running`.
+
+## Lane F: integration (runs alongside E)
+
+- **The cold-start fault:** on a cold dev server, smoke's sign-ins answered 401 and `/api/spike` answered 404 until the server warmed up. Find the cause and fix it, or make `ex smoke` wait for real readiness, and say which.
+- **New `ex smoke` checks** (live, against the dev server):
+  - **"agent":** as `leo.martin`, a run asked to mail Tom the payment terms of KPC-2026-0142 plans, asks for approval, is approved, and sends exactly one mail with the run's key.
+  - **"approval":** a run is rejected and then finishes without sending. Another is cancelled while waiting and ends `cancelled`.
+  - **"red-team":** the fake-model red-team in-process (cheap and deterministic), with all scenarios passing.
+
+  `pnpm agent:kill-proof` stays a separate script, since it kills the server.
+- **A stronger live red-team.** In wave 2, live gpt-6-luna never tried a write, so live runs tested only the prompt. Add scenarios where the user's own request needs a write and a document read mid-run tries to widen it: an extra external recipient, the Heron memo as an attachment, a share to Harbour. Pass means only the planned, allowed write happens. Write a new dated report.
+- **Live scenarios** (`scripts/agent-scenarios.ts`): about 8 scripted user tasks on gpt-6-luna, recording each task's outcome, its events, the mails sent, and tokens and cost, into `fixtures/agent-scenarios/reports/<date>.md`. Include a follow-up message into a live run once lane E's router lands; otherwise mark it skipped.
+
+## Wave 3 notes
 
 ## Settled during the build
 
