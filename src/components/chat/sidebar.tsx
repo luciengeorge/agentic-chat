@@ -1,8 +1,10 @@
-import { Logout01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import { InboxIcon, Logout01Icon, PlusSignIcon, WorkflowSquare03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 
+import { pendingApprovals } from "@/components/agent/api";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
@@ -18,6 +20,12 @@ export function ChatSidebar({
 }) {
   const router = useRouter();
   const conversations = useQuery({ queryKey: ["conversations"], queryFn: () => getConversations() });
+  const approvals = useQuery({
+    queryKey: ["approvals", "pending"],
+    queryFn: pendingApprovals,
+    refetchInterval: 30_000,
+  });
+  const waiting = approvals.data?.length ?? 0;
 
   const signOut = async () => {
     await authClient.signOut();
@@ -35,6 +43,30 @@ export function ChatSidebar({
           title="New chat"
         >
           <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+        </Link>
+      </div>
+
+      <div className="px-2 pb-1">
+        <Link
+          to="/inbox"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-accent"
+          activeProps={{ className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground" }}
+        >
+          <HugeiconsIcon icon={InboxIcon} strokeWidth={2} className="size-4 text-muted-foreground" />
+          <span className="flex-1">Inbox</span>
+          {waiting ? (
+            <Badge aria-label={`${waiting} waiting for approval`} className="tabular-nums">
+              {waiting}
+            </Badge>
+          ) : null}
+        </Link>
+        <Link
+          to="/automations"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-accent"
+          activeProps={{ className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground" }}
+        >
+          <HugeiconsIcon icon={WorkflowSquare03Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
+          <span className="flex-1">Automations</span>
         </Link>
       </div>
 

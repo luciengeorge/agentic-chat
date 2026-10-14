@@ -8,7 +8,10 @@ import { loadWorld } from "@/fixtures/world";
 import { TOKEN_PREFIX } from "../../servers/fake-workspace/corpus";
 import { localEnv } from "./env";
 import { runGate } from "./gate";
+import { checkAgent, checkApproval } from "./smoke-agent";
 import { checkAnswer } from "./smoke-answer";
+import { waitForApp } from "./smoke-ready";
+import { checkRedteam } from "./smoke-redteam";
 import { checkRetrieval } from "./smoke-retrieval";
 
 export type CheckResult = { name: string; passed: boolean; detail: string | null; duration_s: number };
@@ -26,6 +29,10 @@ export type SmokeTargets = {
   workspaceUrl: string;
   /** The corpus fake-workspace serves; its manifest names the documents the checks look up. */
   corpusDir: string;
+  /** How long the app's checks wait for a cold dev server (`waitForApp`); 90 s when unset. */
+  readyTimeoutMs?: number;
+  /** fake-workspace's `/_control` token, for counting sends. Defaults to the dev one. */
+  workspaceControlToken?: string;
   fetch: Fetch;
 };
 
@@ -61,6 +68,7 @@ export function smokeTargets(root: string, env: NodeJS.ProcessEnv = process.env)
     appUrl: vars.BETTER_AUTH_URL || "http://localhost:3000",
     workspaceUrl: vars.FAKE_WORKSPACE_URL || "http://localhost:8100",
     corpusDir: resolve(root, vars.AC_CORPUS_DIR || "fixtures/corpus/build"),
+    workspaceControlToken: vars.FAKE_WORKSPACE_CONTROL_TOKEN || undefined,
     fetch: (url, init) => fetch(url, { ...init, signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
   };
 }
@@ -411,16 +419,39 @@ export async function checkGate(root: string): Promise<string> {
   return `passed ${results.map((result) => result.step).join(", ")}`;
 }
 
-export function smokeChecks(root: string, target: SmokeTargets): [string, Check][] {
+/**
+ * The checks `pnpm ex smoke` runs, at once. The ones that talk to the dev server first wait for it to be ready
+ * (`waitForApp`): a cold server still compiling, or another app on the port, fails them with the reason.
+ */
+export function smokeChecks(
+  root: string,
+  target: SmokeTargets,
+  ready: () => Promise<string> = () => waitForApp(root, target),
+): [string, Check][] {
+  let waiting: Promise<string> | undefined;
+  const app =
+    (check: () => Promise<string | null>): Check =>
+    async () => {
+      waiting ??= ready();
+      try {
+        await waiting;
+      } catch (error) {
+        throw new Error(`the app isn't ready: ${(error as Error).message}`);
+      }
+      return check();
+    };
   return [
     ["paradedb extensions and queries", () => checkParadeDb(target.adminDatabaseUrl ?? target.databaseUrl)],
-    ["sign in and /api/me", () => checkSignIn(target)],
-    ["banned user refused", () => checkBannedUser(target)],
+    ["sign in and /api/me", app(() => checkSignIn(target))],
+    ["banned user refused", app(() => checkBannedUser(target))],
     ["fake-workspace sharing and directory", () => checkFakeWorkspace(target)],
-    ["spike workflow", () => checkSpikeWorkflow(target)],
+    ["spike workflow", app(() => checkSpikeWorkflow(target))],
     ["ex gate", () => checkGate(root)],
     ["ingestion", () => checkIngestion(target)],
     ["retrieval", () => checkRetrieval(target)],
-    ["answer", () => checkAnswer(target)],
+    ["answer", app(() => checkAnswer(target))],
+    ["agent", app(() => checkAgent(target))],
+    ["approval", app(() => checkApproval(target))],
+    ["red-team", () => checkRedteam(target, target.workspaceControlToken)],
   ];
 }

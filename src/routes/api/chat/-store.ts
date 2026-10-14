@@ -1,7 +1,7 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 
 import type { Usage } from "#learn/model/types";
-import type { ChatMessage } from "#learn/model/types";
+import type { TextMessage } from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 import type { ConversationSummary, ReplyStatus, SourceRef, StoredUIMessage, Verdict } from "@/components/chat/types";
 import type { Tx } from "@/db/tenant";
@@ -64,7 +64,7 @@ async function nextSeq(tx: Tx, conversationId: string): Promise<number> {
 export type Turn =
   | { kind: "not-found" }
   | { kind: "replay"; reply: StoredReply }
-  | { kind: "new"; history: ChatMessage[] };
+  | { kind: "new"; history: TextMessage[] };
 
 /**
  * Starts a turn: makes the conversation on its first message, and adds the user's message once per idempotency

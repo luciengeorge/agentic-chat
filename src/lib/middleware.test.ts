@@ -67,6 +67,7 @@ describe("the chat boundary", () => {
     expect(routes.map((p) => relative(root, p)).sort()).toEqual([
       "routes/api/chat/documents.$documentId.ts",
       "routes/api/chat/index.ts",
+      "routes/api/chat/router.ts",
     ]);
     for (const path of routes) expect(read(path)).toMatch(/server:\s*\{\s*middleware:\s*\[viewerMiddleware\]/);
   });

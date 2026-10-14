@@ -12,6 +12,9 @@ import { directoryRoutes } from "./directory";
 import { driveRoutes } from "./drive";
 import { GraphError, errorResponse } from "./errors";
 import { Faults } from "./faults";
+import { IdempotencyKeys } from "./idempotency";
+import { Mailroom, mailRoutes } from "./mail";
+import { InviteLog, sharingRoutes } from "./sharing";
 import { subscriptionRoutes } from "./subscriptions";
 
 export const SERVICE = "fake-workspace";
@@ -29,6 +32,9 @@ export interface Runtime {
   readonly workspace: Workspace;
   readonly faults: Faults;
   readonly notifier: Notifier;
+  readonly mailroom: Mailroom;
+  readonly invites: InviteLog;
+  readonly idempotency: IdempotencyKeys;
 }
 
 export interface AppOptions {
@@ -50,6 +56,9 @@ export function createApp(options: AppOptions = {}): { app: Hono; runtime: Runti
     workspace: new Workspace(options.corpusDir ?? DEFAULT_CORPUS_DIR, options.worldPath ?? DEFAULT_WORLD_PATH),
     faults: new Faults(clock),
     notifier: new Notifier(clock, options.policy ?? DEFAULT_POLICY),
+    mailroom: new Mailroom(),
+    invites: new InviteLog(),
+    idempotency: new IdempotencyKeys(),
   };
   try {
     runtime.workspace.load();
@@ -65,6 +74,8 @@ export function createApp(options: AppOptions = {}): { app: Hono; runtime: Runti
   directoryRoutes(app, runtime);
   subscriptionRoutes(app, runtime);
   controlRoutes(app, runtime);
+  mailRoutes(app, runtime);
+  sharingRoutes(app, runtime);
   app.notFound(() => errorResponse(new GraphError(404, "itemNotFound", "Not Found")));
   app.onError((error) => {
     if (error instanceof GraphError) return errorResponse(error);
