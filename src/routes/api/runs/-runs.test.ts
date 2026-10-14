@@ -10,7 +10,8 @@ import { withTenantOn } from "@/db/tenant";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
 import { append, loadRun } from "@/lib/agent-runs";
 
-import { handleAddMessage, handleStartRun, handleStream, type RunRoutesDeps } from "./-runs";
+import { handleDecideApproval, handleListApprovals } from "../approvals/-approvals";
+import { handleAddMessage, handleCancelRun, handleStartRun, handleStream, type RunRoutesDeps } from "./-runs";
 
 const LEO = "44444444-4444-4444-8444-444444444444";
 const NORA = "55555555-5555-4555-8555-555555555555";
@@ -18,6 +19,7 @@ const GHOST = "66666666-6666-4666-8666-666666666666";
 const NINA = "77777777-7777-4777-8777-777777777777";
 
 interface SseBlock {
+  event?: string;
   id?: string;
   data?: string;
   comment?: string;
@@ -39,6 +41,7 @@ async function readSse(response: Response, stop: (blocks: SseBlock[]) => boolean
       for (const line of buffer.slice(0, end).split("\n")) {
         if (line.startsWith(":")) block.comment = line.slice(1).trim();
         else if (line.startsWith("id: ")) block.id = line.slice(4);
+        else if (line.startsWith("event: ")) block.event = line.slice(7);
         else if (line.startsWith("data: ")) block.data = line.slice(6);
       }
       buffer = buffer.slice(end + 2);
@@ -51,7 +54,8 @@ async function readSse(response: Response, stop: (blocks: SseBlock[]) => boolean
   }
 }
 
-const eventsOf = (blocks: SseBlock[]): RunEvent[] => blocks.filter((b) => b.data).map((b) => JSON.parse(b.data!));
+const eventsOf = (blocks: SseBlock[]): RunEvent[] =>
+  blocks.filter((b) => b.data && !b.event).map((b) => JSON.parse(b.data!));
 
 describe.skipIf(!postgresAvailable)("the run routes", () => {
   let t: TestDatabase;
@@ -260,6 +264,65 @@ describe.skipIf(!postgresAvailable)("the run routes", () => {
       expect(blocks.some((b) => b.comment === "heartbeat")).toBe(true);
     });
 
+    it("merges a Workflow run's tokens, and drops the late ones of a turn already sent", async () => {
+      const id = await newRun();
+      await appendTo(id, { type: "status", from: "queued", to: "running" });
+      await t.sql`UPDATE runs SET workflow_run_id = 'wrun_test' WHERE id = ${id}`;
+      let push!: ReadableStreamDefaultController<{ delta: string; turn: string }>;
+      const tokens = new ReadableStream<{ delta: string; turn: string }>({ start: (c) => void (push = c) });
+      const asked: string[] = [];
+      const d = deps({
+        tokens: async (workflowRunId) => {
+          asked.push(workflowRunId);
+          return tokens;
+        },
+      });
+      const response = await stream(leo, id, {}, d);
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let text = "";
+      const until = async (needle: string) => {
+        while (!text.includes(needle)) {
+          const { value, done } = await reader.read();
+          if (done) throw new Error(`stream ended before ${needle}`);
+          text += decoder.decode(value, { stream: true });
+        }
+      };
+      await until("id: 2");
+      push.enqueue({ delta: "Hel", turn: "wf:t1" });
+      await until('data: {"delta":"Hel"}');
+      expect(text).toContain('event: token\ndata: {"delta":"Hel"}\n\n');
+
+      await withTenantOn(t.appDb, kestrel, async (tx) => {
+        const run = await loadRun(tx, leo, id);
+        return append(
+          tx,
+          id,
+          run!.version,
+          [
+            {
+              type: "assistant_turn",
+              text: "Hello",
+              toolCalls: [],
+              usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0 },
+            },
+          ],
+          {
+            stepKey: "wf:t1",
+          },
+        );
+      });
+      await until("id: 3");
+      push.enqueue({ delta: "lo", turn: "wf:t1" });
+      push.enqueue({ delta: "Next", turn: "wf:t2" });
+      await until('{"delta":"Next"}');
+      expect(text).not.toContain('{"delta":"lo"}');
+      expect(asked).toEqual(["wrun_test"]);
+      await appendTo(id, { type: "status", from: "running", to: "succeeded" });
+      await until("id: 4");
+      for (;;) if ((await reader.read()).done) break;
+    });
+
     it("answers 404 for another user's run, another tenant's, or a bad id", async () => {
       const id = await newRun();
       expect((await stream(nora, id)).status).toBe(404);
@@ -267,11 +330,97 @@ describe.skipIf(!postgresAvailable)("the run routes", () => {
       expect((await stream(leo, "nope")).status).toBe(404);
     });
   });
+
+  /** A run waiting on a `send_mail` approval, written as the runner would. */
+  const waitingRun = async () => {
+    const runId = await newRun();
+    const [{ id: approvalId }] = await t.sql`
+      INSERT INTO approvals (tenant_id, run_id, call_id, tool, input, expires_at)
+      VALUES (${kestrel}, ${runId}, 'm1', 'send_mail', ${JSON.stringify({ to: "amara@kestrelpay.example" })}::jsonb,
+        now() + interval '7 days')
+      RETURNING id`;
+    await appendTo(
+      runId,
+      { type: "status", from: "queued", to: "running" },
+      {
+        type: "approval_requested",
+        approvalId,
+        call: { callId: "m1", tool: "send_mail", input: {}, screen: { flag: "quotes a document Amara can't read" } },
+        expiresAt: new Date().toISOString(),
+      },
+      { type: "status", from: "running", to: "waiting", reason: "approval" },
+    );
+    return { runId, approvalId: approvalId as string };
+  };
+
+  describe("POST /api/runs/:id/cancel", () => {
+    it("cancels the viewer's run once, wakes the runner, and answers 404 to anyone else", async () => {
+      const { runId } = await waitingRun();
+      const woken: string[] = [];
+      const d = deps({ wake: async (_, id, why) => void woken.push(`${id}:${why.kind}`) });
+      expect((await handleCancelRun(nora, runId, d)).status).toBe(404);
+      expect((await handleCancelRun(nina, runId, d)).status).toBe(404);
+      expect((await handleCancelRun(leo, "nope", d)).status).toBe(404);
+      const cancelled = await handleCancelRun(leo, runId, d);
+      expect(cancelled.status).toBe(202);
+      expect(await cancelled.json()).toEqual({ id: runId, status: "cancelled" });
+      const again = await handleCancelRun(leo, runId, d);
+      expect(again.status).toBe(409);
+      expect(await again.json()).toEqual({ error: "run_finished", status: "cancelled" });
+      expect(woken).toEqual([`${runId}:cancel`]);
+    });
+  });
+
+  describe("the approval routes", () => {
+    const decide = (viewer: Viewer, id: string, body: unknown, d = deps()) =>
+      handleDecideApproval(post(`/api/approvals/${id}`, body), viewer, id, d);
+    const list = (viewer: Viewer, query = "") =>
+      handleListApprovals(new Request(`http://localhost:3000/api/approvals${query}`), viewer, deps());
+
+    it("lists the viewer's pending approvals and nobody else's", async () => {
+      const { approvalId, runId } = await waitingRun();
+      const mine = await list(leo, "?status=pending");
+      expect(mine.status).toBe(200);
+      const { approvals } = (await mine.json()) as { approvals: { id: string; runId: string }[] };
+      expect(approvals).toContainEqual(
+        expect.objectContaining({
+          id: approvalId,
+          runId,
+          tool: "send_mail",
+          screen: { flag: "quotes a document Amara can't read" },
+        }),
+      );
+      expect(await (await list(nora, "?status=pending")).json()).toEqual({ approvals: [] });
+      expect((await list(leo, "?status=approved")).status).toBe(400);
+    });
+
+    it("decides once, wakes the runner, and refuses bad bodies, strangers and a second decision", async () => {
+      const { approvalId, runId } = await waitingRun();
+      const woken: string[] = [];
+      const d = deps({ wake: async (_, id, why) => void woken.push(`${id}:${why.kind}`) });
+      expect((await decide(leo, approvalId, "{", d)).status).toBe(400);
+      expect((await decide(leo, approvalId, { decision: "maybe" }, d)).status).toBe(400);
+      expect((await decide(nora, approvalId, { decision: "approved" }, d)).status).toBe(404);
+      expect((await decide(nina, approvalId, { decision: "approved" }, d)).status).toBe(404);
+      expect((await decide(leo, "nope", { decision: "approved" }, d)).status).toBe(404);
+      const ok = await decide(leo, approvalId, { decision: "approved" }, d);
+      expect(ok.status).toBe(200);
+      expect(await ok.json()).toEqual({ id: approvalId, decision: "approved" });
+      const again = await decide(leo, approvalId, { decision: "rejected" }, d);
+      expect(again.status).toBe(409);
+      expect(await again.json()).toEqual({ error: "not_pending" });
+      expect(woken).toEqual([`${runId}:approval`]);
+    });
+  });
 });
 
-// Every runs and memory route goes through the viewer middleware, and no schema takes a tenant or a user id.
+// Every runs, approvals and memory route goes through the viewer middleware, and no schema takes a tenant or a user id.
 describe("the runs boundary", () => {
-  const dirs = [join(import.meta.dirname), join(import.meta.dirname, "../memory")];
+  const dirs = [
+    join(import.meta.dirname),
+    join(import.meta.dirname, "../memory"),
+    join(import.meta.dirname, "../approvals"),
+  ];
   const files = dirs.flatMap((dir) =>
     readdirSync(dir)
       .filter((name) => /\.tsx?$/.test(name) && !name.includes(".test."))
@@ -281,7 +430,7 @@ describe("the runs boundary", () => {
 
   it("puts every route behind the middleware", () => {
     const routes = files.filter((path) => /\bserver:\s*\{/.test(read(path)));
-    expect(routes.length).toBe(5);
+    expect(routes.length).toBe(8);
     for (const path of routes) expect(read(path)).toMatch(/server:\s*\{\s*middleware:\s*\[viewerMiddleware\]/);
   });
 

@@ -13,6 +13,20 @@ export interface ToolCall {
   callId: string;
   tool: string;
   input: unknown;
+  /** What the guardrails found when the model proposed a write (section 17), recorded with its turn. The model
+   * never sets it. */
+  screen?: Screen;
+}
+
+/** A write call checked against the database before anyone is asked to approve it (`#learn/agent/guardrails`). */
+export interface Screen {
+  /** Refused outright: it would cross the tenant, the user's access or the company's mail domains. */
+  deny?: string;
+  /** Allowed, but the user should see this before approving. */
+  flag?: string;
+  /** Who and what the call touches, by name: for matching it against the plan. */
+  recipients?: string[];
+  documents?: string[];
 }
 
 export type RunEventData =

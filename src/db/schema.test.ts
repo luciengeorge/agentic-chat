@@ -112,7 +112,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     }
   });
 
-  it("covers the tables the M0b schema had, M1's document_blobs and rate_limit_buckets, and M2's agent tables", () => {
+  it("covers the tables the M0b schema had, M1's document_blobs and rate_limit_buckets, and M2's agent tables and jobs", () => {
     expect(tableNames(app)).toEqual(
       [
         "agent_budgets",
@@ -125,6 +125,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
         "documents",
         "group_closure",
         "group_members",
+        "jobs",
         "memory_notes",
         "messages",
         "outbox",

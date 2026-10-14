@@ -1,10 +1,13 @@
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { startRun } from "@/components/agent/api";
+import { RunView } from "@/components/agent/run-view";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ensureConversation } from "@/routes/chat/-functions";
 
 import type { OpenSource } from "./citations";
 import type { ChatUIMessage, StoredUIMessage } from "./types";
@@ -36,9 +39,35 @@ function describe(error: Error): string {
   return error.message || "Something went wrong. Try again.";
 }
 
-export function ChatView({ id, initialMessages }: { id: string; initialMessages: StoredUIMessage[] }) {
+/** An agent run in the conversation, after this many chat messages. */
+export interface RunPlacement {
+  id: string;
+  afterMessages: number;
+}
+
+const runsAfter = (runs: readonly RunPlacement[], count: number) =>
+  runs
+    .filter((run) => run.afterMessages === count)
+    .map((run) => (
+      <li key={run.id}>
+        <RunView runId={run.id} />
+      </li>
+    ));
+
+export function ChatView({
+  id,
+  initialMessages,
+  initialRuns = [],
+}: {
+  id: string;
+  initialMessages: StoredUIMessage[];
+  initialRuns?: RunPlacement[];
+}) {
   const queryClient = useQueryClient();
   const [source, setSource] = useState<OpenSource | null>(null);
+  const [agent, setAgent] = useState(false);
+  const [runs, setRuns] = useState(initialRuns);
+  const [starting, setStarting] = useState(false);
   const [transport] = useState(
     () =>
       new DefaultChatTransport<ChatUIMessage>({
@@ -66,9 +95,25 @@ export function ChatView({ id, initialMessages }: { id: string; initialMessages:
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  const runAgent = async (text: string) => {
+    setStarting(true);
+    try {
+      if (!(await ensureConversation({ data: { id, title: text } }))) throw new Error("This conversation isn't yours.");
+      const runId = crypto.randomUUID();
+      await startRun({ id: runId, conversationId: id, message: { id: crypto.randomUUID(), text } });
+      setRuns((current) => [...current, { id: runId, afterMessages: messages.length }]);
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The run didn't start. Try again.");
+    } finally {
+      setStarting(false);
+    }
+  };
+
   const send = (question: string) => {
     stick.current = true;
-    void sendMessage({ text: question });
+    if (agent) void runAgent(question);
+    else void sendMessage({ text: question });
   };
 
   const last = messages.at(-1);
@@ -85,7 +130,7 @@ export function ChatView({ id, initialMessages }: { id: string; initialMessages:
           }}
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          {messages.length === 0 ? (
+          {messages.length === 0 && runs.length === 0 ? (
             <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-6 px-4 pb-16 text-center">
               <div className="flex flex-col gap-2">
                 <h1 className="text-2xl font-semibold tracking-tight text-balance">What do you need to know?</h1>
@@ -108,18 +153,22 @@ export function ChatView({ id, initialMessages }: { id: string; initialMessages:
             </div>
           ) : (
             <ol className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-8" aria-live="polite">
+              {runsAfter(runs, 0)}
               {messages.map((message, i) => (
-                <li key={message.id}>
-                  {message.role === "user" ? (
-                    <UserMessage message={message} />
-                  ) : (
-                    <AssistantMessage
-                      message={message}
-                      streaming={busy && i === messages.length - 1}
-                      onOpenSource={setSource}
-                    />
-                  )}
-                </li>
+                <Fragment key={message.id}>
+                  <li>
+                    {message.role === "user" ? (
+                      <UserMessage message={message} />
+                    ) : (
+                      <AssistantMessage
+                        message={message}
+                        streaming={busy && i === messages.length - 1}
+                        onOpenSource={setSource}
+                      />
+                    )}
+                  </li>
+                  {runsAfter(runs, i + 1)}
+                </Fragment>
               ))}
               {waiting ? (
                 <li>
@@ -135,7 +184,14 @@ export function ChatView({ id, initialMessages }: { id: string; initialMessages:
         </div>
 
         <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-          <Composer busy={busy} onSend={send} onStop={() => void stop()} autoFocus />
+          <Composer
+            busy={busy || starting}
+            onSend={send}
+            onStop={() => void stop()}
+            autoFocus
+            agent={agent}
+            onAgentChange={setAgent}
+          />
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Answers can be wrong. Open the sources to check them.
           </p>

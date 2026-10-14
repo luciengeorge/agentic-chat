@@ -18,6 +18,7 @@ export default defineNitroConfig({
     "./src/server/plugins/refuse-dev-secrets.ts",
     "./src/workflows/start-world.ts",
     "./src/server/plugins/relay.ts",
+    "./src/server/plugins/agent-queue.ts",
   ],
   // OCR (the ingest page route) loads tesseract.js from node_modules: bundled, it reads `__dirname`, which ESM
   // lacks, and its worker script and English model are files it finds on disk. The trailing * traces the whole
