@@ -8,6 +8,7 @@
  */
 import type { AgentTool, RunEvent, ToolCall } from "./types";
 
+import { DELEGATE_TOOL } from "./orchestrate";
 import { currentPlan, isPlanningCall, PLAN_TOOL, uncovered } from "./plan";
 
 export type Verdict =
@@ -61,3 +62,25 @@ export const planPolicy: Policy = {
     return call.screen.flag ? { kind: "approve", reason: call.screen.flag } : ALLOW;
   },
 };
+
+/**
+ * A sub-agent's policy: it's a read-only researcher. Its task was written by the parent's model, maybe after a
+ * document told it what to ask, so no task can make it write: every write tool (`remember` included) and
+ * `delegate` are refused, whatever its plan or task says. The parent does any write its user planned.
+ */
+export const subagentPolicy: Policy = {
+  check(_call, { tool }) {
+    if (tool && (tool.effect === "write" || tool.name === DELEGATE_TOOL)) {
+      return deny(
+        "a sub-agent is read-only: it can't send, share, remember or hand work on. Report what you found; the " +
+          "agent you work for does any write its user asked for.",
+      );
+    }
+    return ALLOW;
+  },
+};
+
+/** The tools a sub-agent's model is offered: the reads, without `delegate` (one level of children) or the plan
+ * (it has no writes to plan). */
+export const subagentTools = (tools: readonly AgentTool[]): AgentTool[] =>
+  tools.filter((t) => t.effect === "read" && t.name !== DELEGATE_TOOL && t.name !== PLAN_TOOL);

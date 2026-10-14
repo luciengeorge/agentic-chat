@@ -5,12 +5,12 @@
  */
 import { z } from "zod";
 
-import type { ChatMessage, ChatModel, ReasoningEffort, ToolSpec, Usage } from "#learn/model/types";
+import type { ChatMessage, ChatModel, ChatRequest, ReasoningEffort, ToolSpec, Usage } from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 
 import type { AgentTool, NextAction, RunEvent, RunEventData, Screen, ToolCall, ToolContext } from "./types";
 
-import { type Caps, capReached, runUsage } from "./caps";
+import { type Caps, capReached, runUsage, turnEstimate } from "./caps";
 import { PLAN_TOOL } from "./plan";
 import { type Policy, planPolicy, type Verdict } from "./policy";
 
@@ -169,10 +169,20 @@ export class RunHalted extends Error {
   }
 }
 
+/** Tokens of the user's daily budget held for one model call (`#learn/agent/budget`), settled after it. */
+export interface TokenHold {
+  id: string;
+  day: string;
+  tokens: number;
+}
+
 /** Checks outside the run's own caps, which need the database (`#learn/agent/budget`). Each throws `RunHalted`. */
 export interface RunGuard {
-  beforeModelTurn(): Promise<void>;
-  afterModelTurn(usage: Usage): Promise<void>;
+  /** The kill switch, then a hold on `estimate` tokens of the user's day, taken in one statement (refused when
+   * they aren't left). No estimate holds one token: a plain check. */
+  beforeModelTurn(estimate?: number): Promise<TokenHold | void>;
+  /** Settles the hold to what the call used. `null` (the call failed) gives the hold back. */
+  afterModelTurn(usage: Usage | null, hold?: TokenHold | void): Promise<void>;
   beforeToolCall(): Promise<void>;
   /** The guardrails (`#learn/agent/guardrails`): checks each write the model proposes, before anyone approves it.
    * One `Screen` per call, in order. */
@@ -198,52 +208,79 @@ export interface ModelTurnDeps {
   onTextDelta?: (delta: string) => void;
 }
 
+/** What a model turn sees. `planning` is what the planning turn sees instead (`#learn/agent/context` builds it). */
+export interface TurnContext {
+  instructions: string;
+  messages: ChatMessage[];
+  planning?: { instructions: string; messages: ChatMessage[] };
+}
+
+const isSummary = (message: ChatMessage) =>
+  message.role === "user" && typeof message.content === "string" && message.content.startsWith("<summary>");
+
 /**
  * The planning turn: the agent has the plan tool and the newest message is the user's (a summary of compacted
  * events doesn't count). Then the model must call `make_plan` before anything else.
  */
-function planningTurn(context: { messages: ChatMessage[] }, tools: readonly AgentTool[]): boolean {
+function planningTurn(context: TurnContext, tools: readonly AgentTool[]): boolean {
   const last = context.messages.at(-1);
+  return tools.some((t) => t.name === PLAN_TOOL) && last?.role === "user" && !isSummary(last);
+}
+
+/**
+ * What the planning turn sees: the user's own messages, nothing else. No tool output, no earlier answer, no
+ * memory note and no summary (which retells tool output) can put a write in the plan. `buildContext` gives it
+ * with its instructions; without it, the user's messages are picked out of the context.
+ */
+function planningInput(context: TurnContext): { instructions: string; messages: ChatMessage[] } {
   return (
-    tools.some((t) => t.name === PLAN_TOOL) &&
-    last?.role === "user" &&
-    !(typeof last.content === "string" && last.content.startsWith("<summary>"))
+    context.planning ?? {
+      instructions: context.instructions,
+      messages: context.messages.filter((m) => m.role === "user" && !isSummary(m)),
+    }
   );
 }
 
 /**
- * One model call: the context in, an `assistant_turn` out (its text, its tool calls and what it cost). The write
- * calls it proposes go through the guard's guardrails, and what they find is recorded on the call, so `decide`'s
- * policy can read it from the events.
+ * One model call: the context in, an `assistant_turn` out (its text, its tool calls and what it cost). On the
+ * planning turn it sees only the user's messages and must call `make_plan`. The write calls it proposes go through
+ * the guard's guardrails, and what they find is recorded on the call, so `decide`'s policy can read it from the
+ * events.
  */
-export async function modelTurn(
-  context: { instructions: string; messages: ChatMessage[] },
-  deps: ModelTurnDeps,
-): Promise<AssistantTurn> {
-  await deps.guard?.beforeModelTurn();
-  let text = "";
-  const toolCalls: ToolCall[] = [];
-  let usage: Usage | undefined;
-  for await (const event of deps.model.stream({
-    instructions: context.instructions,
-    messages: context.messages,
+export async function modelTurn(context: TurnContext, deps: ModelTurnDeps): Promise<AssistantTurn> {
+  const planning = planningTurn(context, deps.tools);
+  const { instructions, messages } = planning ? planningInput(context) : context;
+  const request: ChatRequest = {
+    instructions,
+    messages,
     tools: toolSpecs(deps.tools),
-    ...(planningTurn(context, deps.tools) ? { toolChoice: { tool: PLAN_TOOL } } : {}),
+    ...(planning ? { toolChoice: { tool: PLAN_TOOL } } : {}),
     reasoningEffort: deps.reasoningEffort,
     maxOutputTokens: deps.maxOutputTokens,
     abortSignal: deps.signal,
-  })) {
-    if (event.type === "text-delta") {
-      text += event.delta;
-      deps.onTextDelta?.(event.delta);
-    } else if (event.type === "tool-call") {
-      toolCalls.push({ callId: event.callId, tool: event.name, input: event.input });
-    } else {
-      usage = event.usage;
+  };
+  const hold = await deps.guard?.beforeModelTurn(turnEstimate(request));
+  let text = "";
+  const toolCalls: ToolCall[] = [];
+  let usage: Usage | undefined;
+  try {
+    for await (const event of deps.model.stream(request)) {
+      if (event.type === "text-delta") {
+        text += event.delta;
+        deps.onTextDelta?.(event.delta);
+      } else if (event.type === "tool-call") {
+        toolCalls.push({ callId: event.callId, tool: event.name, input: event.input });
+      } else {
+        usage = event.usage;
+      }
     }
+    if (!usage) throw new Error("the model's stream ended without a finish");
+  } catch (error) {
+    // The call failed or was aborted: give the hold back.
+    await deps.guard?.afterModelTurn(null, hold).catch(() => {});
+    throw error;
   }
-  if (!usage) throw new Error("the model's stream ended without a finish");
-  await deps.guard?.afterModelTurn(usage);
+  await deps.guard?.afterModelTurn(usage, hold);
   const writes = toolCalls.filter((c) => deps.tools.find((t) => t.name === c.tool)?.effect === "write");
   if (writes.length > 0 && deps.guard?.screen) {
     const screens = await deps.guard.screen(writes, deps.signal);

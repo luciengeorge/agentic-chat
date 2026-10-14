@@ -118,8 +118,16 @@ describe.skipIf(!postgresAvailable)("the orchestrator as child workflows", () =>
         callId: "c1",
         ok: true,
         output: { runId: childRunId(runId, "c1"), summary: "v1: hotels up to 150 a night." },
+        // What the child spent, so the parent's caps count it.
+        usage: { tokens: 120, toolCalls: 1 },
       },
-      { type: "tool_result", callId: "c2", ok: false, error: expect.stringMatching(/^The sub-agent failed: /) },
+      {
+        type: "tool_result",
+        callId: "c2",
+        ok: false,
+        error: expect.stringMatching(/^The sub-agent failed: /),
+        usage: { tokens: 0, toolCalls: 0 },
+      },
     ]);
     // Only the parent's own calls are in its log.
     expect(results.map((r) => r.callId)).not.toContain("r1");
@@ -129,7 +137,8 @@ describe.skipIf(!postgresAvailable)("the orchestrator as child workflows", () =>
     expect(children).toHaveLength(2);
     for (const child of children) {
       expect(child).toMatchObject({ kind: "subagent", parent_run_id: runId, user_id: LEO });
-      expect(child.caps).toMatchObject({ tokens: 30_000, toolCalls: 15 });
+      // Half of what the parent has left: 60,000 less its first turn (110), and 30 calls less the two delegates.
+      expect(child.caps).toMatchObject({ tokens: 29_945, toolCalls: 14 });
     }
     const v1 = await state(childRunId(runId, "c1"));
     expect(v1.run.status).toBe("succeeded");
@@ -150,33 +159,61 @@ describe.skipIf(!postgresAvailable)("the orchestrator as child workflows", () =>
     const child = await state(childRunId(runId, "c1"));
     expect(child.events.find((e) => e.data.type === "tool_result")!.data).toMatchObject({
       ok: false,
-      error: "A sub-agent can't hand work to another sub-agent.",
+      error: expect.stringContaining("sub-agent is read-only"),
     });
     expect(await t.sql`SELECT 1 FROM runs WHERE parent_run_id = ${childRunId(runId, "c1")}`).toHaveLength(0);
   }, 60_000);
 
-  it("cancels the children with the parent, and the parent stops waiting", async () => {
+  it("keeps a sub-agent read-only: a task asking for a mail gets it refused, with no approval and nothing sent", async () => {
     setAgentRuntime(
       runtime(
         byTask({
-          Mail: [{ toolCalls: [delegate("c1", "Send the mail to amara")] }],
-          "Send the mail": [{ toolCalls: [{ callId: "m1", name: "send_mail", input: { to: "amara" } }] }],
+          Mail: [{ toolCalls: [delegate("c1", "Send the mail to amara")] }, { text: "The helper couldn't send it." }],
+          "Send the mail": [
+            { toolCalls: [{ callId: "m1", name: "send_mail", input: { to: "amara" } }] },
+            { text: "I can't send mail." },
+          ],
         }),
       ),
     );
     const { runId, run } = await begin("Mail amara via a helper");
+    expect(await run.returnValue).toEqual({ status: "succeeded" });
+    const child = childRunId(runId, "c1");
+    const childState = await state(child);
+    expect(childState.run.status).toBe("succeeded");
+    expect(childState.events.find((e) => e.data.type === "tool_result")!.data).toMatchObject({
+      callId: "m1",
+      ok: false,
+      error: expect.stringContaining("sub-agent is read-only"),
+    });
+    expect(await t.sql`SELECT 1 FROM approvals WHERE run_id = ${child}`).toEqual([]);
+  }, 60_000);
+
+  it("cancels the children with the parent, and the parent stops waiting", async () => {
+    const scripted = byTask({ Research: [{ toolCalls: [delegate("c1", "Read everything slowly")] }] });
+    const hanging: ChatModel = {
+      id: "hanging-child",
+      async *stream(request) {
+        const first = request.messages.find((m) => m.role === "user");
+        if (typeof first?.content === "string" && first.content.includes("Read everything slowly")) {
+          await new Promise((_, reject) =>
+            request.abortSignal?.addEventListener("abort", () => reject(request.abortSignal!.reason)),
+          );
+        }
+        yield* scripted.stream(request);
+      },
+    };
+    setAgentRuntime(runtime(hanging));
+    const { runId, run } = await begin("Research it via a helper");
     const child = childRunId(runId, "c1");
     await expect
       .poll(async () => (await state(child).catch(() => null))?.run.status, { timeout: 20_000 })
-      .toBe("waiting");
+      .toBe("running");
     expect(await cancelRun(t.appDb, leo, runId, workflowWaker(t.appDb))).toBe("ok");
     expect(await run.returnValue).toEqual({ status: "cancelled" });
     const childState = await state(child);
     expect(childState.run.status).toBe("cancelled");
     expect(childState.events.at(-1)!.data).toMatchObject({ to: "cancelled", reason: "its parent run was cancelled" });
-    expect(await t.sql`SELECT status, decided_by FROM approvals WHERE run_id = ${child}`).toEqual([
-      { status: "rejected", decided_by: LEO },
-    ]);
   }, 60_000);
 
   it("reconciles a run whose workflow was cancelled outside the app", async () => {

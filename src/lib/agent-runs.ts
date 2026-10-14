@@ -8,13 +8,14 @@ import type { Viewer } from "#learn/retrieve/types";
 import type { Db } from "@/db/create";
 
 import { type Caps, DEFAULT_CAPS } from "#learn/agent/caps";
+import { supersededApprovals } from "#learn/agent/checkpoint";
 import { compact, type CompactionSettings } from "#learn/agent/compact";
 import { buildContext, DEFAULT_CONTEXT_TOKENS } from "#learn/agent/context";
 import { backoffMs, isRetryable, withIdempotencyKey } from "#learn/agent/durable";
 import { append, readEvents, VersionConflictError } from "#learn/agent/events";
 import { approvalNeeded, decide, declinedResult, modelTurn, type RunGuard, runTools } from "#learn/agent/loop";
 import { listNotes } from "#learn/agent/memory";
-import { DELEGATE_TOOL } from "#learn/agent/orchestrate";
+import { subagentPolicy, subagentTools } from "#learn/agent/policy";
 import { isFinal } from "#learn/agent/state";
 import { approvals, runs } from "@/db/schema";
 import { type Tx, withTenantOn } from "@/db/tenant";
@@ -485,15 +486,19 @@ export interface LoopSettings {
  * run's caps are its `caps` column over `DEFAULT_CAPS`. */
 export function createRunnerLoop(viewer: Viewer, settings: LoopSettings): RunnerLoop {
   const { model, reasoningEffort, guard } = settings;
-  // A sub-agent can't hand work on: one level of children, so a run's tree stays bounded.
-  const subagentTools = settings.tools.filter((t) => t.name !== DELEGATE_TOOL);
-  const toolsFor = (run: RunRow) => (run.kind === "subagent" ? subagentTools : settings.tools);
+  // A sub-agent is a read-only researcher: its model is offered the reads only (no delegate, so a run's tree stays
+  // one level deep), and its policy refuses any write it calls anyway. `decide` looks calls up in every tool, so a
+  // write is refused by the policy, with its reason, rather than reported as unknown.
+  const childTools = subagentTools(settings.tools);
+  const toolsFor = (run: RunRow) => (run.kind === "subagent" ? childTools : settings.tools);
   return {
     decide: (events, run) =>
       decide(
         events,
         { ...DEFAULT_CAPS, ...(run.caps as Partial<Caps>) },
-        approvalNeeded(toolsFor(run), viewer, run.id),
+        run.kind === "subagent"
+          ? approvalNeeded(settings.tools, viewer, run.id, subagentPolicy)
+          : approvalNeeded(settings.tools, viewer, run.id),
       ),
     modelTurn: (context, { run, signal, onTextDelta }) =>
       modelTurn(context, {
@@ -530,6 +535,21 @@ export interface StoreOptions {
 const isConflict = (error: unknown) => error instanceof VersionConflictError || pgCode(error) === "23505";
 
 /**
+ * Settles the rows of the approvals these events decide, if they're still pending: the log and the inbox agree.
+ * The decisions made through `decideApproval`, `expireApproval` and `cancelRun` change their row themselves; this
+ * is for the ones the runner appends (`supersededApprovals`: a waiting call the policy refused meanwhile).
+ */
+async function settleApprovalRows(tx: Tx, events: readonly RunEventData[]): Promise<void> {
+  for (const event of events) {
+    if (event.type !== "approval_decided") continue;
+    await tx
+      .update(approvals)
+      .set({ status: event.decision, decidedBy: event.by, decidedAt: new Date() })
+      .where(and(eq(approvals.id, event.approvalId), eq(approvals.status, "pending")));
+  }
+}
+
+/**
  * The run's log as `#learn/agent/checkpoint` reads and writes it, in Postgres and the viewer's tenant. Writes under
  * a step key are once only: the unique `(run_id, step_key)` refuses a second write, which counts as already done.
  */
@@ -552,7 +572,10 @@ export function runStore(db: Db, viewer: Viewer, runId: string, options: StoreOp
     wrote,
     async append(version, events, appendOptions = {}) {
       try {
-        await tx((t) => append(t, runId, version, events, appendOptions));
+        await tx(async (t) => {
+          await append(t, runId, version, events, appendOptions);
+          await settleApprovalRows(t, events);
+        });
         return true;
       } catch (error) {
         if (error instanceof VersionConflictError) return false;
@@ -568,6 +591,7 @@ export function runStore(db: Db, viewer: Viewer, runId: string, options: StoreOp
             const events = current && build(current);
             if (!current || !events) return false;
             await append(t, runId, current.version, events, appendOptions);
+            await settleApprovalRows(t, events);
             return true;
           });
         } catch (error) {
@@ -765,7 +789,10 @@ export async function driveRun(
                 )})`);
               const recorded = new Set(rows.map((row) => row.call_id));
               const fresh = results.filter((r) => !recorded.has(r.callId));
-              if (fresh.length > 0) await appendRetrying(t, runId, () => fresh, Date.now() - started);
+              if (fresh.length === 0) return;
+              const settled = [...supersededApprovals((await loadState(t, viewer, runId))!.events, fresh), ...fresh];
+              await appendRetrying(t, runId, () => settled, Date.now() - started);
+              await settleApprovalRows(t, settled);
             });
             break;
           }

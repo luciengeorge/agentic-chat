@@ -5,7 +5,7 @@
  */
 import { sql } from "drizzle-orm";
 import { getRun, resumeHook, start } from "workflow/api";
-import { HookNotFoundError } from "workflow/errors";
+import { HookNotFoundError, WorkflowRunNotFoundError } from "workflow/errors";
 
 import type { Viewer } from "#learn/retrieve/types";
 import type { Db } from "@/db/create";
@@ -42,24 +42,63 @@ async function resume(token: string, payload: unknown, tries = RESUME_TRIES): Pr
   }
 }
 
+export type KickAction = "start" | "wake" | "reconcile" | "replace" | "leave";
+
 /**
- * Starts a workflow for the run, unless one is driving it; then wakes that one instead. A workflow that crashed
- * while the run still has work is replaced. One cancelled outside the app (the Workflow CLI, `ex start`) isn't:
- * the run is cancelled to match.
+ * What a kick does, from the run's workflow id and that workflow's status (`gone`: Workflow has no such run; null:
+ * the status couldn't be read). Only a workflow that has surely ended is replaced: two live workflows driving one
+ * run would each send its writes under their own step keys, so a write could go out twice.
+ * - no workflow yet: start one;
+ * - running or pending: wake it (a missing hook means it hasn't made it yet, and it reads the log once it has);
+ * - cancelled outside the app: cancel the run to match;
+ * - completed, failed or gone: replace it;
+ * - status unknown: leave it, and let the next kick try again.
+ */
+export function kickAction(workflowRunId: string | null, status: string | null): KickAction {
+  if (!workflowRunId) return "start";
+  if (status === null) return "leave";
+  if (status === "cancelled") return "reconcile";
+  if (status === "gone" || FINAL_WORKFLOW.has(status)) return "replace";
+  return "wake";
+}
+
+/** The workflow's status, `gone` if Workflow has no such run, or null if it couldn't be read. */
+async function workflowStatus(workflowRunId: string): Promise<string | null> {
+  try {
+    return await getRun(workflowRunId).status;
+  } catch (error) {
+    if (WorkflowRunNotFoundError.is(error)) return "gone";
+    logger.warn("couldn't read the workflow's status; the next kick tries again", { workflowRunId, error });
+    return null;
+  }
+}
+
+/**
+ * Starts a workflow for the run, unless one is driving it; then wakes that one instead. Idempotent: a live
+ * workflow just wakes, and two starts at once bind one workflow (`bindRun`), the other returning `duplicate`. A
+ * workflow that has ended while the run still has work is replaced. One cancelled outside the app (the Workflow
+ * CLI, `ex start`) isn't: the run is cancelled to match.
  */
 export async function kickWorkflow(db: Db, viewer: Viewer, runId: string): Promise<void> {
   const run = await withTenantOn(db, viewer.tenantId, (tx) => loadRun(tx, viewer, runId));
   if (!run) return;
-  if (run.workflowRunId) {
-    const status = await getRun(run.workflowRunId).status.catch(() => "failed");
-    if (status === "cancelled") {
-      await reconcileCancelled(db, viewer, runId);
-      return;
+  const status = run.workflowRunId ? await workflowStatus(run.workflowRunId) : null;
+  const action = kickAction(run.workflowRunId, status);
+  if (action === "leave") return;
+  if (action === "reconcile") {
+    await reconcileCancelled(db, viewer, runId);
+    return;
+  }
+  if (action === "wake") {
+    if (!(await resume(runToken(runId), { kind: "wake" } satisfies RunSignal))) {
+      logger.warn("run hook not there yet; the workflow reads the log once it makes it", {
+        runId,
+        workflowRunId: run.workflowRunId,
+      });
     }
-    if (!FINAL_WORKFLOW.has(status)) {
-      if (await resume(runToken(runId), { kind: "wake" } satisfies RunSignal)) return;
-      logger.warn("run hook never appeared; starting the run again", { runId, workflowRunId: run.workflowRunId });
-    }
+    return;
+  }
+  if (action === "replace") {
     const stale = run.workflowRunId;
     await withTenantOn(db, viewer.tenantId, (tx) =>
       tx.execute(sql`UPDATE runs SET workflow_run_id = NULL WHERE id = ${runId} AND workflow_run_id = ${stale}`),

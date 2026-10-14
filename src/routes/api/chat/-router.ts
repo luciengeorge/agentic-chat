@@ -3,26 +3,28 @@ import { z } from "zod";
 
 import type { RouteDecision, RouteInput } from "#learn/agent/router";
 import type { Viewer } from "#learn/retrieve/types";
+import type { Bucket } from "@/lib/rate-limit";
 
 import { conversations } from "@/db/schema";
 import { withTenantOn } from "@/db/tenant";
 import { liveRunIn } from "@/lib/agent-runs";
 import { createLogger } from "@/lib/logger";
-import { type Bucket, takeToken } from "@/lib/rate-limit";
 import {
   addMessageResponse,
+  FOLLOW_UP_BUCKET,
   json,
   MessageSchema,
-  pgCode,
   readBody,
   type RunRoutesDeps,
   startRunResponse,
+  takeOrRefuse,
 } from "@/routes/api/runs/-runs";
 
 const logger = createLogger("chat.router");
 
-/** The router's own bucket: each message costs one small model call before anything else happens. */
-export const ROUTER_BUCKET: Bucket = { name: "router", capacity: 20, refillPerSecond: 20 / 60 };
+/** The router's own bucket: each message costs one small model call before anything else happens. It is the
+ * follow-up bucket, so a message into a live run draws on it whichever route it takes. */
+export const ROUTER_BUCKET: Bucket = FOLLOW_UP_BUCKET;
 
 export const RouteRequestSchema = z.object({
   conversationId: z.uuid(),
@@ -59,23 +61,18 @@ export async function handleRouteMessage(request: Request, viewer: Viewer, deps:
   if (conversation && conversation.userId !== viewer.userId) return json(404, { error: "not_found" });
   const live = conversation ? await inTenant((tx) => liveRunIn(tx, viewer, body.conversationId)) : null;
 
+  // The router's bucket covers the routing call and every follow-up into a live run (which the run bucket, taken
+  // only when a run starts, doesn't). Only the toggle starting a new run skips it.
+  if (!body.agent || live) {
+    const now = (deps.now ?? (() => new Date()))();
+    const refused = await takeOrRefuse(db, viewer, deps.bucket ?? ROUTER_BUCKET, now);
+    if (refused) return refused;
+  }
+
   let decision: Pick<RouteDecision, "route" | "reason">;
   if (body.agent) {
     decision = { route: "agent", reason: "the user asked for the agent" };
   } else {
-    let limit;
-    try {
-      limit = await inTenant((tx) =>
-        takeToken(tx, viewer, deps.bucket ?? ROUTER_BUCKET, (deps.now ?? (() => new Date()))()),
-      );
-    } catch (error) {
-      if (pgCode(error) === "23503") return json(403, { error: "not_in_directory" });
-      throw error;
-    }
-    if (!limit.allowed) {
-      const { retryAfterSeconds } = limit;
-      return json(429, { error: "rate_limited", retryAfterSeconds }, { "retry-after": String(retryAfterSeconds) });
-    }
     const routed = await deps.route({ message: body.message.text, liveRun: live !== null });
     logger.info("routed", { route: routed.route, reason: routed.reason, liveRun: live !== null, usage: routed.usage });
     decision = routed;

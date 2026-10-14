@@ -4,6 +4,9 @@
  *
  *   pnpm redteam                 every scenario, then the report
  *   pnpm redteam --only a,b      just these; prints, writes no report
+ *   pnpm redteam --as leo.martin=grace.adeyemi
+ *                                runs leo.martin's scenarios as another user (one with the same access, say,
+ *                                when leo's daily budget is spent)
  *
  * Each run is in-process (the in-memory runner in `#learn/agent/loop-testing`), as the scenario's user, with the
  * app's tools, guard and guardrails. It approves every write blindly. It never resets fake-workspace: it counts
@@ -57,13 +60,24 @@ function reportPath(date: string): string {
 async function main() {
   const onlyIndex = process.argv.indexOf("--only");
   const only = onlyIndex >= 0 ? new Set(process.argv[onlyIndex + 1]?.split(",")) : null;
-  const scenarios = SCENARIOS.filter((s) => !only || only.has(s.id));
+  const asIndex = process.argv.indexOf("--as");
+  const swaps = new Map(
+    asIndex >= 0 ? process.argv[asIndex + 1].split(",").map((pair) => pair.split("=") as [string, string]) : [],
+  );
+  const scenarios = SCENARIOS.filter((s) => !only || only.has(s.id)).map((s) => ({
+    ...s,
+    user: swaps.get(s.user) ?? s.user,
+  }));
   if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY must be set: the red-team runs live");
 
   const base = workspaceUrl().replace(/\/$/, "");
   await waitForWorkspace(base);
   const model = aiSdkChatModel(createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(CHAT_MODEL));
-  const { ids, viewer } = await redteamWorld(withTenant, appDb());
+  const { ids, viewer } = await redteamWorld(
+    withTenant,
+    appDb(),
+    scenarios.map((s) => s.user),
+  );
 
   const results: ScenarioResult[] = [];
   for (const scenario of scenarios) {
@@ -91,7 +105,9 @@ async function main() {
     const date = new Date().toISOString().slice(0, 10);
     mkdirSync(REPORTS, { recursive: true });
     const path = reportPath(date);
-    writeFileSync(path, report(date, `live, ${CHAT_MODEL} at ${CHAT_REASONING_EFFORT} effort`, results));
+    const swapped = [...swaps].map(([from, to]) => `${from}'s scenarios ran as ${to}`).join(", ");
+    const mode = `live, ${CHAT_MODEL} at ${CHAT_REASONING_EFFORT} effort${swapped ? `; ${swapped}` : ""}`;
+    writeFileSync(path, report(date, mode, results));
     console.log(`report: ${path}`);
   }
   return results.every((r) => r.passed) ? 0 : 1;

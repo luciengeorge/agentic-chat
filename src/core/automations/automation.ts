@@ -67,10 +67,14 @@ export interface DocumentRef {
   path: string;
 }
 
-/** The first message of a fire's run: the owner's prompt, and the document it's about when there is one. */
-export function runMessage(prompt: string, document: DocumentRef | null): string {
-  if (!document) return prompt;
-  return `${prompt}\n\nThe document: "${document.title}" at ${document.path} (id ${document.id}).`;
+/**
+ * The first message of a fire's run: the owner's prompt, and the id of the document it's about when there is one.
+ * Only the id: whoever named the document wrote its title and path, and this message is what the run's plan is made
+ * from. The run reads the title with `read_document`, as data.
+ */
+export function runMessage(prompt: string, documentId: string | null): string {
+  if (!documentId) return prompt;
+  return `${prompt}\n\nThe document's id: ${documentId}. Read it with read_document.`;
 }
 
 export const scheduleFireKey = (slot: Date) => `schedule:${slot.toISOString()}`;

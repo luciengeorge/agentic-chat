@@ -11,8 +11,9 @@ import { HookNotFoundError } from "workflow/errors";
 import type { ToolCall } from "#learn/agent/types";
 import type { Viewer } from "#learn/retrieve/types";
 
-import { type Caps, DEFAULT_CAPS } from "#learn/agent/caps";
+import { type Caps, DEFAULT_CAPS, runUsage } from "#learn/agent/caps";
 import { childCaps, childOutcome, childRunId, delegateResult, DelegateSchema } from "#learn/agent/orchestrate";
+import { subagentMessage } from "#learn/agent/prompt";
 import { isFinal } from "#learn/agent/state";
 import { withTenantOn } from "@/db/tenant";
 import { loadRun, loadState, startRun } from "@/lib/agent-runs";
@@ -36,10 +37,16 @@ export type PreparedChild = { kind: "child"; childRunId: string } | ToolOutcome;
 
 /**
  * Makes the child run for a delegate call: `kind: subagent`, the parent as `parent_run_id`, the same user, the
- * call's task as its first message, and a share of the parent's caps. A sub-agent can't delegate in turn, and a
+ * call's task as its first message (framed as a read-only research task: the parent's model wrote it, and a
+ * document may have talked it into anything), and a share of the parent's caps. A sub-agent can't delegate in turn, and a
  * kill switch or spent budget halts the parent instead.
  */
-export async function prepareChildStep(ref: RunRef, call: ToolCall, siblings: number): Promise<PreparedChild> {
+export async function prepareChildStep(
+  ref: RunRef,
+  call: ToolCall,
+  siblings: number,
+  batch = siblings,
+): Promise<PreparedChild> {
   "use step";
   const { db, admit } = agentRuntime();
   const viewer = viewerOf(ref);
@@ -56,13 +63,20 @@ export async function prepareChildStep(ref: RunRef, call: ToolCall, siblings: nu
   if (halted) return { kind: "halted", reason: halted };
 
   const id = childRunId(ref.runId, call.callId);
-  const caps = childCaps({ ...DEFAULT_CAPS, ...(parent.caps as Partial<Caps>) }, siblings);
+  // The children share what the parent has left: its own spend and earlier children's are already in its log.
+  const state = await withTenantOn(db, ref.tenantId, (tx) => loadState(tx, viewer, ref.runId));
+  const caps = childCaps(
+    { ...DEFAULT_CAPS, ...(parent.caps as Partial<Caps>) },
+    siblings,
+    runUsage(state?.events ?? []),
+    batch,
+  );
   await startRun(db, viewer, {
     runId: id,
     kind: "subagent",
     parentRunId: ref.runId,
     caps: { ...caps },
-    message: { messageId: "task", text: input.data.task },
+    message: { messageId: "task", text: subagentMessage(input.data.task) },
   });
   return { kind: "child", childRunId: id };
 }

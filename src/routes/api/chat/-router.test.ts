@@ -133,6 +133,54 @@ describe.skipIf(!postgresAvailable)("the chat router", () => {
     expect(kicked).toEqual([first]);
   });
 
+  it("takes the router's bucket for every follow-up, the composer's toggle included", async () => {
+    const conversationId = crypto.randomUUID();
+    const live = crypto.randomUUID();
+    const at = new Date("2026-10-14T12:00:00Z");
+    const strict: RouterRouteDeps = {
+      ...deps("agent"),
+      bucket: { name: "router-follow-up", capacity: 2, refillPerSecond: 1 / 60 },
+      now: () => at,
+    };
+    const post = (body: Record<string, unknown>) =>
+      handleRouteMessage(
+        new Request("http://localhost:3000/api/chat/router", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+        nora,
+        strict,
+      );
+    // Starting the run takes the run bucket, not the router's.
+    expect((await post({ conversationId, runId: live, message: message("go"), agent: true })).status).toBe(202);
+    const followUp = () => post({ conversationId, runId: crypto.randomUUID(), message: message("and"), agent: true });
+    expect((await followUp()).status).toBe(202);
+    expect((await followUp()).status).toBe(202);
+    const refused = await followUp();
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("retry-after")).toBe("60");
+    const state = await withTenantOn(t.appDb, nora.tenantId, (tx) => loadState(tx, nora, live));
+    expect(state!.events.filter((e) => e.data.type === "user_message")).toHaveLength(3);
+  });
+
+  it("wakes a running run's runner on a follow-up, so a run whose workflow died still restarts", async () => {
+    const conversationId = crypto.randomUUID();
+    const first = crypto.randomUUID();
+    await send(leo, { conversationId, runId: first, message: message("Email Tom") }, "agent");
+    await withTenantOn(t.appDb, leo.tenantId, (tx) =>
+      append(tx, first, 1, [{ type: "status", from: "queued", to: "running" }]),
+    );
+    kicked = [];
+    const response = await send(
+      leo,
+      { conversationId, runId: crypto.randomUUID(), message: message("cc me") },
+      "agent",
+    );
+    expect(await response.json()).toMatchObject({ followUp: true, id: first });
+    expect(kicked).toEqual([first]);
+  });
+
   it("starts a new run once the last one has finished", async () => {
     const conversationId = crypto.randomUUID();
     const done = crypto.randomUUID();

@@ -6,6 +6,7 @@
  *
  *   pnpm agent:scenarios               every task, then the report
  *   pnpm agent:scenarios --only a,b    just these; prints, writes no report
+ *   pnpm agent:scenarios --as leo.martin=grace.adeyemi   leo's tasks as another user (same access)
  *
  * It never resets fake-workspace: it counts mail and shares by each run's idempotency keys. A note a task stores is
  * deleted afterwards. The follow-up task needs lane E's router (`POST /api/chat/router`); without it, it's skipped.
@@ -343,7 +344,11 @@ function reportPath(date: string): string {
 async function main() {
   const onlyIndex = process.argv.indexOf("--only");
   const only = onlyIndex >= 0 ? new Set(process.argv[onlyIndex + 1]?.split(",")) : null;
-  const tasks = TASKS.filter((t) => !only || only.has(t.id));
+  const asIndex = process.argv.indexOf("--as");
+  const swaps = new Map(
+    asIndex >= 0 ? process.argv[asIndex + 1].split(",").map((pair) => pair.split("=") as [string, string]) : [],
+  );
+  const tasks = TASKS.filter((t) => !only || only.has(t.id)).map((t) => ({ ...t, user: swaps.get(t.user) ?? t.user }));
   console.log(`app: ${await waitForApp(ROOT, target)}`);
   await controlList("/_control/mail");
 

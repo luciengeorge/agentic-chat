@@ -41,7 +41,8 @@ export interface OpenApproval {
 /** The run's log, as one viewer may touch it (the app binds it to Postgres and the viewer's tenant). */
 export interface StepStore {
   load(): Promise<Snapshot | null>;
-  /** Appends at `version`; false when another writer got there first, so the caller should decide again. */
+  /** Appends at `version`; false when another writer got there first, so the caller should decide again. An
+   * `approval_decided` event settles its approval's row too, if it's still pending. */
   append(version: number, events: RunEventData[], options?: AppendOptions): Promise<boolean>;
   /** Appends what `build` returns from the latest log, reading again while other writers get in first. For events
    * that stay true whatever lands meanwhile. `build` returns null to write nothing. */
@@ -155,13 +156,38 @@ export async function modelStep(
   return ok ? "done" : "stale";
 }
 
-/** Appends a turn's tool results in call order, skipping any call the log already answers. */
+/**
+ * The approvals these results settle: a call that waited on its user and now has a result without a decision was
+ * refused by the policy meanwhile (a new message needs a new plan). Its approval is rejected by nobody, as
+ * "superseded", so the inbox stops offering it and approving it can't record a send that never happened. The store
+ * settles the approval's row with the event.
+ */
+export function supersededApprovals(events: readonly RunEvent[], results: readonly ToolResult[]): RunEventData[] {
+  const decided = new Set(events.flatMap((e) => (e.data.type === "approval_decided" ? [e.data.approvalId] : [])));
+  const settled = new Set(results.map((r) => r.callId));
+  return events.flatMap(({ data }) =>
+    data.type === "approval_requested" && settled.has(data.call.callId) && !decided.has(data.approvalId)
+      ? [
+          {
+            type: "approval_decided",
+            approvalId: data.approvalId,
+            decision: "rejected",
+            by: null,
+            reason: "superseded",
+          },
+        ]
+      : [],
+  );
+}
+
+/** Appends a turn's tool results in call order, skipping any call the log already answers, after settling any
+ * approval they supersede. */
 export async function recordResults(store: StepStore, results: ToolResult[], options: AppendOptions): Promise<void> {
   if (options.stepKey && (await store.wrote(options.stepKey))) return;
   await store.appendWith(({ events }) => {
     const answered = new Set(events.flatMap((e) => (e.data.type === "tool_result" ? [e.data.callId] : [])));
     const fresh = results.filter((r) => !answered.has(r.callId));
-    return fresh.length > 0 ? fresh : null;
+    return fresh.length > 0 ? [...supersededApprovals(events, fresh), ...fresh] : null;
   }, options);
 }
 

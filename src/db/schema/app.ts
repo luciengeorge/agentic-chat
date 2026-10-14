@@ -559,7 +559,7 @@ export const memoryNotes = pgTable(
   ],
 );
 
-/** A user's agent tokens for one UTC day (section 13): checked before each model turn, charged after it. */
+/** A user's agent tokens for one UTC day (section 13): held before each model call, settled after it. */
 export const agentBudgets = pgTable(
   "agent_budgets",
   {
@@ -568,6 +568,8 @@ export const agentBudgets = pgTable(
     day: date("day").notNull(),
     tokensUsed: bigint("tokens_used", { mode: "number" }).notNull().default(0),
     tokenLimit: bigint("token_limit", { mode: "number" }).notNull(),
+    /** Model calls in flight, by hold id: `{ tokens, until }`. A hold past `until` no longer counts. */
+    holds: jsonb("holds").$type<Record<string, { tokens: number; until: string }>>().notNull().default({}),
     updatedAt: updatedAt(),
   },
   (t) => [

@@ -1,0 +1,1 @@
+ALTER TABLE "agent_budgets" ADD COLUMN "holds" jsonb DEFAULT '{}' NOT NULL;

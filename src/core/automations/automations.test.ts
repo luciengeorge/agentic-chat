@@ -75,10 +75,9 @@ describe("automations", () => {
     );
   });
 
-  it("names the document in a run's message, and keys a drive change by version", () => {
-    expect(runMessage("Summarise it", { id: "d1", title: "Leave.pdf", path: "/HR/Leave.pdf" })).toBe(
-      'Summarise it\n\nThe document: "Leave.pdf" at /HR/Leave.pdf (id d1).',
-    );
+  it("gives a run's message the document's id alone, and keys a drive change by version", () => {
+    // A title is whatever the document's author typed, and the run plans from this message: it gets the id only.
+    expect(runMessage("Summarise it", "d1")).toBe("Summarise it\n\nThe document's id: d1. Read it with read_document.");
     expect(runMessage("Summarise", null)).toBe("Summarise");
     expect(changeFireKey("d1", 3)).toBe("doc:d1:v3");
   });

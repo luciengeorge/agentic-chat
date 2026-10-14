@@ -1,7 +1,7 @@
 /**
  * An orchestrator with sub-agents (section 16.3). The parent run hands a self-contained sub-task to a child run
  * through the `delegate` tool, one call per child. Each child is a run of its own (`kind: subagent`, with
- * `parent_run_id`): its own event log, its own caps (a share of the parent's), the same user and the same policy.
+ * `parent_run_id`): its own event log, its own caps (a share of the parent's), the same user, and a read-only policy.
  * The parent sees only what the child finally says, and a child that fails comes back as a failed tool result.
  *
  * How a child runs is the runner's business: the Workflow runner starts it as a child workflow and waits on a hook
@@ -10,8 +10,9 @@
 import { v5 as uuidv5 } from "uuid";
 import { z } from "zod";
 
-import type { Caps } from "./caps";
-import type { AgentTool, RunEvent, RunStatus, ToolCall, ToolContext } from "./types";
+import type { AgentTool, ChildUsage, RunEvent, RunStatus, ToolCall, ToolContext } from "./types";
+
+import { type Caps, runUsage } from "./caps";
 
 export const DELEGATE_TOOL = "delegate";
 
@@ -35,6 +36,8 @@ export interface ChildOutcome {
   summary: string;
   /** Why it didn't succeed, from its final status. */
   reason?: string;
+  /** What it spent, which the parent's caps count. */
+  usage?: ChildUsage;
 }
 
 /** Runs a child to its end and says how it went. Given only where children run in-process (tests). */
@@ -52,21 +55,32 @@ const NAMESPACE = "7c0b8f0e-4d55-4c47-9d5b-3f9a1e0c2d16";
  * uses it too, to nest the child's timeline under the call. */
 export const childRunId = (parentRunId: string, callId: string) => uuidv5(`${parentRunId}:${callId}`, NAMESPACE);
 
-/** Each child's caps: the parent's tokens and tool calls split between the children of one turn. Model turns and
- * active time are the parent's, since children run side by side. */
-export function childCaps(parent: Caps, siblings: number): Caps {
+/**
+ * Each child's caps: what the parent has left of its tokens and tool calls (`used` is its `runUsage`, which counts
+ * earlier children's spend), split between the children of one turn. Every call in the turn (`batch`, the delegate
+ * calls included) comes off the tool calls first, since the parent's other calls in that turn spend from the same cap. Model turns and active time are the parent's, since children run side by side. A
+ * parent with nothing left gives 0, so the child stops before its first turn.
+ */
+export function childCaps(
+  parent: Caps,
+  siblings: number,
+  used: ChildUsage = { tokens: 0, toolCalls: 0 },
+  batch = siblings,
+): Caps {
   const n = Math.max(1, siblings);
+  const share = (left: number) => Math.max(0, Math.floor(left / n));
   return {
     modelTurns: parent.modelTurns,
-    toolCalls: Math.max(1, Math.floor(parent.toolCalls / n)),
-    tokens: Math.max(1, Math.floor(parent.tokens / n)),
+    toolCalls: share(parent.toolCalls - used.toolCalls - batch),
+    tokens: share(parent.tokens - used.tokens),
     activeMs: parent.activeMs,
   };
 }
 
 const FINAL: readonly RunStatus[] = ["succeeded", "failed", "cancelled", "timed_out"];
 
-/** A finished child's outcome, from its events: its last status, and the text of its last model turn. */
+/** A finished child's outcome, from its events: its last status, the text of its last model turn, and what it
+ * spent. */
 export function childOutcome(events: readonly RunEvent[]): ChildOutcome {
   let status: RunStatus = "queued";
   let reason: string | undefined;
@@ -79,44 +93,59 @@ export function childOutcome(events: readonly RunEvent[]): ChildOutcome {
       summary = data.text.trim();
     }
   }
-  return FINAL.includes(status) && status !== "succeeded" ? { status, summary, reason } : { status, summary };
+  const { tokens, toolCalls } = runUsage(events);
+  const usage = { tokens, toolCalls };
+  return FINAL.includes(status) && status !== "succeeded"
+    ? { status, summary, reason, usage }
+    : { status, summary, usage };
 }
 
-/** The `tool_result` for a delegate call, from its child's outcome: only a child that succeeded is a success. */
+/** The `tool_result` for a delegate call, from its child's outcome: only a child that succeeded is a success.
+ * Either way it carries what the child spent, so the parent's caps count it. */
 export function delegateResult(
   callId: string,
   runId: string,
   outcome: ChildOutcome,
 ):
-  | { type: "tool_result"; callId: string; ok: true; output: ChildReport }
+  | { type: "tool_result"; callId: string; ok: true; output: ChildReport; usage?: ChildUsage }
   | {
       type: "tool_result";
       callId: string;
       ok: false;
       error: string;
+      usage?: ChildUsage;
     } {
+  const usage = outcome.usage ? { usage: outcome.usage } : {};
   if (outcome.status === "succeeded") {
-    return { type: "tool_result", callId, ok: true, output: { runId, summary: outcome.summary } };
+    return { type: "tool_result", callId, ok: true, output: { runId, summary: outcome.summary }, ...usage };
   }
   const why = outcome.reason ? `: ${outcome.reason}` : "";
-  return { type: "tool_result", callId, ok: false, error: `The sub-agent ${outcome.status.replace("_", " ")}${why}.` };
+  return {
+    type: "tool_result",
+    callId,
+    ok: false,
+    error: `The sub-agent ${outcome.status.replace("_", " ")}${why}.`,
+    ...usage,
+  };
 }
 
 /** The delegate calls of a turn, in order. */
 export const delegateCalls = (calls: readonly ToolCall[]) => calls.filter((c) => c.tool === DELEGATE_TOOL);
 
 /**
- * The `delegate` tool. A read: the child's own writes wait on the user's approval, under the same policy. Without
- * `runChild` (the in-request and queue runners), it answers that sub-agents need the Workflow runner.
+ * The `delegate` tool. A read: the child is read-only (`subagentPolicy` in #learn/agent/policy denies every write,
+ * remember and delegate), so a task a document talked the parent into can't write anything. Without `runChild`
+ * (the in-request and queue runners), it answers that sub-agents need the Workflow runner.
  */
 export function delegateTool(deps: { runChild?: RunChild } = {}): AgentTool<Delegate, ChildReport> {
   return {
     name: DELEGATE_TOOL,
     description:
-      "Hand one self-contained sub-task to a sub-agent that has the same tools and works as the same user, and get " +
-      "back its final answer. Use it when a request splits into independent parts, such as one per document to " +
-      "compare: call it once per part, in the same turn, so they run side by side. You see only each sub-agent's " +
-      "answer, not its steps.",
+      "Hand one self-contained research sub-task to a read-only sub-agent that works as the same user, and get back " +
+      "its final answer. It can search, read documents and look people up; it can't send mail, share, remember or " +
+      "delegate. Use it when a request splits into independent parts, such as one per document to compare: call it " +
+      "once per part, in the same turn, so they run side by side. You see only each sub-agent's answer, not its " +
+      "steps. Do any write yourself, as your plan says.",
     input: DelegateSchema,
     effect: "read",
     needsApproval: () => false,

@@ -73,7 +73,10 @@ describe.skipIf(!postgresAvailable)("automations as workflows", () => {
                              content_hash, status)
       VALUES (${leo.tenantId}, 'test', ${crypto.randomUUID()}, ${path.split("/").at(-1)!}, ${path}, 'text/plain', 1,
               '1', 'h', 'ready')
-      RETURNING id`;
+      RETURNING id, acl_version`;
+    // The owner can read it: a fire covers only documents its owner can read.
+    await t.sql`INSERT INTO document_acl (tenant_id, document_id, principal_id, effect, acl_version)
+                VALUES (${leo.tenantId}, ${row.id}, ${LEO}, 'allow', ${row.acl_version})`;
     return row.id as string;
   };
   const runsOf = (automationId: string) =>

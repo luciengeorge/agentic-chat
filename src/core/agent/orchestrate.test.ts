@@ -115,9 +115,14 @@ describe("the orchestrator", () => {
     });
   });
 
-  it("splits the parent's tokens and tool calls between the children of a turn", () => {
-    expect(childCaps(DEFAULT_CAPS, 2)).toEqual({ ...DEFAULT_CAPS, tokens: 30_000, toolCalls: 15 });
+  it("splits the parent's tokens and tool calls (less the delegate calls) between the children of a turn", () => {
+    expect(childCaps(DEFAULT_CAPS, 2)).toEqual({ ...DEFAULT_CAPS, tokens: 30_000, toolCalls: 14 });
     expect(childCaps(DEFAULT_CAPS, 0)).toEqual(DEFAULT_CAPS);
+  });
+
+  it("takes the turn's other calls off the children's tool calls, so a batch can't exceed the parent's cap", () => {
+    // 30 calls left; the turn makes 29 reads and one delegate: nothing is left for the child.
+    expect(childCaps(DEFAULT_CAPS, 1, undefined, 30).toolCalls).toBe(0);
   });
 
   it("derives one child id per call, stable across retries", () => {
