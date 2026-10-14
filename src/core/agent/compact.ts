@@ -2,6 +2,7 @@ import type { RunGuard } from "#learn/agent/loop";
 import type { RunEvent, RunEventData } from "#learn/agent/types";
 import type { ChatModel, ReasoningEffort, Usage } from "#learn/model/types";
 
+import { turnEstimate } from "#learn/agent/caps";
 import { countTokens, latestCompaction } from "#learn/agent/context";
 import { isPlanningCall, PLAN_TOOL } from "#learn/agent/plan";
 
@@ -210,20 +211,26 @@ export async function compact(
     ...covered.map(line).filter((l): l is string => l !== null),
   ].join("\n");
 
-  await deps.guard?.beforeModelTurn();
-  let text = "";
-  let usage: Usage | undefined;
-  for await (const event of deps.model.stream({
+  const request = {
     instructions: SUMMARY_INSTRUCTIONS,
-    messages: [{ role: "user", content: transcript }],
+    messages: [{ role: "user" as const, content: transcript }],
     reasoningEffort: deps.reasoningEffort,
     maxOutputTokens: deps.maxOutputTokens ?? 1_000,
     abortSignal: deps.abortSignal,
-  })) {
-    if (event.type === "text-delta") text += event.delta;
-    else if (event.type === "finish") usage = event.usage;
+  };
+  const hold = await deps.guard?.beforeModelTurn(turnEstimate(request));
+  let text = "";
+  let usage: Usage | undefined;
+  try {
+    for await (const event of deps.model.stream(request)) {
+      if (event.type === "text-delta") text += event.delta;
+      else if (event.type === "finish") usage = event.usage;
+    }
+  } catch (error) {
+    await deps.guard?.afterModelTurn(null, hold).catch(() => {});
+    throw error;
   }
-  if (usage) await deps.guard?.afterModelTurn(usage);
+  await deps.guard?.afterModelTurn(usage ?? null, hold);
 
   const facts = keptFacts(sorted.filter((e) => e.seq <= throughSeq));
   const summary = [text.trim(), facts].filter(Boolean).join("\n\n");

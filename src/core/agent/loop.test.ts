@@ -201,7 +201,10 @@ describe("modelTurn", () => {
       { model, tools: [], reasoningEffort: "low", guard },
     );
     expect(guard.beforeModelTurn).toHaveBeenCalledOnce();
-    expect(guard.afterModelTurn).toHaveBeenCalledWith({ inputTokens: 100, outputTokens: 10, reasoningTokens: 0 });
+    expect(guard.afterModelTurn).toHaveBeenCalledWith(
+      { inputTokens: 100, outputTokens: 10, reasoningTokens: 0 },
+      undefined,
+    );
 
     const stop: RunGuard = { ...guard, beforeModelTurn: async () => Promise.reject(new RunHalted("kill switch: on")) };
     await expect(

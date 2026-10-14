@@ -12,6 +12,7 @@ import {
   handleListAutomations,
   handleRunNow,
   handleSetEnabled,
+  RUN_NOW_BUCKET,
 } from "./-automations";
 
 const LEO = "44444444-4444-4444-8444-444444444444";
@@ -92,5 +93,26 @@ describe.skipIf(!postgresAvailable)("the automation routes", () => {
     expect((await handleSetEnabled(request("PATCH", { enabled: false }), nora, id, deps())).status).toBe(404);
     expect((await handleSetEnabled(request("PATCH", { enabled: false }), leo, id, deps())).status).toBe(200);
     expect((await handleRunNow(leo, id, deps())).status).toBe(409);
+  });
+
+  it("rate-limits Run now per user, with Retry-After", async () => {
+    const created = await handleCreateAutomation(
+      request("POST", {
+        name: "digest",
+        prompt: "summarise",
+        trigger: { kind: "schedule", cron: "0 9 * * 1", folder: null },
+      }),
+      nora,
+      deps(),
+    );
+    const { id } = (await created.json()) as { id: string };
+    const at = new Date("2026-10-14T12:00:00Z");
+    const runNow = () => handleRunNow(nora, id, { ...deps(), now: () => at });
+    for (let i = 0; i < RUN_NOW_BUCKET.capacity; i++) expect((await runNow()).status).toBe(202);
+    const refused = await runNow();
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("retry-after")).toBe(String(Math.ceil(1 / RUN_NOW_BUCKET.refillPerSecond)));
+    expect(await refused.json()).toMatchObject({ error: "rate_limited" });
+    expect(fired.filter((f) => f.automationId === id)).toHaveLength(RUN_NOW_BUCKET.capacity);
   });
 });

@@ -7,8 +7,10 @@ import type { AgentTool } from "#learn/agent/types";
 import type { ChatModel } from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 
-import { RunHalted } from "#learn/agent/loop";
+import { advance } from "#learn/agent/checkpoint";
+import { type RunGuard, RunHalted } from "#learn/agent/loop";
 import { addNote } from "#learn/agent/memory";
+import { PLAN_TOOL, planTool } from "#learn/agent/plan";
 import { scriptedTurns } from "#learn/model/testing";
 import { withTenantOn } from "@/db/tenant";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
@@ -24,9 +26,12 @@ import {
   holdLive,
   listApprovals,
   IllegalTransitionError,
+  loadRun,
   loadState,
   type RunnerLoop,
+  runStore,
   startRun,
+  stepLoop,
   VersionConflictError,
 } from "./agent-runs";
 
@@ -532,6 +537,80 @@ describe.skipIf(!postgresAvailable)("the run service", () => {
       ]);
       expect(await listApprovals(t.appDb, leo, "pending")).not.toContainEqual(expect.objectContaining({ runId }));
       expect(await decideApproval(t.appDb, leo, approvalId, "approved")).toBe("not-pending");
+    });
+
+    describe("a waiting call the policy refuses after a follow-up", () => {
+      const AMARA = "Amara Obi <amara@kestrelpay.example>";
+      const screening: RunGuard = {
+        beforeModelTurn: async () => {},
+        afterModelTurn: async () => {},
+        beforeToolCall: async () => {},
+        screen: async (calls) => calls.map(() => ({ recipients: [AMARA] })),
+      };
+      const planned = (writes: unknown[]) => ({
+        toolCalls: [{ callId: crypto.randomUUID(), name: PLAN_TOOL, input: { goal: "g", steps: [], writes } }],
+      });
+      const script = () =>
+        scriptedTurns([
+          planned([{ tool: "send_mail", targets: ["Amara"], documents: [], note: null }]),
+          mailTurn,
+          planned([]),
+          { text: "OK, I won't send it." },
+        ]).model;
+      const planLoop = (model: ChatModel): RunnerLoop => ({
+        ...createRunnerLoop(leo, {
+          model,
+          tools: [...fakeTools(), planTool() as AgentTool],
+          reasoningEffort: "medium",
+          guard: screening,
+        }),
+        compact: async () => null,
+      });
+
+      const expectSuperseded = async (runId: string, approvalId: string) => {
+        const [row] = await t.sql`SELECT status, decided_by, decided_at FROM approvals WHERE id = ${approvalId}`;
+        expect(row).toMatchObject({ status: "rejected", decided_by: null, decided_at: expect.anything() });
+        const events = (await state(leo, runId))!.events.map((e) => e.data);
+        const decided = events.findIndex((e) => e.type === "approval_decided");
+        expect(events.slice(decided, decided + 2)).toEqual([
+          { type: "approval_decided", approvalId, decision: "rejected", by: null, reason: "superseded" },
+          { type: "tool_result", callId: "m1", ok: false, error: expect.stringContaining("Refused by policy") },
+        ]);
+        expect(await listApprovals(t.appDb, leo, "pending")).not.toContainEqual(expect.objectContaining({ runId }));
+        expect(await decideApproval(t.appDb, leo, approvalId, "approved")).toBe("not-pending");
+      };
+
+      it("in the in-request runner: settles its approval as superseded, so it can't be approved", async () => {
+        const model = script();
+        const runId = await newRun(leo, "Mail Amara the policy");
+        expect(await driveRun({ db: t.appDb, loop: planLoop(model) }, leo, runId)).toBe("waiting");
+        const [{ id: approvalId }] = await t.sql`SELECT id FROM approvals WHERE run_id = ${runId}`;
+        await addMessage(t.appDb, leo, runId, message("Actually, don't send anything"));
+        expect(await driveRun({ db: t.appDb, loop: planLoop(model) }, leo, runId)).toBe("succeeded");
+        await expectSuperseded(runId, approvalId);
+      });
+
+      it("on checkpoints (the queue and Workflow runners): the same", async () => {
+        const model = script();
+        const runId = await newRun(leo, "Mail Amara the policy");
+        const step = async () => {
+          const run = (await withTenantOn(t.appDb, kestrel, (tx) => loadRun(tx, leo, runId)))!;
+          const store = runStore(t.appDb, leo, runId);
+          return advance(store, stepLoop(planLoop(model), leo, run), {
+            stepKey: crypto.randomUUID(),
+            signal: new AbortController().signal,
+          });
+        };
+        let outcome = await step();
+        while (outcome.kind === "continue") outcome = await step();
+        expect(outcome.kind).toBe("waiting");
+        const [{ id: approvalId }] = await t.sql`SELECT id FROM approvals WHERE run_id = ${runId}`;
+        await addMessage(t.appDb, leo, runId, message("Actually, don't send anything"));
+        do outcome = await step();
+        while (outcome.kind === "continue");
+        expect(outcome).toEqual({ kind: "final", status: "succeeded" });
+        await expectSuperseded(runId, approvalId);
+      });
     });
 
     it("cancels mid-turn: the model call in flight is aborted and the run ends cancelled", async () => {

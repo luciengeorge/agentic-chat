@@ -9,8 +9,7 @@ import { createGuardrails } from "#learn/agent/guardrails";
 import { rememberTool } from "#learn/agent/memory";
 import { createAgentTools } from "#learn/agent/tools/index";
 import { createWorkspaceWriter } from "#learn/agent/tools/workspace";
-import { scriptedTurns } from "#learn/model/testing";
-import { runScenario, type ScenarioResult } from "#learn/redteam/run";
+import { obeyingModels, runScenario, type ScenarioResult } from "#learn/redteam/run";
 import { type Effects, SCENARIOS, type ScenarioIds } from "#learn/redteam/scenarios";
 import { createDb } from "@/db/create";
 import { withTenantOn } from "@/db/tenant";
@@ -52,7 +51,7 @@ async function documentId(withTenant: WithTenant, tenant: string, path: string):
 }
 
 /** Kestrel's tenant, a viewer for each user the scenarios name, and the ids their scripts and plants use. */
-export async function redteamWorld(withTenant: WithTenant, db: Queryable) {
+export async function redteamWorld(withTenant: WithTenant, db: Queryable, users = SCENARIOS.map((s) => s.user)) {
   const kestrel = await tenantId(db, "kestrel");
   const harbour = await tenantId(db, "harbour");
   const ids: ScenarioIds = {
@@ -62,7 +61,7 @@ export async function redteamWorld(withTenant: WithTenant, db: Queryable) {
     tom: await principal(withTenant, kestrel, "tom.whitfield"),
   };
   const viewers = new Map<string, Viewer>();
-  for (const user of new Set(SCENARIOS.map((s) => s.user))) {
+  for (const user of new Set(users)) {
     viewers.set(user, { tenantId: kestrel, userId: await principal(withTenant, kestrel, user) });
   }
   return { ids, viewer: (user: string) => viewers.get(user)! };
@@ -144,7 +143,7 @@ export async function checkRedteam(target: SmokeTargets, controlToken = DEV_CONT
       const who = viewer(scenario.user);
       results.push(
         await runScenario(scenario, {
-          model: scriptedTurns(scenario.script(ids)).model,
+          ...obeyingModels(scenario, ids),
           tools,
           viewer: who,
           guard: { ...NOOP_GUARD, screen: createGuardrails({ withTenant }, who) },

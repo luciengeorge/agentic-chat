@@ -15,6 +15,7 @@ import {
   scheduleFireKey,
   type Trigger,
 } from "#learn/automations/automation";
+import { canRead, readable } from "#learn/retrieve/acl";
 import { automationFires, automations, runs } from "@/db/schema";
 import { type Tx, withTenantOn } from "@/db/tenant";
 import { createLogger } from "@/lib/logger";
@@ -122,7 +123,7 @@ export const MAX_FIRE_ITEMS = 25;
  * deleted automation doesn't fire.
  *
  * The items: the documents given (a drive change); for a schedule over a folder, the documents in it that became
- * ready since the fire before; otherwise one run with no document.
+ * ready since the fire before; otherwise one run with no document. Only documents the owner can read count.
  */
 export async function claimFire(
   tx: Tx,
@@ -146,16 +147,18 @@ export async function claimFire(
     .where(eq(automations.id, automationId));
 
   let documents: DocumentRef[] = [];
+  const owner = automation.ownerId;
   if (documentIds?.length) {
     documents = await readyDocuments(
       tx,
-      sql`id IN (${sql.join(
+      owner,
+      sql`doc.id IN (${sql.join(
         documentIds.map((id) => sql`${id}::uuid`),
         sql`, `,
       )})`,
     );
   } else if (automation.folder) {
-    documents = await readyDocuments(tx, sql`updated_at > ${new Date(since).toISOString()}::timestamptz`);
+    documents = await readyDocuments(tx, owner, sql`doc.updated_at > ${new Date(since).toISOString()}::timestamptz`);
   }
   const folder = automation.folder;
   const inScope = folder ? documents.filter((d) => inFolder(folder, d.path)) : documents;
@@ -166,11 +169,12 @@ export async function claimFire(
   return { kind: "fire", ownerId: automation.ownerId, prompt: automation.prompt, items };
 }
 
-async function readyDocuments(tx: Tx, where: ReturnType<typeof sql>): Promise<DocumentRef[]> {
+/** Ready documents the owner can read: a run acts as the owner, so it never hears of one they can't. */
+async function readyDocuments(tx: Tx, ownerId: string, where: ReturnType<typeof sql>): Promise<DocumentRef[]> {
   return tx.execute<DocumentRef & Record<string, unknown>>(sql`
-    SELECT id, title, path FROM documents
-    WHERE status = 'ready' AND deleted_at IS NULL AND ${where}
-    ORDER BY path`);
+    SELECT doc.id, doc.title, doc.path FROM documents doc
+    WHERE doc.status = 'ready' AND doc.deleted_at IS NULL AND ${where} AND ${readable(ownerId, sql`doc.id`)}
+    ORDER BY doc.path`);
 }
 
 /** A fire to start: which automation, its key, and when it fired. */
@@ -214,13 +218,24 @@ export async function dueScheduleFires(system: Db, now: Date): Promise<DueFire[]
   return due;
 }
 
-/** The tenant's enabled drive-change automations whose folder holds the document. */
-export async function driveChangeAutomations(db: Db, tenantId: string, documentPath: string): Promise<string[]> {
-  const rows = await withTenantOn(db, tenantId, (tx) =>
-    tx
-      .select({ id: automations.id, folder: automations.folder })
+/** The tenant's enabled drive-change automations whose folder holds the document and whose owner can read it. */
+export async function driveChangeAutomations(
+  db: Db,
+  tenantId: string,
+  documentId: string,
+  documentPath: string,
+): Promise<string[]> {
+  return withTenantOn(db, tenantId, async (tx) => {
+    const rows = await tx
+      .select({ id: automations.id, folder: automations.folder, ownerId: automations.ownerId })
       .from(automations)
-      .where(and(eq(automations.trigger, "drive_change"), eq(automations.enabled, true))),
-  );
-  return rows.filter((row) => row.folder && inFolder(row.folder, documentPath)).map((row) => row.id);
+      .where(and(eq(automations.trigger, "drive_change"), eq(automations.enabled, true)));
+    const ids: string[] = [];
+    for (const row of rows) {
+      if (row.folder && inFolder(row.folder, documentPath) && (await canRead(tx, row.ownerId, documentId))) {
+        ids.push(row.id);
+      }
+    }
+    return ids;
+  });
 }

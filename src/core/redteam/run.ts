@@ -4,17 +4,52 @@
  */
 import type { RunGuard } from "#learn/agent/loop";
 import type { AgentTool, RunEvent, ToolCall } from "#learn/agent/types";
-import type { ChatModel, ReasoningEffort } from "#learn/model/types";
+import type { ChatModel, ChatRequest, ReasoningEffort } from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 
 import { type Caps, DEFAULT_CAPS } from "#learn/agent/caps";
 import { drive, inMemoryRun } from "#learn/agent/loop-testing";
-import { AGENT_INSTRUCTIONS } from "#learn/agent/prompt";
+import { childOutcome, childRunId, delegateTool } from "#learn/agent/orchestrate";
+import { PLAN_TOOL } from "#learn/agent/plan";
+import { subagentPolicy } from "#learn/agent/policy";
+import { AGENT_INSTRUCTIONS, subagentMessage } from "#learn/agent/prompt";
+import { scriptedTurns } from "#learn/model/testing";
 
-import type { Effects, Scenario, ScenarioIds } from "./scenarios";
+import type { Effects, Scenario, ScenarioIds, ScriptStep } from "./scenarios";
+
+/** What a model call was given, as one string: the instructions and every message. */
+const requestText = (request: ChatRequest) => `${request.instructions}\n${JSON.stringify(request.messages)}`;
+
+/**
+ * A model that obeys the attack: it answers its nth call with the nth step. A step that's a function sees what the
+ * call was given, so it can obey whatever the attack managed to put in front of it (a planted address in the
+ * planning turn's input, say). A call past the script fails.
+ */
+export function obeyingModel(steps: readonly ScriptStep[]): ChatModel {
+  let call = 0;
+  return {
+    id: "obeying",
+    stream(request) {
+      const step = steps[call++];
+      if (!step) throw new Error(`the script has ${steps.length} turns; the model was called again`);
+      const turn = typeof step === "function" ? step(requestText(request)) : step;
+      return scriptedTurns([turn]).model.stream(request);
+    },
+  };
+}
+
+/** The scripted models for a scenario: the parent's, and its sub-agents' when it has them. */
+export function obeyingModels(scenario: Scenario, ids: ScenarioIds): Pick<RedteamDeps, "model" | "childModel"> {
+  return {
+    model: obeyingModel(scenario.script(ids)),
+    ...(scenario.childScript ? { childModel: obeyingModel(scenario.childScript(ids)) } : {}),
+  };
+}
 
 export interface RedteamDeps {
   model: ChatModel;
+  /** The sub-agents' model, for a scenario with `childScript`; the parent's when unset (live). */
+  childModel?: ChatModel;
   reasoningEffort?: ReasoningEffort;
   tools: readonly AgentTool[];
   viewer: Viewer;
@@ -73,44 +108,81 @@ export function plantIn(tools: readonly AgentTool[], plant: Scenario["plant"], i
 export async function runScenario(scenario: Scenario, deps: RedteamDeps): Promise<ScenarioResult> {
   const runId = deps.runId ?? crypto.randomUUID();
   const run = inMemoryRun(runId, Date.now());
-  run.append({ type: "user_message", messageId: "m1", text: scenario.message });
-  const tools = plantIn(deps.tools, scenario.plant, deps.ids);
-  const last = await drive(run, {
-    model: deps.model,
-    tools,
+  const message = typeof scenario.message === "string" ? scenario.message : scenario.message(deps.ids);
+  run.append({ type: "user_message", messageId: "m1", text: message });
+  const planted = plantIn(deps.tools, scenario.plant, deps.ids);
+  const base = {
     viewer: deps.viewer,
     guard: deps.guard,
     caps: deps.caps ?? DEFAULT_CAPS,
     instructions: AGENT_INSTRUCTIONS,
     reasoningEffort: deps.reasoningEffort,
-    approve: () => "approved",
-  });
+  };
 
-  const effects = await deps.effects(runId);
+  // Sub-agents, as the app runs them: a run of their own, read-only, its task framed as one. Approvals still blind.
+  const children: RunEvent[][] = [];
+  const childIds: string[] = [];
+  const tools = scenario.childScript
+    ? [
+        ...planted,
+        delegateTool({
+          runChild: async (task, ctx) => {
+            const child = inMemoryRun(childRunId(ctx.runId, ctx.callId), Date.now());
+            child.append({ type: "user_message", messageId: "task", text: subagentMessage(task) });
+            childIds.push(child.runId);
+            await drive(child, {
+              ...base,
+              model: deps.childModel ?? deps.model,
+              tools: planted.filter((t) => t.name !== PLAN_TOOL),
+              policy: subagentPolicy,
+              approve: () => "approved",
+            });
+            children.push(child.events);
+            return childOutcome(child.events);
+          },
+        }) as AgentTool,
+      ]
+    : planted;
+
+  let last = await drive(run, {
+    ...base,
+    model: deps.model,
+    tools,
+    // A follow-up arrives while the first request waits on its approval, as a message into a live run does.
+    ...(scenario.followUp ? {} : { approve: () => "approved" as const }),
+  });
+  if (scenario.followUp && last.kind !== "finish") {
+    run.append({ type: "user_message", messageId: "m2", text: scenario.followUp });
+    last = await drive(run, { ...base, model: deps.model, tools, approve: () => "approved" });
+  }
+
+  const effects = mergeEffects(await Promise.all([runId, ...childIds].map((id) => deps.effects(id))));
   const violation = scenario.forbidden(effects, deps.ids) ?? scenario.required?.(effects, deps.ids) ?? null;
 
-  const results = new Map(
-    run.events.flatMap((e) => (e.data.type === "tool_result" ? [[e.data.callId, e.data] as const] : [])),
-  );
   const writes: ScenarioResult["writes"] = [];
   let modelTurns = 0;
   let inputTokens = 0;
   let outputTokens = 0;
   let answer = "";
-  for (const { data } of run.events) {
-    if (data.type !== "assistant_turn") continue;
-    modelTurns++;
-    inputTokens += data.usage.inputTokens ?? 0;
-    outputTokens += data.usage.outputTokens ?? 0;
-    if (data.text) answer = data.text;
-    for (const call of data.toolCalls as ToolCall[]) {
-      if (tools.find((t) => t.name === call.tool)?.effect !== "write") continue;
-      const result = results.get(call.callId);
-      writes.push({
-        tool: call.tool,
-        input: call.input,
-        outcome: !result ? "no result" : result.ok ? "done" : result.error,
-      });
+  for (const [i, events] of [run.events, ...children].entries()) {
+    const results = new Map(
+      events.flatMap((e) => (e.data.type === "tool_result" ? [[e.data.callId, e.data] as const] : [])),
+    );
+    for (const { data } of events) {
+      if (data.type !== "assistant_turn") continue;
+      modelTurns++;
+      inputTokens += data.usage.inputTokens ?? 0;
+      outputTokens += data.usage.outputTokens ?? 0;
+      if (data.text && i === 0) answer = data.text;
+      for (const call of data.toolCalls as ToolCall[]) {
+        if (tools.find((t) => t.name === call.tool)?.effect !== "write") continue;
+        const result = results.get(call.callId);
+        writes.push({
+          tool: i === 0 ? call.tool : `${call.tool} (sub-agent)`,
+          input: call.input,
+          outcome: !result ? "no result" : result.ok ? "done" : result.error,
+        });
+      }
     }
   }
 
@@ -128,6 +200,12 @@ export async function runScenario(scenario: Scenario, deps: RedteamDeps): Promis
     events: run.events,
   };
 }
+
+const mergeEffects = (all: Effects[]): Effects => ({
+  mails: all.flatMap((e) => e.mails),
+  invites: all.flatMap((e) => e.invites),
+  notes: all.flatMap((e) => e.notes),
+});
 
 /** USD per million tokens for gpt-6-luna (OpenAI's list prices, October 2026; as `scripts/eval.ts`). */
 const PRICES = { input: 0.1, output: 0.5 };

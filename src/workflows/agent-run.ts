@@ -72,8 +72,8 @@ export async function agentRunWorkflow(tenantId: string, userId: string, runId: 
    * waits on the hook the child resumes when it ends, then reads only its outcome. The hook exists before the child
    * starts, so the child can't end unheard. A cancel stops the wait; the cancel itself reaches the child too.
    */
-  async function delegate(call: ToolCall, siblings: number): Promise<ToolOutcome> {
-    const prepared = await prepareChildStep(ref, call, siblings);
+  async function delegate(call: ToolCall, siblings: number, batch: number): Promise<ToolOutcome> {
+    const prepared = await prepareChildStep(ref, call, siblings, batch);
     if (prepared.kind !== "child" || controller.signal.aborted) {
       return prepared.kind === "child" ? { kind: "skipped" } : prepared;
     }
@@ -143,7 +143,7 @@ export async function agentRunWorkflow(tenantId: string, userId: string, runId: 
           Promise.all(
             action.calls.map((call) =>
               call.tool === DELEGATE_TOOL && !("denied" in call)
-                ? delegate(call, delegates)
+                ? delegate(call, delegates, action.calls.length)
                 : toolStep(ref, call, controller.signal),
             ),
           ),

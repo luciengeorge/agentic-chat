@@ -29,13 +29,26 @@ export interface Screen {
   documents?: string[];
 }
 
+/** What a sub-agent spent, on its delegate call's result (`#learn/agent/orchestrate`): the parent's caps count it. */
+export interface ChildUsage {
+  tokens: number;
+  toolCalls: number;
+}
+
 export type RunEventData =
   | { type: "user_message"; messageId: string; text: string }
   | { type: "assistant_turn"; text: string; toolCalls: ToolCall[]; usage: Usage }
-  | { type: "tool_result"; callId: string; ok: true; output: unknown }
-  | { type: "tool_result"; callId: string; ok: false; error: string }
+  | { type: "tool_result"; callId: string; ok: true; output: unknown; usage?: ChildUsage }
+  | { type: "tool_result"; callId: string; ok: false; error: string; usage?: ChildUsage }
   | { type: "approval_requested"; approvalId: string; call: ToolCall; expiresAt: string }
-  | { type: "approval_decided"; approvalId: string; decision: "approved" | "rejected" | "expired"; by: string | null }
+  | {
+      type: "approval_decided";
+      approvalId: string;
+      decision: "approved" | "rejected" | "expired";
+      by: string | null;
+      /** Why, when nobody decided: "superseded" for a call the policy refused while it waited. */
+      reason?: string;
+    }
   | { type: "status"; from: RunStatus; to: RunStatus; reason?: string }
   | { type: "compaction"; throughSeq: number; summary: string }
   | { type: "error"; message: string; retryable: boolean };

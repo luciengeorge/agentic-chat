@@ -11,7 +11,14 @@ import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/t
 import { append, loadRun } from "@/lib/agent-runs";
 
 import { handleDecideApproval, handleListApprovals } from "../approvals/-approvals";
-import { handleAddMessage, handleCancelRun, handleStartRun, handleStream, type RunRoutesDeps } from "./-runs";
+import {
+  FOLLOW_UP_BUCKET,
+  handleAddMessage,
+  handleCancelRun,
+  handleStartRun,
+  handleStream,
+  type RunRoutesDeps,
+} from "./-runs";
 
 const LEO = "44444444-4444-4444-8444-444444444444";
 const NORA = "55555555-5555-4555-8555-555555555555";
@@ -184,17 +191,30 @@ describe.skipIf(!postgresAvailable)("the run routes", () => {
   });
 
   describe("POST /api/runs/:id/messages", () => {
-    it("adds a message once per id, and kicks a waiting run", async () => {
+    it("adds a message once per id, and kicks the run's runner, a running one included", async () => {
       const id = await newRun();
       kicked = [];
       expect(await (await say(leo, id, "m2")).json()).toEqual({ id, seq: 2, duplicate: false });
       expect(await (await say(leo, id, "m2")).json()).toEqual({ id, seq: 2, duplicate: true });
       expect(kicked).toEqual([id, id]);
 
+      // A running run's workflow may have died: the kick wakes a live one and replaces a dead one.
       await appendTo(id, { type: "status", from: "queued", to: "running" });
       kicked = [];
       expect((await say(leo, id, "m3")).status).toBe(202);
-      expect(kicked).toEqual([]);
+      expect(kicked).toEqual([id]);
+    });
+
+    it("rate-limits follow-ups on the router's bucket", async () => {
+      const id = await newRun();
+      const d = deps({ messageBucket: { name: "router", capacity: 1, refillPerSecond: 0.01 } });
+      const send = (messageId: string) =>
+        handleAddMessage(post(`/api/runs/${id}/messages`, { message: { id: messageId, text: "x" } }), leo, id, d);
+      expect((await send("f1")).status).toBe(202);
+      const refused = await send("f2");
+      expect(refused.status).toBe(429);
+      expect(refused.headers.get("retry-after")).toBe("100");
+      expect(FOLLOW_UP_BUCKET.name).toBe("router");
     });
 
     it("answers 404 for another user's or tenant's run, or a bad id, and 409 for a finished run", async () => {

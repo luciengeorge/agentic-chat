@@ -35,7 +35,9 @@ const sendMail: AgentTool<Record<string, unknown>, unknown> = {
 };
 const TOOLS = [planTool(), search, sendMail] as AgentTool[];
 
-const writes = [{ tool: "send_mail", targets: ["Tom Whitfield (tom.whitfield@kestrelpay.example)"], documents: [] }];
+const writes = [
+  { tool: "send_mail", targets: ["Tom Whitfield (tom.whitfield@kestrelpay.example)"], documents: [], note: null },
+];
 const planCall: ToolCall = { callId: "plan-1", tool: PLAN_TOOL, input: { goal: "Mail Tom", steps: [], writes } };
 
 /** A long run: the user's message, the plan, then searches whose results are big enough to need compacting. */

@@ -22,6 +22,10 @@ const STREAM_PAGE = 500;
 /** Five runs in a burst, then one every 30 seconds. The daily token budget (section 13) is the real cap. */
 export const RUN_BUCKET: Bucket = { name: "agent", capacity: 5, refillPerSecond: 1 / 30 };
 
+/** Messages into a live run: twenty in a burst, then one every 3 s. It's the chat router's bucket
+ * (`ROUTER_BUCKET`), so a follow-up draws on the same tokens whichever route it takes. */
+export const FOLLOW_UP_BUCKET: Bucket = { name: "router", capacity: 20, refillPerSecond: 20 / 60 };
+
 export const MessageSchema = z.object({
   /** The client's id: a resend with the same id stores nothing new. */
   id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
@@ -48,6 +52,8 @@ export interface RunRoutesDeps {
    * reconnect gets none it missed. Absent for the runners that don't stream tokens. */
   tokens?: (workflowRunId: string) => Promise<ReadableStream<TokenChunk>>;
   bucket?: Bucket;
+  /** For `POST /api/runs/:id/messages`; `FOLLOW_UP_BUCKET` unless set. */
+  messageBucket?: Bucket;
   now?: () => Date;
   pollMs?: number;
   heartbeatMs?: number;
@@ -81,11 +87,27 @@ export async function readBody<T>(request: Request, schema: z.ZodType<T>): Promi
   return parsed.data;
 }
 
+/** Takes one token from the viewer's bucket: null when allowed, else the 429 (or the 403 for a user the directory
+ * hasn't synced) to answer with. */
+export async function takeOrRefuse(db: Db, viewer: Viewer, bucket: Bucket, now: Date): Promise<Response | null> {
+  let limit;
+  try {
+    limit = await withTenantOn(db, viewer.tenantId, (tx) => takeToken(tx, viewer, bucket, now));
+  } catch (error) {
+    if (pgCode(error) === "23503") return json(403, { error: "not_in_directory" });
+    throw error;
+  }
+  if (limit.allowed) return null;
+  const { retryAfterSeconds } = limit;
+  return json(429, { error: "rate_limited", retryAfterSeconds }, { "retry-after": String(retryAfterSeconds) });
+}
+
 function answer(result: MessageResult, runId: string, viewer: Viewer, deps: RunRoutesDeps): Response {
   if (result.kind === "not-found") return notFound();
   if (result.kind === "finished") return json(409, { error: "run_finished", status: result.status });
-  // A running run's runner sees the message on its next step; a queued or waiting one needs starting.
-  if (result.status === "queued" || result.status === "waiting") deps.kick(viewer, runId);
+  // Every live run is kicked, a running one too: a live runner just wakes (its next step reads the message), and a
+  // runner that died while the run was `running` is replaced. Each runner's kick is idempotent.
+  deps.kick(viewer, runId);
   return json(202, { id: runId, seq: result.seq, duplicate: result.kind === "duplicate" });
 }
 
@@ -104,21 +126,8 @@ export async function startRunResponse(
   body: z.infer<typeof StartRunSchema>,
   deps: RunRoutesDeps,
 ): Promise<Response> {
-  const now = (deps.now ?? (() => new Date()))();
-  let limit;
-  try {
-    limit = await withTenantOn(deps.db, viewer.tenantId, (tx) => takeToken(tx, viewer, deps.bucket ?? RUN_BUCKET, now));
-  } catch (error) {
-    if (pgCode(error) === "23503") return json(403, { error: "not_in_directory" });
-    throw error;
-  }
-  if (!limit.allowed) {
-    return json(
-      429,
-      { error: "rate_limited", retryAfterSeconds: limit.retryAfterSeconds },
-      { "retry-after": String(limit.retryAfterSeconds) },
-    );
-  }
+  const refused = await takeOrRefuse(deps.db, viewer, deps.bucket ?? RUN_BUCKET, (deps.now ?? (() => new Date()))());
+  if (refused) return refused;
 
   if (body.conversationId) {
     const conversationId = body.conversationId;
@@ -139,7 +148,7 @@ export async function startRunResponse(
   return answer(result, body.id, viewer, deps);
 }
 
-/** `POST /api/runs/:id/messages`: a message into a live run. */
+/** `POST /api/runs/:id/messages`: a message into a live run, on the follow-up bucket. */
 export async function handleAddMessage(
   request: Request,
   viewer: Viewer,
@@ -149,6 +158,9 @@ export async function handleAddMessage(
   if (!z.uuid().safeParse(runId).success) return notFound();
   const body = await readBody(request, AddMessageSchema);
   if (body instanceof Response) return body;
+  const now = (deps.now ?? (() => new Date()))();
+  const refused = await takeOrRefuse(deps.db, viewer, deps.messageBucket ?? FOLLOW_UP_BUCKET, now);
+  if (refused) return refused;
   return addMessageResponse(viewer, runId, body.message, deps);
 }
 

@@ -8,7 +8,10 @@ import type { Viewer } from "#learn/retrieve/types";
 import type { AgentTool, RunEvent, RunEventData, ToolCall } from "./types";
 
 import { type Caps, DEFAULT_CAPS } from "./caps";
+import { supersededApprovals } from "./checkpoint";
+import { buildContext } from "./context";
 import { approvalNeeded, decide, declinedResult, modelTurn, type RunGuard, RunHalted, runTools } from "./loop";
+import { type Policy } from "./policy";
 
 export interface InMemoryRun {
   runId: string;
@@ -63,15 +66,18 @@ export interface DriveOptions {
   reasoningEffort?: ReasoningEffort;
   caps?: Caps;
   guard?: RunGuard;
+  /** The policy; unset, plan-then-execute whenever the tools include `make_plan` (as `approvalNeeded`). */
+  policy?: Policy | null;
   /** Answers each approval at once; without it the run stops at the first one. */
   approve?: (call: ToolCall) => "approved" | "rejected";
   onTextDelta?: (delta: string) => void;
 }
 
-/** Runs until the loop says wait or finish, and returns that last action. */
+/** Runs until the loop says wait or finish, and returns that last action. The context is `buildContext`'s, as the
+ * app's runners use, so the planning turn sees what it sees in the app. */
 export async function drive(run: InMemoryRun, options: DriveOptions) {
   const { tools, viewer, caps = DEFAULT_CAPS, guard } = options;
-  const needsApproval = approvalNeeded(tools, viewer, run.runId);
+  const needsApproval = approvalNeeded(tools, viewer, run.runId, options.policy);
   for (let step = 0; step < 100; step++) {
     const action = decide(run.events, caps, needsApproval);
     try {
@@ -79,7 +85,7 @@ export async function drive(run: InMemoryRun, options: DriveOptions) {
         case "model":
           run.append(
             await modelTurn(
-              { instructions: options.instructions ?? "You are a helpful agent.", messages: naiveContext(run.events) },
+              buildContext(run.events, undefined, { instructions: options.instructions ?? "You are a helpful agent." }),
               {
                 model: options.model,
                 tools,
@@ -90,9 +96,11 @@ export async function drive(run: InMemoryRun, options: DriveOptions) {
             ),
           );
           break;
-        case "tools":
-          run.append(...(await runTools(action.calls, { tools, viewer, runId: run.runId, guard })));
+        case "tools": {
+          const results = await runTools(action.calls, { tools, viewer, runId: run.runId, guard });
+          run.append(...supersededApprovals(run.events, results), ...results);
           break;
+        }
         case "approval": {
           const approvalId = `approval-${action.call.callId}`;
           run.append({ type: "approval_requested", approvalId, call: action.call, expiresAt: "2026-10-21T09:00:00Z" });

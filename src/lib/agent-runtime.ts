@@ -47,7 +47,9 @@ export interface AgentRuntime {
 /** The kill switch and the daily budget, asked before a run starts rather than at its first turn. */
 export async function guardAdmits(viewer: Viewer): Promise<string | null> {
   try {
-    await agentGuard(viewer).beforeModelTurn();
+    // A one-token hold, given straight back: a check that leaves nothing held.
+    const guard = agentGuard(viewer);
+    await guard.afterModelTurn(null, await guard.beforeModelTurn());
     return null;
   } catch (error) {
     if (error instanceof RunHalted) return error.reason;

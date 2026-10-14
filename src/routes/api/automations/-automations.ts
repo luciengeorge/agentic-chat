@@ -3,19 +3,24 @@ import { z } from "zod";
 
 import type { Viewer } from "#learn/retrieve/types";
 import type { Db } from "@/db/create";
+import type { Bucket } from "@/lib/rate-limit";
 
 import { NewAutomationSchema } from "#learn/automations/automation";
 import { automations } from "@/db/schema";
 import { withTenantOn } from "@/db/tenant";
 import { createAutomation, type DueFire, listAutomations, setAutomationEnabled } from "@/lib/automations";
-import { json, readBody } from "@/routes/api/runs/-runs";
+import { json, readBody, takeOrRefuse } from "@/routes/api/runs/-runs";
 
 export interface AutomationRoutesDeps {
   db: Db;
   /** Starts a fire's workflow (`startFire` in `src/workflows/automation-start.ts`). */
   fire: (fire: DueFire) => Promise<unknown>;
+  bucket?: Bucket;
   now?: () => Date;
 }
+
+/** "Run now": three in a burst, then one a minute. One fire can start up to 25 runs, so it's tighter than a run's. */
+export const RUN_NOW_BUCKET: Bucket = { name: "automation-run", capacity: 3, refillPerSecond: 1 / 60 };
 
 const notFound = () => json(404, { error: "not_found" });
 
@@ -44,7 +49,8 @@ export async function handleSetEnabled(request: Request, viewer: Viewer, id: str
   return done ? json(200, { id, enabled: body.enabled }) : notFound();
 }
 
-/** `POST /api/automations/:id/run`: fires it now, whatever its trigger, as a one-off. */
+/** `POST /api/automations/:id/run`: fires it now, whatever its trigger, as a one-off. Rate-limited per user
+ * (`RUN_NOW_BUCKET`): 429 with `Retry-After`. */
 export async function handleRunNow(viewer: Viewer, id: string, deps: AutomationRoutesDeps): Promise<Response> {
   if (!z.uuid().safeParse(id).success) return notFound();
   const [row] = await withTenantOn(deps.db, viewer.tenantId, (tx) =>
@@ -56,6 +62,8 @@ export async function handleRunNow(viewer: Viewer, id: string, deps: AutomationR
   if (!row || row.ownerId !== viewer.userId) return notFound();
   if (!row.enabled) return json(409, { error: "disabled" });
   const firedAt = (deps.now ?? (() => new Date()))();
+  const refused = await takeOrRefuse(deps.db, viewer, deps.bucket ?? RUN_NOW_BUCKET, firedAt);
+  if (refused) return refused;
   const fireKey = `manual:${crypto.randomUUID()}`;
   await deps.fire({ tenantId: viewer.tenantId, automationId: id, fireKey, firedAt });
   return json(202, { id, fireKey });

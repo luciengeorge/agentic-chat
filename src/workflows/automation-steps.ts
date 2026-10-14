@@ -44,8 +44,8 @@ export async function admitStep(tenantId: string, ownerId: string): Promise<Admi
 }
 
 /**
- * Makes one run of the fire, `kind: automation`, as the owner, with the prompt (and its document) as the first
- * message. Its id comes from the fire and the item, so a step that runs again makes no second run.
+ * Makes one run of the fire, `kind: automation`, as the owner, with the prompt (and its document's id) as the
+ * first message. Its id comes from the fire and the item, so a step that runs again makes no second run.
  */
 export async function createRunStep(
   tenantId: string,
@@ -65,7 +65,7 @@ export async function createRunStep(
       runId,
       kind: "automation",
       automationId,
-      message: { messageId: "automation", text: runMessage(prompt, item.document) },
+      message: { messageId: "automation", text: runMessage(prompt, item.document?.id ?? null) },
     },
   );
   await withTenantOn(db, tenantId, (tx) =>
@@ -85,7 +85,7 @@ export async function fireDriveChange(tenantId: string, documentId: string, vers
     tx.select({ path: documents.path }).from(documents).where(eq(documents.id, documentId)),
   );
   if (!document) return 0;
-  const ids = await driveChangeAutomations(db, tenantId, document.path);
+  const ids = await driveChangeAutomations(db, tenantId, documentId, document.path);
   for (const automationId of ids) {
     await start(automationWorkflow, [
       tenantId,

@@ -22,6 +22,15 @@ const PlannedWrite = z.object({
     .describe(
       "The documents the write touches, as the user named them: to share, or to attach to a mail. Otherwise empty.",
     ),
+  note: z
+    .string()
+    .min(1)
+    .max(280)
+    .nullable()
+    .describe(
+      "For remember: the exact note to keep, worded from the user's message. The remember call must use this same " +
+        "text. Null for other writes.",
+    ),
 });
 
 export const PlanSchema = z.object({
@@ -42,8 +51,9 @@ export function planTool(): AgentTool<Plan, { planned: number }> {
     name: PLAN_TOOL,
     description:
       "Record your plan for the user's latest request before doing anything else: the goal, the steps, and every " +
-      "write (send_mail, share_document, remember) the user asked for, with its targets and the documents it " +
-      "shares or attaches. Writes, recipients and attachments not in the plan are refused.",
+      "write (send_mail, share_document, remember) the user asked for, with its targets, the documents it shares " +
+      "or attaches, and for remember the note itself. One entry per write: a mail's recipients and attachments " +
+      "must all be in the same entry. Writes, recipients, attachments and notes not in the plan are refused.",
     input: PlanSchema,
     effect: "read",
     needsApproval: () => false,
@@ -132,49 +142,83 @@ export function targetMatches(target: string, labels: readonly string[]): boolea
   });
 }
 
-/** Does a document the user named ("the Q3 report") match a title or path? At least half its words, and one. */
-export function documentMatches(named: string, labels: readonly string[]): boolean {
-  const wanted = words(named).filter((w) => w.length >= 3 || /\d/.test(w));
-  if (wanted.length === 0) return false;
-  return labels.some((label) => {
-    const have = words(label);
-    const hits = wanted.filter((w) => have.some((h) => h === w || h.startsWith(w) || w.startsWith(h))).length;
-    return hits >= Math.max(1, Math.ceil(wanted.length / 2));
-  });
+const DOCUMENT_STOPWORDS = new Set(["document", "file"]);
+const EXTENSIONS = new Set(["pdf", "doc", "docx", "md", "txt", "xls", "xlsx", "csv", "ppt", "pptx"]);
+
+/** The words that name a document: no stopwords, no file extensions. */
+const documentWords = (text: string) => words(text).filter((w) => !DOCUMENT_STOPWORDS.has(w) && !EXTENSIONS.has(w));
+
+/** A guardrails label is "Title (/path)": the title alone. A folder in the path names nothing. */
+export function titleOf(label: string): string {
+  const open = label.lastIndexOf(" (");
+  return open > 0 && label.endsWith(")") ? label.slice(0, open) : label;
 }
 
 /**
- * Why the plan doesn't cover this write, or null when it does. A mail's every recipient must be a planned target
- * of a planned send_mail, and its every attachment a planned document of one; a share's recipient and document
- * must both be in one planned share_document.
+ * Does a document the user named ("the Q3 report") match a document's label ("Q3 2026 Quarterly Report.pdf
+ * (/Finance/Reports/Q3 2026 Quarterly Report.pdf)")? Every word of the name must be a whole word of the title.
+ * The path doesn't count, and neither do part-words: "Q3 report" doesn't cover "/Exec/Reports/heron-memo.pdf".
+ */
+export function documentMatches(named: string, labels: readonly string[]): boolean {
+  const wanted = documentWords(named);
+  if (wanted.length === 0) return false;
+  return labels.some((label) => {
+    const have = new Set(documentWords(titleOf(label)));
+    return wanted.every((w) => have.has(w));
+  });
+}
+
+/** Notes compare ignoring case, spacing and a closing full stop. */
+const noteKey = (note: string) =>
+  note
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.!]+$/, "");
+
+export const sameNote = (a: string, b: string) => noteKey(a) === noteKey(b);
+
+/**
+ * Why the plan doesn't cover this write, or null when it does. One planned entry must cover the whole call: a
+ * mail's every recipient and every attachment in the same planned send_mail, a share's recipient and document in
+ * the same planned share_document, a note word for word as a planned remember wrote it.
  */
 export function uncovered(plan: Plan, call: ToolCall): string | null {
   const planned = plan.writes.filter((w) => w.tool === call.tool);
   if (planned.length === 0) return `the plan has no ${call.tool}.`;
-  if (call.tool === "remember") return null;
+
+  if (call.tool === "remember") {
+    const note = (call.input as { note?: unknown }).note;
+    const ok = typeof note === "string" && planned.some((w) => w.note !== null && sameNote(w.note, note));
+    return ok ? null : "the plan doesn't have this note, word for word, from the user's request.";
+  }
 
   const recipients = call.screen?.recipients ?? [];
   if (call.tool === "send_mail") {
     const to = (call.input as { to?: unknown }).to;
     const addresses = Array.isArray(to) ? to.map(String) : [];
-    for (const address of addresses) {
+    const labelsOf = (address: string) => {
       const labels = recipients.filter((r) => r.toLowerCase().includes(`<${address.toLowerCase()}>`));
-      const ok = planned.some((w) => w.targets.some((t) => targetMatches(t, labels.length ? labels : [address])));
-      if (!ok) return `the plan doesn't name ${address} as a recipient.`;
-    }
+      return labels.length ? labels : [address];
+    };
     // A document read mid-run mustn't add an attachment: one the recipient can read would go out unflagged, and
     // one they can't would only be flagged to an approver.
     const attachments = (call.input as { attachmentDocumentIds?: unknown }).attachmentDocumentIds;
-    if (Array.isArray(attachments) && attachments.length > 0) {
-      const labels = call.screen?.documents ?? [];
-      if (labels.length !== attachments.length) return "the attachments weren't resolved, so they can't be checked.";
-      for (const label of labels) {
-        if (!planned.some((w) => w.documents.some((d) => documentMatches(d, [label])))) {
-          return `the plan doesn't name ${label} as an attachment.`;
-        }
-      }
+    const documents = call.screen?.documents ?? [];
+    if (Array.isArray(attachments) && attachments.length > 0 && documents.length !== attachments.length) {
+      return "the attachments weren't resolved, so they can't be checked.";
     }
-    return null;
+    const names = (w: PlannedWrite, address: string) => w.targets.some((t) => targetMatches(t, labelsOf(address)));
+    const attaches = (w: PlannedWrite, label: string) => w.documents.some((d) => documentMatches(d, [label]));
+    const covers = (w: PlannedWrite) =>
+      addresses.every((a) => names(w, a)) && documents.every((label) => attaches(w, label));
+    if (planned.some(covers)) return null;
+
+    const stranger = addresses.find((a) => !planned.some((w) => names(w, a)));
+    if (stranger) return `the plan doesn't name ${stranger} as a recipient.`;
+    const extra = documents.find((label) => !planned.some((w) => attaches(w, label)));
+    if (extra) return `the plan doesn't name ${extra} as an attachment.`;
+    return "no one planned mail has all these recipients and attachments together.";
   }
 
   if (call.tool === "share_document") {
