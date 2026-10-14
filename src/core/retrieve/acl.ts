@@ -44,7 +44,7 @@ export async function candidateDocuments(tx: Tx, principalIds: readonly string[]
 
 /** True when `principal` is the user or a group in their closure. */
 const holds = (userId: string, principal: SQL) =>
-  sql`(${principal} = ${userId} OR ${principal} IN (SELECT gc.group_id FROM group_closure gc WHERE gc.member_id = ${userId}))`;
+  sql`(${principal} = ${userId} OR ${principal} IN (SELECT acl_gc.group_id FROM group_closure acl_gc WHERE acl_gc.member_id = ${userId}))`;
 
 /**
  * The authorisation decision, as a boolean SQL expression over a document id: Postgres is the only place it's
@@ -53,16 +53,17 @@ const holds = (userId: string, principal: SQL) =>
  * must be ready.
  */
 export function readable(userId: string, documentId: SQL): SQL {
+  // The aliases are prefixed so a caller's own `d` or `a` can't be captured by these subqueries.
   return sql`(
-    EXISTS (SELECT 1 FROM principals u WHERE u.id = ${userId} AND u.kind = 'user' AND u.enabled)
-    AND EXISTS (SELECT 1 FROM documents d WHERE d.id = ${documentId} AND d.status = 'ready')
+    EXISTS (SELECT 1 FROM principals acl_u WHERE acl_u.id = ${userId} AND acl_u.kind = 'user' AND acl_u.enabled)
+    AND EXISTS (SELECT 1 FROM documents acl_d WHERE acl_d.id = ${documentId} AND acl_d.status = 'ready')
     AND EXISTS (
-      SELECT 1 FROM document_acl a JOIN principals p ON p.id = a.principal_id
-      WHERE a.document_id = ${documentId} AND a.effect = 'allow' AND p.enabled
-        AND ${holds(userId, sql`a.principal_id`)})
+      SELECT 1 FROM document_acl acl_a JOIN principals acl_p ON acl_p.id = acl_a.principal_id
+      WHERE acl_a.document_id = ${documentId} AND acl_a.effect = 'allow' AND acl_p.enabled
+        AND ${holds(userId, sql`acl_a.principal_id`)})
     AND NOT EXISTS (
-      SELECT 1 FROM document_acl a
-      WHERE a.document_id = ${documentId} AND a.effect = 'deny' AND ${holds(userId, sql`a.principal_id`)})
+      SELECT 1 FROM document_acl acl_a
+      WHERE acl_a.document_id = ${documentId} AND acl_a.effect = 'deny' AND ${holds(userId, sql`acl_a.principal_id`)})
   )`;
 }
 

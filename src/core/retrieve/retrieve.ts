@@ -2,11 +2,13 @@ import { sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 
 import type { Embedder } from "#learn/embed/embed";
+import type { HypotheticalWriter } from "#learn/query/hyde";
 import type { QueryRewriter } from "#learn/query/rewrite";
 import type { Reranker } from "#learn/rerank/rerank";
 import type { Tx } from "@/db/tenant";
 
-import { lexicalSearch } from "#learn/search/lexical";
+import { documentCards, routeDocuments } from "#learn/query/route";
+import { LEXICAL_FIELD, lexicalSearch } from "#learn/search/lexical";
 import { rrf } from "#learn/search/rrf";
 import { uuidArray } from "#learn/search/sql";
 import { vectorSearch } from "#learn/search/vector";
@@ -21,6 +23,8 @@ export interface RetrieveDeps {
   embedder: Embedder;
   reranker: Reranker;
   rewriter: QueryRewriter;
+  /** HyDE, off unless given: a model-written answer passage, embedded and searched as one more vector list. */
+  hyde?: HypotheticalWriter;
 }
 
 export interface RetrieveSettings {
@@ -32,9 +36,21 @@ export interface RetrieveSettings {
   candidates: number;
   /** Allowed candidates the reranker scores. */
   rerankDepth: number;
+  /** Document-level routing: search chunks of only this many documents, picked first (`#learn/query/route`).
+   * 0 is off. */
+  routeDocuments: number;
+  /** The BM25 index field to search: `text`, or an alias a tokenizer change added (`#learn/search/reindex`). */
+  lexicalField: string;
 }
 
-export const DEFAULT_SETTINGS: RetrieveSettings = { k: 8, perList: 40, candidates: 60, rerankDepth: 30 };
+export const DEFAULT_SETTINGS: RetrieveSettings = {
+  k: 8,
+  perList: 40,
+  candidates: 60,
+  rerankDepth: 30,
+  routeDocuments: 0,
+  lexicalField: LEXICAL_FIELD,
+};
 
 const MAX_K = 50;
 
@@ -46,9 +62,11 @@ export function queryHash(query: string): string {
 
 /**
  * Hybrid retrieval for one viewer:
- * 1. rewrite the question (the model, or nothing), and embed it with its rewrites;
+ * 1. rewrite the question (the model, or nothing), and embed it with its rewrites (and, with HyDE, a hypothetical
+ *    answer passage);
  * 2. inside the tenant's transaction: the viewer's principals, the documents they might read (the pre-filter),
- *    BM25 and vector lists for every query over those documents, fused with RRF;
+ *    narrowed to the top few when routing is on, then BM25 and vector lists for every query over those documents
+ *    (plus a vector list for the HyDE passage), fused with RRF;
  * 3. the decision: the fused candidates joined to `document_acl` in one statement. Denied ones are dropped and
  *    recorded; so are chunks of a version that isn't the document's current one, silently;
  * 4. `acl_version_seq`'s high-water mark, read after that statement in the same transaction;
@@ -65,23 +83,44 @@ export function createRetrieve(deps: RetrieveDeps, settings: Partial<RetrieveSet
     const question = query.trim();
     if (question === "") throw new RangeError("the query is empty");
 
-    const rewritten = await deps.rewriter(question);
+    const [rewritten, hypothetical] = await Promise.all([
+      deps.rewriter(question),
+      deps.hyde ? deps.hyde(question) : null,
+    ]);
     const queries = [question, ...rewritten];
-    const embeddings = await deps.embedder.embed(queries);
+    const embeddings = await deps.embedder.embed(hypothetical === null ? queries : [...queries, hypothetical]);
 
     const searched = await deps.withTenant(viewer.tenantId, async (tx) => {
       const { principalIds } = await viewerPrincipals(tx, viewer.userId);
-      const documentIds = await candidateDocuments(tx, principalIds);
+      let documentIds = await candidateDocuments(tx, principalIds);
+      let routed: string[] | null = null;
+      if (base.routeDocuments > 0) {
+        const cards = await documentCards(tx, viewer.userId, documentIds, deps.embedder.version);
+        routed = routeDocuments(question, embeddings[0], cards, base.routeDocuments);
+        documentIds = routed;
+      }
 
       const lists: string[][] = [];
       for (const [i, text] of queries.entries()) {
-        lists.push((await lexicalSearch(tx, text, { documentIds, limit: base.perList })).map((hit) => hit.id));
+        lists.push(
+          (await lexicalSearch(tx, text, { documentIds, limit: base.perList, field: base.lexicalField })).map(
+            (hit) => hit.id,
+          ),
+        );
         const vectorHits = await vectorSearch(tx, embeddings[i], {
           documentIds,
           modelVersion: deps.embedder.version,
           limit: base.perList,
         });
         lists.push(vectorHits.map((hit) => hit.id));
+      }
+      if (hypothetical !== null) {
+        const hydeHits = await vectorSearch(tx, embeddings[queries.length], {
+          documentIds,
+          modelVersion: deps.embedder.version,
+          limit: base.perList,
+        });
+        lists.push(hydeHits.map((hit) => hit.id));
       }
       const fused = rrf(lists).slice(0, base.candidates);
 
@@ -109,7 +148,7 @@ export function createRetrieve(deps: RetrieveDeps, settings: Partial<RetrieveSet
         if (row.allowed) allowed.push(row);
         else denied.push(id);
       }
-      return { allowed, denied, aclVersion: Number(mark) };
+      return { allowed, denied, aclVersion: Number(mark), routed };
     });
 
     const pool = searched.allowed.slice(0, base.rerankDepth);
@@ -132,6 +171,13 @@ export function createRetrieve(deps: RetrieveDeps, settings: Partial<RetrieveSet
       return row.id;
     });
 
-    return { query: question, rewritten, chunks, auditId };
+    return {
+      query: question,
+      rewritten,
+      chunks,
+      auditId,
+      ...(hypothetical !== null && { hypothetical }),
+      ...(searched.routed !== null && { routedDocumentIds: searched.routed }),
+    };
   };
 }
