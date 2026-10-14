@@ -8,6 +8,7 @@ import {
   failIngest,
   finishIngest,
   parseAndChunk,
+  recordIngestStart,
   startIngest,
   storeBlob,
 } from "./ingest-steps";
@@ -17,6 +18,8 @@ export interface IngestOptions {
   /** A PDF with more pages than this fans out to child runs, one per page range. */
   fanOutPages?: number;
   rangePages?: number;
+  /** Started directly, with no outbox row (`INGEST_START=workflow-first`): the first step writes the record. */
+  workflowFirst?: boolean;
 }
 
 const FAN_OUT_PAGES = 500;
@@ -52,6 +55,11 @@ export async function ingestWorkflow(
   const { workflowRunId } = getWorkflowMetadata();
   if (outboxId !== null && !(await claimOutboxRow(tenantId, outboxId, workflowRunId))) {
     return { status: "duplicate" as const, chunks: 0 };
+  }
+  if (outboxId === null && options.workflowFirst) {
+    if (!(await recordIngestStart(tenantId, documentId, version, workflowRunId))) {
+      return { status: "duplicate" as const, chunks: 0 };
+    }
   }
   const started = await startIngest(tenantId, documentId, version);
   if (started.skip) return { status: started.skip, chunks: 0 };

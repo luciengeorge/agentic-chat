@@ -11,6 +11,8 @@ import {
   enqueueTenantSyncs,
   OutageError,
   type OutboxRow,
+  recordIdFor,
+  recordStart,
   relayOnce,
   UndeliverableError,
 } from "./outbox";
@@ -178,6 +180,30 @@ describe.skipIf(!postgresAvailable)("outbox and relay", () => {
     expect(await claimAs("wrun_1")).toBe(true);
     // Another tenant can't see the row to claim it.
     expect(await withTenantOn(t.appDb, harbour, (tx) => claim(tx, id, "wrun_3"))).toBe(false);
+  });
+
+  it("lets a workflow-first run write its own claimed record, which the relay never delivers", async () => {
+    const documentId = crypto.randomUUID();
+    const id = recordIdFor(`ingest:${documentId}:2`);
+    expect(recordIdFor(`ingest:${documentId}:2`)).toBe(id);
+    const record = (runId: string) =>
+      withTenantOn(t.appDb, kestrel, (tx) =>
+        recordStart(
+          tx,
+          kestrel,
+          { kind: "ingest", payload: { documentId, version: 2 } },
+          documentPartition(documentId),
+          id,
+          runId,
+        ),
+      );
+    expect(await record("wrun_first")).toBe(true);
+    expect(await record("wrun_first")).toBe(true);
+    expect(await record("wrun_second")).toBe(false);
+    const { seen, deliver } = recorder();
+    await relayOnce(t.db, deliver);
+    expect(seen).toEqual([]);
+    expect(await t.sql`SELECT claimed_by FROM outbox WHERE id = ${id}`).toEqual([{ claimed_by: "wrun_first" }]);
   });
 
   it("asks for one sync while one is waiting, and a new one once it's claimed", async () => {

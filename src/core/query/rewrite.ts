@@ -1,7 +1,8 @@
-import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 
-export type ReasoningEffort = NonNullable<Parameters<typeof generateText>[0]["reasoning"]>;
+import type { ReasoningEffort, StructuredModel } from "#learn/model/types";
+
+export type { ReasoningEffort };
 
 /** Up to this many extra queries per question. Each costs a BM25 query and a vector query. */
 export const MAX_REWRITES = 3;
@@ -22,18 +23,20 @@ Write up to ${MAX_REWRITES} short queries that would find the passages answering
 - any identifier in the question (a contract number like KPC-2026-0142, an error code like KP-4031, a SKU) kept exactly as written.
 Don't answer the question. Don't invent identifiers, names or numbers that aren't in it.`;
 
-/** The model writes the rewrites as structured output. The reasoning effort is always explicit: some models
- * default to none. */
-export function modelRewriter(model: LanguageModel, reasoning: ReasoningEffort): QueryRewriter {
+/** The model writes the rewrites as structured output (`object`, `#learn/model/types`). The reasoning effort is
+ * always explicit: some models default to none. */
+export function modelRewriter(model: StructuredModel, reasoning: ReasoningEffort): QueryRewriter {
   return async (query) => {
-    const { output } = await generateText({
-      model,
-      system: SYSTEM,
-      prompt: query,
-      output: Output.object({ schema: RewriteSchema, name: "search_queries" }),
-      reasoning,
-    });
-    return cleanRewrites(query, output.queries);
+    const { object } = await model.object(
+      {
+        instructions: SYSTEM,
+        messages: [{ role: "user", content: query }],
+        name: "search_queries",
+        reasoningEffort: reasoning,
+      },
+      RewriteSchema,
+    );
+    return cleanRewrites(query, object.queries);
   };
 }
 

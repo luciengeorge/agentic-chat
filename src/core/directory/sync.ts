@@ -3,6 +3,8 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { GraphClient } from "#learn/connectors/graph";
 import type { Tx } from "@/db/tenant";
 
+import { recordMemberships } from "#learn/acl/audit";
+import { bumpDirectoryVersion } from "#learn/acl/principal-cache";
 import { groupClosure, groupMembers, principals } from "@/db/schema";
 
 import { computeClosure, type Edge } from "./closure";
@@ -72,7 +74,8 @@ export async function fetchDirectory(graph: GraphClient): Promise<DirectorySnaps
  * Makes the tenant's principals, direct memberships and closure match the snapshot, in the caller's
  * transaction. A principal the directory no longer lists is disabled, not deleted: ACL rows and conversations
  * point at it. Membership and `enabled` changes leave `acl_version_seq` alone (an M0 decision): they change who
- * a document's ACL reaches, not the ACL.
+ * a document's ACL reaches, not the ACL. A membership change is written to the audit log, and bumps the tenant's
+ * directory version, so the principal cache reads the new closure on the next request.
  */
 export async function applyDirectory(
   tx: Tx,
@@ -117,11 +120,17 @@ export async function applyDirectory(
   );
   const closure = await replace(tx, groupClosure, tenantId, computeClosure(snapshot.edges), true);
 
+  await recordMemberships(tx, tenantId, { added: members.added, removed: members.gone });
+  // A depth change alone leaves every principal set as it was.
+  if (members.added.length || members.gone.length || closure.added.length || closure.gone.length) {
+    await bumpDirectoryVersion(tx, tenantId);
+  }
+
   return {
     principals: snapshot.principals.length,
     disabled: disabled.map((row) => row.name),
-    members: { added: members.added, removed: members.removed },
-    closure,
+    members: { added: members.added.length, removed: members.gone.length },
+    closure: { added: closure.added.length, removed: closure.gone.length, changed: closure.changed },
   };
 }
 
@@ -173,7 +182,7 @@ async function replace(
       .set({ depth: row.depth })
       .where(and(eq(groupClosure.groupId, row.groupId), eq(groupClosure.memberId, row.memberId)));
   }
-  return { added: added.length, removed: gone.length, changed: changed.length };
+  return { added, gone, changed: changed.length };
 }
 
 /** For the closure check in tests: who the closure puts in a group, by principal id. */

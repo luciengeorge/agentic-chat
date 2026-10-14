@@ -82,6 +82,16 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
     const acl = await stack.t.sql`
       SELECT p.name FROM document_acl a JOIN principals p ON p.id = a.principal_id WHERE a.document_id = ${heron.id}`;
     expect(acl).toEqual([{ name: "/Kestrel/Exec" }]);
+    // The audit log names the run behind every stamp and every membership it wrote.
+    const audit = await stack.t.sql`
+      SELECT subject, count(*)::int AS n FROM acl_audit WHERE sync_run_id = ${run.runId} GROUP BY subject ORDER BY 1`;
+    expect(audit.map((row) => [row.subject, row.n > 0])).toEqual([
+      ["document", true],
+      ["membership", true],
+    ]);
+    const [{ unattributed }] = await stack.t.sql`
+      SELECT count(*)::int AS unattributed FROM acl_audit WHERE sync_run_id IS NULL`;
+    expect(unattributed).toBe(0);
 
     const [state] = await stack.t.sql`SELECT subscription_id, client_state_hash, delta_token FROM sync_state`;
     expect(state.subscription_id).toBeTruthy();
@@ -154,6 +164,39 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
     expect(await second.returnValue).toEqual({ status: "duplicate", chunks: 0 });
   }, 60_000);
 
+  it("starts ingest workflow-first when asked: the run writes its own record, and a second start stops", async () => {
+    const path = "/Finance/Month-End Close Checklist.md";
+    const before = await documentAt(path);
+    const content = "# Month-end close\n\nReconcile every bank account by working day 3.\n";
+    const response = await stack.control("PUT", `/sites/kestrel/items/${world.itemId("kestrel", path)}/content`, {
+      content_base64: Buffer.from(content).toString("base64"),
+    });
+    expect(response.status).toBe(200);
+
+    process.env.INGEST_START = "workflow-first";
+    try {
+      const sync = await start(syncWorkflow, [kestrel, null, "delta", { subscribe: false }]);
+      expect((await sync.returnValue).drive).toMatchObject({ ran: "delta", changed: 1, ingest: 1 });
+    } finally {
+      delete process.env.INGEST_START;
+    }
+    const after = await documentAt(path);
+    expect(after.version).toBe(before.version + 1);
+    await expect.poll(async () => (await documentAt(path)).status, { timeout: 30_000 }).toBe("ready");
+    expect((await chunksOf(after.id)).map((row) => row.text).join("\n")).toContain("working day 3");
+
+    // No row for the relay: the run's first step wrote the record, published and claimed by itself.
+    const records = await stack.t.sql`
+      SELECT published_at, claimed_by FROM outbox
+      WHERE kind = 'ingest' AND payload->>'documentId' = ${after.id} AND (payload->>'version')::int = ${after.version}`;
+    expect(records).toHaveLength(1);
+    expect(records[0].published_at).not.toBeNull();
+    expect(records[0].claimed_by).toMatch(/^wrun_/);
+
+    const again = await start(ingestWorkflow, [kestrel, after.id, after.version, null, { workflowFirst: true }]);
+    expect(await again.returnValue).toEqual({ status: "duplicate", chunks: 0 });
+  }, 90_000);
+
   it("keeps a document ready when firing its drive-change automations fails", async () => {
     const path = "/Company/2026 Holiday Calendar.pdf";
     const broken = {
@@ -206,6 +249,14 @@ describe.skipIf(!postgresAvailable)("sync and ingest workflows", () => {
     expect(result).toMatchObject({ status: "ready" });
     const text = (await chunksOf(document.id)).map((row) => row.text).join("\n");
     expect(text).toMatch(/Marlow/i);
+    // Both pages read under 70: they wait for review, and stay searchable meanwhile.
+    const reviews = await stack.t.sql`
+      SELECT page, confidence, status FROM ocr_reviews WHERE document_id = ${document.id} ORDER BY page`;
+    expect(reviews.map((row) => [row.page, row.status])).toEqual([
+      [1, "pending"],
+      [2, "pending"],
+    ]);
+    expect(reviews.every((row) => row.confidence < 70)).toBe(true);
   }, 120_000);
 
   it("fails a document whose bytes can't be parsed, without retrying", async () => {

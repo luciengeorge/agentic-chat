@@ -212,7 +212,7 @@ async function main() {
     const countedModel = (bucket: ModelUsage) =>
       wrapLanguageModel({ model: openai(CHAT_MODEL), middleware: countInto(bucket) });
     // The same rewriter `rewriterFromEnv` builds, with its usage counted.
-    const rewriter = modelRewriter(countedModel(usage.rewrite), CHAT_REASONING_EFFORT);
+    const rewriter = modelRewriter(aiSdkChatModel(countedModel(usage.rewrite)), CHAT_REASONING_EFFORT);
     const embedder = embedderFromEnv(process.env, { onUsage: (tokens) => (usage.embeddingTokens += tokens) });
     const reranker = counted(rerankerFromEnv(), usage);
     models.embedder = embedder.version;

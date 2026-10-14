@@ -112,9 +112,10 @@ describe.skipIf(!postgresAvailable)("schema", () => {
     }
   });
 
-  it("covers the tables the M0b schema had, M1's document_blobs and rate_limit_buckets, and M2's agent tables, jobs and automations", () => {
+  it("covers the tables the M0b schema had, M1's document_blobs and rate_limit_buckets, M2's agent tables, jobs and automations, and M3's audit, directory versions and OCR reviews", () => {
     expect(tableNames(app)).toEqual(
       [
+        "acl_audit",
         "agent_budgets",
         "agent_switches",
         "approvals",
@@ -122,6 +123,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
         "automations",
         "chunks",
         "conversations",
+        "directory_versions",
         "document_acl",
         "document_blobs",
         "documents",
@@ -130,6 +132,7 @@ describe.skipIf(!postgresAvailable)("schema", () => {
         "jobs",
         "memory_notes",
         "messages",
+        "ocr_reviews",
         "outbox",
         "principals",
         "rate_limit_buckets",
@@ -308,6 +311,18 @@ describe.skipIf(!postgresAvailable)("schema", () => {
           VALUES (${kestrel}, ${other.user}, 'a', 'p', 'schedule', '0 9 * * *') RETURNING id
         )
         INSERT INTO automation_fires (tenant_id, automation_id, fire_key) SELECT ${harbour}, id, 'k' FROM theirs`,
+    ],
+    [
+      "ocr_reviews_tenant_id_document_id_fkey",
+      (sql, _own, other) => sql`
+        INSERT INTO ocr_reviews (tenant_id, document_id, document_version, page, confidence, ocr_text)
+        VALUES (${harbour}, ${other.document}, 1, 1, 50, 'text')`,
+    ],
+    [
+      "ocr_reviews_tenant_id_reviewer_id_fkey",
+      (sql, own, other) => sql`
+        INSERT INTO ocr_reviews (tenant_id, document_id, document_version, page, confidence, ocr_text, status, reviewer_id)
+        VALUES (${harbour}, ${own.document}, 1, 1, 50, 'text', 'accepted', ${other.user})`,
     ],
   ];
 

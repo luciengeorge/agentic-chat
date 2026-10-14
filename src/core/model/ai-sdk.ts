@@ -1,6 +1,8 @@
 import {
+  generateText,
   jsonSchema,
   type ModelMessage,
+  Output,
   streamText,
   type FinishReason as SdkFinishReason,
   type JSONValue,
@@ -8,7 +10,7 @@ import {
   type ToolSet,
 } from "ai";
 
-import type { ChatMessage, ChatModel, FinishReason, ToolChoice, ToolSpec } from "./types";
+import type { ChatMessage, ChatModel, FinishReason, StructuredModel, ToolChoice, ToolSpec } from "./types";
 
 const finishReason = (reason: SdkFinishReason): FinishReason =>
   reason === "stop" || reason === "length" || reason === "tool-calls" ? reason : "other";
@@ -59,10 +61,34 @@ function toModelMessages(messages: ChatMessage[]): ModelMessage[] {
   });
 }
 
-/** The AI SDK behind our interface: `streamText` does the request, retries and stream parsing. */
-export function aiSdkChatModel(model: LanguageModel): ChatModel {
+/**
+ * The AI SDK behind our interface: `streamText` does the request, retries and stream parsing; `generateText` with
+ * `Output.object` does structured output, and checks the reply against the zod schema.
+ */
+export function aiSdkChatModel(model: LanguageModel): ChatModel & StructuredModel {
   return {
     id: typeof model === "string" ? model : `${model.provider}:${model.modelId}`,
+
+    async object(request, schema) {
+      const result = await generateText({
+        model,
+        instructions: request.instructions,
+        messages: toModelMessages(request.messages),
+        output: Output.object({ schema, name: request.name }),
+        reasoning: request.reasoningEffort,
+        maxOutputTokens: request.maxOutputTokens,
+        abortSignal: request.abortSignal,
+      });
+      return {
+        object: result.output,
+        usage: {
+          inputTokens: result.totalUsage.inputTokens,
+          outputTokens: result.totalUsage.outputTokens,
+          reasoningTokens: result.totalUsage.outputTokenDetails?.reasoningTokens,
+        },
+      };
+    },
+
     async *stream(request) {
       const result = streamText({
         model,

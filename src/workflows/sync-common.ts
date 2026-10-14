@@ -7,7 +7,10 @@ import { eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { FatalError, RetryableError } from "workflow";
 
-import { createGraphClient, type GraphClient, GraphRequestError } from "#learn/connectors/graph";
+import type { Connector } from "#learn/connectors/types";
+
+import { createGraphClient, type GraphClient, graphConnector } from "#learn/connectors/graph";
+import { ConnectorError } from "#learn/connectors/types";
 import { appDb } from "@/db/pool";
 import { organization } from "@/db/schema";
 import { acEnv } from "@/lib/env";
@@ -53,12 +56,25 @@ export async function graphFor(tenantId: string): Promise<GraphClient> {
   return createGraphClient({ baseUrl: workspaceUrl(), site: slug, token: workspaceToken(slug), maxRetries: 3 });
 }
 
+/** The tenant's drive as a `Connector`: what drive sync, subscriptions and downloads use. */
+export async function connectorFor(tenantId: string): Promise<Connector> {
+  return graphConnector(await graphFor(tenantId));
+}
+
+/** How a sync starts the ingest runs it asks for: `INGEST_START`, `outbox` unless set (`ingest-start.ts` says when
+ * to use which). */
+export type IngestStart = "outbox" | "workflow-first";
+
+export function ingestStart(env: Record<string, string | undefined> = process.env): IngestStart {
+  return env.INGEST_START === "workflow-first" ? "workflow-first" : "outbox";
+}
+
 /**
  * Throttling, outages and lost connections retry (after `Retry-After` when the service gave one); any other
  * answer from the service means the request itself is wrong, which retrying won't fix.
  */
 export function stepError(error: unknown): unknown {
-  if (error instanceof GraphRequestError) {
+  if (error instanceof ConnectorError) {
     if (error.retryable) return new RetryableError(error.message, { retryAfter: error.retryAfterMs ?? 2_000 });
     return new FatalError(error.message);
   }
