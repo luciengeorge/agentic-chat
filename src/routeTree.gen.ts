@@ -18,6 +18,8 @@ import { Route as MeRouteImport } from './routes/me'
 import { Route as ApiMeRouteImport } from './routes/api/me'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversationId'
+import { Route as LabsIndexRouteImport } from './routes/labs/index'
+import { Route as LabsChunkingRouteImport } from './routes/labs/chunking'
 import { Route as ApiApprovalsIndexRouteImport } from './routes/api/approvals/index'
 import { Route as ApiApprovalsApprovalIdRouteImport } from './routes/api/approvals/$approvalId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -85,6 +87,16 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
   id: '/$conversationId',
   path: '/$conversationId',
   getParentRoute: () => ChatRouteRoute,
+} as any)
+const LabsIndexRoute = LabsIndexRouteImport.update({
+  id: '/labs/',
+  path: '/labs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsChunkingRoute = LabsChunkingRouteImport.update({
+  id: '/labs/chunking',
+  path: '/labs/chunking',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiApprovalsIndexRoute = ApiApprovalsIndexRouteImport.update({
   id: '/api/approvals/',
@@ -209,7 +221,9 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/labs/chunking': typeof LabsChunkingRoute
   '/chat/': typeof ChatIndexRoute
+  '/labs/': typeof LabsIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -241,7 +255,9 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/labs/chunking': typeof LabsChunkingRoute
   '/chat': typeof ChatIndexRoute
+  '/labs': typeof LabsIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -275,7 +291,9 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/labs/chunking': typeof LabsChunkingRoute
   '/chat/': typeof ChatIndexRoute
+  '/labs/': typeof LabsIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -310,7 +328,9 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/chat/$conversationId'
+    | '/labs/chunking'
     | '/chat/'
+    | '/labs/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -342,7 +362,9 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/chat/$conversationId'
+    | '/labs/chunking'
     | '/chat'
+    | '/labs'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -375,7 +397,9 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/chat/$conversationId'
+    | '/labs/chunking'
     | '/chat/'
+    | '/labs/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -408,6 +432,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   ApiMeRoute: typeof ApiMeRoute
+  LabsChunkingRoute: typeof LabsChunkingRoute
+  LabsIndexRoute: typeof LabsIndexRoute
   ApiApprovalsApprovalIdRoute: typeof ApiApprovalsApprovalIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutomationsAutomationIdRoute: typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -495,6 +521,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/chat/$conversationId'
       preLoaderRoute: typeof ChatConversationIdRouteImport
       parentRoute: typeof ChatRouteRoute
+    }
+    '/labs/': {
+      id: '/labs/'
+      path: '/labs'
+      fullPath: '/labs/'
+      preLoaderRoute: typeof LabsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/chunking': {
+      id: '/labs/chunking'
+      path: '/labs/chunking'
+      fullPath: '/labs/chunking'
+      preLoaderRoute: typeof LabsChunkingRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/approvals/': {
       id: '/api/approvals/'
@@ -689,6 +729,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   ApiMeRoute: ApiMeRoute,
+  LabsChunkingRoute: LabsChunkingRoute,
+  LabsIndexRoute: LabsIndexRoute,
   ApiApprovalsApprovalIdRoute: ApiApprovalsApprovalIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutomationsAutomationIdRoute: ApiAutomationsAutomationIdRouteWithChildren,

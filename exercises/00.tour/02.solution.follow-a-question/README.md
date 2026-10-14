@@ -12,14 +12,14 @@ type: guided
 - A **route** is the code that answers one URL. A **server route** is a plain HTTP handler; the app uses them for streams, webhooks and starting workflows.
 - **Retrieval** finds the chunks of documents that might answer a question. A **chunk** is a short piece of a document, a few paragraphs long.
 - A **reranker** reads the question and each candidate chunk together and scores how well they match. It's slower than search, so it runs on the top few dozen only.
-- A **workflow** is a function whose progress is saved after each **step**, so a crash resumes where it stopped. A **run** is one execution of a workflow.
+- A **workflow** is a function whose progress is saved after each **step**, so a crash resumes where it stopped. A **run** is one execution of a workflow. An **agent run** is one: the model picks tools in a loop, and each turn is saved as it goes. A **sync** is another: it copies the file store's changes into the database.
 - The **run viewer** is Workflow's web page that lists runs and shows each step's input, output and timing.
 
 ## Do this
 
-1. 🐨 With the app running (step 00.1), ask the assistant a question, such as "What's the meal allowance on a work trip?"
+1. 🐨 With the app running (step 00.1), ask the assistant a question, such as "What's the meal allowance on a work trip?" A plain question like this is answered inside the request, so it starts no workflow.
 2. 🐨 Find the server route that received it, under `src/routes/`, and follow the calls: retrieval, then the reranker, then the model. Note which file each one lives in.
-3. 🐨 Open the run viewer with `pnpm exec workflow web` and pick the most recent run. Click through its steps in order and read what each one received and returned.
+3. 🐨 Now make a run to watch. Turn on **Run as agent** under the message box and ask again: the agent works as a workflow. (A sync is one too: `pnpm sync` asks for one for each tenant.) Open the run viewer with `pnpm exec workflow web`, pick that run, and click through its steps in order, reading what each one received and returned.
 
 🦉 Each step's result is saved before the next one starts. That's what lets a run survive a restart: on the way back up, Workflow replays the saved results instead of doing the work again.
 
