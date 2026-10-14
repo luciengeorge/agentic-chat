@@ -28,7 +28,7 @@ type: guided
    pnpm dev              # http://localhost:3000
    pnpm fake-workspace   # http://localhost:8100
    ```
-3. 🐨 Open http://localhost:3000 and sign in as `leo.martin@kestrelpay.example` with the password `dev-password`. The page should name the tenant `kestrel`.
+3. 🐨 Open http://localhost:3000 and sign in as `leo.martin@kestrelpay.example` with the password `dev-password`. You land on `/chat`, the assistant. Then open http://localhost:3000/me: it shows who you are, and your tenant, `kestrel`.
 4. 🐨 Run the end-to-end check:
    ```sh
    pnpm ex smoke

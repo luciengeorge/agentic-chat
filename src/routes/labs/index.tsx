@@ -1,0 +1,61 @@
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+
+import { ChatSidebar } from "@/components/chat/sidebar";
+import { getOptionalViewer } from "@/lib/auth.functions";
+
+export const Route = createFileRoute("/labs/")({
+  beforeLoad: async () => {
+    const viewer = await getOptionalViewer();
+    if (!viewer) throw redirect({ to: "/login" });
+    return { viewer };
+  },
+  head: () => ({ meta: [{ title: "Labs · Kestrel Assistant" }] }),
+  component: LabsPage,
+});
+
+const LABS = [
+  {
+    section: "04",
+    to: "/labs/chunking",
+    title: "Chunking",
+    description: "Pick a page and see where the chunker cuts it, with token counts and the overlap marked.",
+  },
+] as const;
+
+function LabsPage() {
+  const { viewer } = Route.useRouteContext();
+  return (
+    <div className="flex h-svh w-full overflow-hidden">
+      <ChatSidebar activeId={undefined} viewer={viewer} />
+      <main className="min-w-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-semibold tracking-tight">Labs</h1>
+            <p className="text-sm text-muted-foreground">
+              One page per section of the course. Each runs the app's own code, yours while a step is active.
+            </p>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {LABS.map((lab) => (
+              <li key={lab.to}>
+                <Link
+                  to={lab.to}
+                  className="flex items-center gap-4 rounded-xl border px-4 py-3 transition-colors hover:bg-muted"
+                >
+                  <span className="font-mono text-sm text-muted-foreground tabular-nums">{lab.section}</span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="text-sm font-medium">{lab.title}</span>
+                    <span className="text-sm text-muted-foreground">{lab.description}</span>
+                  </span>
+                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </main>
+    </div>
+  );
+}
