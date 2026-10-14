@@ -14,7 +14,7 @@ import { GraphError, errorResponse } from "./errors";
 import { Faults } from "./faults";
 import { IdempotencyKeys } from "./idempotency";
 import { Mailroom, mailRoutes } from "./mail";
-import { sharingRoutes } from "./sharing";
+import { InviteLog, sharingRoutes } from "./sharing";
 import { subscriptionRoutes } from "./subscriptions";
 
 export const SERVICE = "fake-workspace";
@@ -33,6 +33,7 @@ export interface Runtime {
   readonly faults: Faults;
   readonly notifier: Notifier;
   readonly mailroom: Mailroom;
+  readonly invites: InviteLog;
   readonly idempotency: IdempotencyKeys;
 }
 
@@ -56,6 +57,7 @@ export function createApp(options: AppOptions = {}): { app: Hono; runtime: Runti
     faults: new Faults(clock),
     notifier: new Notifier(clock, options.policy ?? DEFAULT_POLICY),
     mailroom: new Mailroom(),
+    invites: new InviteLog(),
     idempotency: new IdempotencyKeys(),
   };
   try {

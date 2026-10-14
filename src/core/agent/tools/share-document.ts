@@ -21,7 +21,8 @@ interface Output {
 
 /**
  * Shares a document the viewer can read with a person or group in their tenant, after the viewer's approval. The
- * drive's new permission comes back through ACL sync, like any other sharing change.
+ * drive's new permission comes back through ACL sync, like any other sharing change. The service checks the
+ * viewer can read the item too, as a second line.
  */
 export function shareDocument(
   deps: Pick<ToolDeps, "withTenant" | "workspace">,
@@ -39,12 +40,13 @@ export function shareDocument(
         const document = await readableDocument(tx, userId, documentId);
         if (!document) throw notReadable(documentId);
         const [recipient] = await tx.execute<{ name: string }>(sql`
-          SELECT display_name AS name FROM principals WHERE id = ${recipientId} AND enabled`);
-        if (!recipient) throw new Error(`No person or group ${recipientId} in the directory.`);
+          SELECT display_name AS name FROM principals
+          WHERE id = ${recipientId} AND tenant_id = ${tenantId} AND enabled`);
+        if (!recipient) throw new Error(`No person or group ${recipientId} in your organisation's directory.`);
         return { document, recipient };
       });
       const workspace = await deps.workspace(tenantId);
-      await workspace.invite(document.externalId, recipientId, ctx.idempotencyKey, ctx.signal);
+      await workspace.invite(userId, document.externalId, recipientId, ctx.idempotencyKey, ctx.signal);
       return { shared: true, documentId, title: document.title, recipient: recipient.name, role };
     },
   };

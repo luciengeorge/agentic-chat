@@ -8,9 +8,11 @@ import { z } from "zod";
 import type { ChatMessage, ChatModel, ReasoningEffort, ToolSpec, Usage } from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 
-import type { AgentTool, NextAction, RunEvent, RunEventData, ToolCall, ToolContext } from "./types";
+import type { AgentTool, NextAction, RunEvent, RunEventData, Screen, ToolCall, ToolContext } from "./types";
 
 import { type Caps, capReached, runUsage } from "./caps";
+import { PLAN_TOOL } from "./plan";
+import { type Policy, planPolicy, type Verdict } from "./policy";
 
 type AssistantTurn = Extract<RunEventData, { type: "assistant_turn" }>;
 type ToolResult = Extract<RunEventData, { type: "tool_result" }>;
@@ -21,10 +23,23 @@ export const MAX_RETRIES = 3;
 const FINAL = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
 
 /**
- * What the loop does next, from the events alone. `needsApproval` says which calls wait for the user (the tools'
- * own `needsApproval`, bound to the run by the runner). In order:
+ * Says, for one call, whether it runs, waits for the user or is refused. A boolean is the tools' own
+ * `needsApproval` (true: wait for the user); a `Verdict` comes from a policy (`approvalNeeded` with one).
+ */
+export type Gate = (call: ToolCall, events: readonly RunEvent[]) => boolean | Verdict;
+
+/** A call the policy refused: `runTool` answers it with the reason and runs nothing. */
+export type DeniedCall = ToolCall & { denied: string };
+
+const verdictOf = (answer: boolean | Verdict): Verdict =>
+  typeof answer === "boolean" ? (answer ? { kind: "approve" } : { kind: "allow" }) : answer;
+
+/**
+ * What the loop does next, from the events alone. `needsApproval` says which calls run, wait for the user or are
+ * refused (the policy, then the tools' own `needsApproval`, bound to the run by the runner). In order:
  * - a finished run, or nothing to answer yet: wait;
  * - a non-retryable error, or too many retryable ones: finish failed;
+ * - a call the policy refuses goes with the runnable calls, marked, so `runTool` answers it with the reason;
  * - the last turn's calls: the approved ones and the ones needing none run together first; then each one needing
  *   approval is asked for, one at a time; while an approval is open, wait;
  * - a rejected or expired call is settled: whoever records that decision also appends its `tool_result`
@@ -33,11 +48,7 @@ const FINAL = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
  * - a last turn with no calls and nothing newer: finish succeeded.
  * Before a model turn or a batch of calls, the caps are checked; a cap reached finishes the run failed.
  */
-export function decide(
-  events: readonly RunEvent[],
-  caps: Caps,
-  needsApproval: (call: ToolCall) => boolean,
-): NextAction {
+export function decide(events: readonly RunEvent[], caps: Caps, needsApproval: Gate): NextAction {
   const statuses = events.flatMap((e) => (e.data.type === "status" ? [e.data.to] : []));
   if (FINAL.has(statuses.at(-1) ?? "")) return { kind: "wait" };
 
@@ -83,7 +94,13 @@ export function decide(
   let waiting = false;
   for (const call of turn.toolCalls) {
     if (answered.has(call.callId)) continue;
-    if (!needsApproval(call)) {
+    const verdict = verdictOf(needsApproval(call, events));
+    if (verdict.kind === "deny") {
+      const refused: DeniedCall = { ...call, denied: verdict.reason };
+      runnable.push(refused);
+      continue;
+    }
+    if (verdict.kind === "allow") {
       runnable.push(call);
       continue;
     }
@@ -105,14 +122,25 @@ export function decide(
 }
 
 /**
- * `decide`'s `needsApproval` for a run: the tool's own answer. A call to an unknown tool, or with input its schema
- * refuses, needs none: `runTool` answers it with an error and nothing runs, so there's nothing to approve.
+ * `decide`'s `needsApproval` for a run: the policy first, then the tool's own answer. A call to an unknown tool,
+ * or with input its schema refuses, needs none: `runTool` answers it with an error and nothing runs, so there's
+ * nothing to approve.
+ *
+ * The policy defaults to plan-then-execute (`planPolicy`) whenever the tools include `make_plan`, as the app's do.
+ * `null` turns it off, as a tool set without the plan tool does.
  */
-export function approvalNeeded(tools: readonly AgentTool[], viewer: Viewer, runId: string) {
-  return (call: ToolCall): boolean => {
+export function approvalNeeded(
+  tools: readonly AgentTool[],
+  viewer: Viewer,
+  runId: string,
+  policy: Policy | null = tools.some((t) => t.name === PLAN_TOOL) ? planPolicy : null,
+): Gate {
+  return (call, events) => {
     const tool = tools.find((t) => t.name === call.tool);
     const parsed = tool?.input.safeParse(call.input);
     if (!tool || !parsed?.success) return false;
+    const verdict = policy?.check(call, { events, tool }) ?? { kind: "allow" };
+    if (verdict.kind !== "allow") return verdict;
     return tool.needsApproval(parsed.data, {
       viewer,
       runId,
@@ -146,6 +174,9 @@ export interface RunGuard {
   beforeModelTurn(): Promise<void>;
   afterModelTurn(usage: Usage): Promise<void>;
   beforeToolCall(): Promise<void>;
+  /** The guardrails (`#learn/agent/guardrails`): checks each write the model proposes, before anyone approves it.
+   * One `Screen` per call, in order. */
+  screen?(calls: readonly ToolCall[], signal?: AbortSignal): Promise<Screen[]>;
 }
 
 /** A tool's input as JSON Schema, for the model. */
@@ -167,7 +198,24 @@ export interface ModelTurnDeps {
   onTextDelta?: (delta: string) => void;
 }
 
-/** One model call: the context in, an `assistant_turn` out (its text, its tool calls and what it cost). */
+/**
+ * The planning turn: the agent has the plan tool and the newest message is the user's (a summary of compacted
+ * events doesn't count). Then the model must call `make_plan` before anything else.
+ */
+function planningTurn(context: { messages: ChatMessage[] }, tools: readonly AgentTool[]): boolean {
+  const last = context.messages.at(-1);
+  return (
+    tools.some((t) => t.name === PLAN_TOOL) &&
+    last?.role === "user" &&
+    !(typeof last.content === "string" && last.content.startsWith("<summary>"))
+  );
+}
+
+/**
+ * One model call: the context in, an `assistant_turn` out (its text, its tool calls and what it cost). The write
+ * calls it proposes go through the guard's guardrails, and what they find is recorded on the call, so `decide`'s
+ * policy can read it from the events.
+ */
 export async function modelTurn(
   context: { instructions: string; messages: ChatMessage[] },
   deps: ModelTurnDeps,
@@ -180,6 +228,7 @@ export async function modelTurn(
     instructions: context.instructions,
     messages: context.messages,
     tools: toolSpecs(deps.tools),
+    ...(planningTurn(context, deps.tools) ? { toolChoice: { tool: PLAN_TOOL } } : {}),
     reasoningEffort: deps.reasoningEffort,
     maxOutputTokens: deps.maxOutputTokens,
     abortSignal: deps.signal,
@@ -195,6 +244,11 @@ export async function modelTurn(
   }
   if (!usage) throw new Error("the model's stream ended without a finish");
   await deps.guard?.afterModelTurn(usage);
+  const writes = toolCalls.filter((c) => deps.tools.find((t) => t.name === c.tool)?.effect === "write");
+  if (writes.length > 0 && deps.guard?.screen) {
+    const screens = await deps.guard.screen(writes, deps.signal);
+    writes.forEach((call, i) => (call.screen = screens[i]));
+  }
   return { type: "assistant_turn", text, toolCalls, usage };
 }
 
@@ -217,12 +271,15 @@ export const idempotencyKey = (runId: string, callId: string) => `agent:${runId}
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /**
- * One tool call, as the viewer. An unknown tool, input that fails the tool's schema, a thrown error or a timeout
- * becomes an `ok: false` result for the model to read and recover from. Only `RunHalted` is thrown.
+ * One tool call, as the viewer. A call the policy refused, an unknown tool, input that fails the tool's schema, a
+ * thrown error or a timeout becomes an `ok: false` result for the model to read and recover from. Only `RunHalted`
+ * is thrown.
  */
 export async function runTool(call: ToolCall, deps: RunToolDeps): Promise<ToolResult> {
-  await deps.guard?.beforeToolCall();
   const fail = (error: string): ToolResult => ({ type: "tool_result", callId: call.callId, ok: false, error });
+  const { denied } = call as Partial<DeniedCall>;
+  if (denied) return fail(denied);
+  await deps.guard?.beforeToolCall();
   const tool = deps.tools.find((t) => t.name === call.tool);
   if (!tool) return fail(`There is no tool called ${call.tool}.`);
   const parsed = tool.input.safeParse(call.input);

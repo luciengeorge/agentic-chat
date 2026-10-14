@@ -2,7 +2,7 @@
  * A runner for tests and scripts: the loop over an in-memory event log, with no database. It shows the shape every
  * runner has: decide, do the work, append, until the action is to wait or finish.
  */
-import type { ChatMessage, ChatModel } from "#learn/model/types";
+import type { ChatMessage, ChatModel, ReasoningEffort } from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 
 import type { AgentTool, RunEvent, RunEventData, ToolCall } from "./types";
@@ -59,6 +59,8 @@ export interface DriveOptions {
   tools: readonly AgentTool[];
   viewer: Viewer;
   instructions?: string;
+  /** Low unless set: tests don't care, and a live run picks its own. */
+  reasoningEffort?: ReasoningEffort;
   caps?: Caps;
   guard?: RunGuard;
   /** Answers each approval at once; without it the run stops at the first one. */
@@ -81,7 +83,7 @@ export async function drive(run: InMemoryRun, options: DriveOptions) {
               {
                 model: options.model,
                 tools,
-                reasoningEffort: "low",
+                reasoningEffort: options.reasoningEffort ?? "low",
                 guard,
                 onTextDelta: options.onTextDelta,
               },

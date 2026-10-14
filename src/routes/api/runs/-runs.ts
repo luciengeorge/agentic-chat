@@ -1,14 +1,16 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import type { RunEvent, RunEventData } from "#learn/agent/types";
 import type { Viewer } from "#learn/retrieve/types";
 import type { Db } from "@/db/create";
+import type { TokenChunk } from "@/workflows/agent-run-steps";
 
-import { readEvents, toSse } from "#learn/agent/events";
+import { toRunEvent, toSse } from "#learn/agent/events";
 import { isFinal } from "#learn/agent/state";
 import { conversations } from "@/db/schema";
-import { withTenantOn } from "@/db/tenant";
-import { addMessage, loadRun, type MessageResult, startRun } from "@/lib/agent-runs";
+import { type Tx, withTenantOn } from "@/db/tenant";
+import { addMessage, cancelRun, loadRun, type MessageResult, type RunWaker, startRun } from "@/lib/agent-runs";
 import { takeToken, type Bucket } from "@/lib/rate-limit";
 import { HEARTBEAT_MS, withHeartbeat } from "@/routes/api/chat/-chat";
 
@@ -40,6 +42,11 @@ export interface RunRoutesDeps {
   db: Db;
   /** Starts the runner for a run that has work, without waiting for it. */
   kick: (viewer: Viewer, runId: string) => void;
+  /** Tells the runner holding a run about an approval decision or a cancel (`AGENT_RUNNER` picks which). */
+  wake?: RunWaker;
+  /** The run's live tokens, from the given Workflow run (`getWritable()` in its model steps), starting now: a
+   * reconnect gets none it missed. Absent for the runners that don't stream tokens. */
+  tokens?: (workflowRunId: string) => Promise<ReadableStream<TokenChunk>>;
   bucket?: Bucket;
   now?: () => Date;
   pollMs?: number;
@@ -137,6 +144,17 @@ export async function handleAddMessage(
   return answer(result, runId, viewer, deps);
 }
 
+/** `POST /api/runs/:id/cancel`: stops the run, aborting a model turn or tool call in flight. */
+export async function handleCancelRun(viewer: Viewer, runId: string, deps: RunRoutesDeps): Promise<Response> {
+  const result = await cancelRun(deps.db, viewer, runId, deps.wake);
+  if (result === "not-found") return notFound();
+  if (result === "final") {
+    const run = await withTenantOn(deps.db, viewer.tenantId, (tx) => loadRun(tx, viewer, runId));
+    return json(409, { error: "run_finished", status: run?.status ?? null });
+  }
+  return json(202, { id: runId, status: "cancelled" });
+}
+
 /** Where a stream starts: after the `Last-Event-ID` the browser sends on reconnect, else `?after=`, else the top. */
 function resumeFrom(request: Request): number {
   const header = request.headers.get("last-event-id");
@@ -160,10 +178,32 @@ const sleep = (ms: number, signal: AbortSignal) =>
     );
   });
 
+/** A token line: no `id`, so a reconnect's `Last-Event-ID` stays the last event's seq. */
+export const toTokenSse = (delta: string) => `event: token\ndata: ${JSON.stringify({ delta })}\n\n`;
+
+/** Events after `after`, each with the step that wrote it (null outside Workflow). */
+async function eventsAfter(tx: Tx, runId: string, after: number) {
+  const rows = await tx.execute<{
+    run_id: string;
+    seq: number;
+    at: Date | string;
+    data: RunEventData;
+    step_key: string | null;
+  }>(sql`
+    SELECT run_id, seq, at, data, step_key FROM run_events
+    WHERE run_id = ${runId} AND seq > ${after}
+    ORDER BY seq
+    LIMIT ${STREAM_PAGE}`);
+  return rows.map((row) => ({ event: toRunEvent(row) as RunEvent, stepKey: row.step_key }));
+}
+
 /**
  * `GET /api/runs/:id/stream`: the run's events as SSE, each with `id:` set to its `seq`. It tails `run_events`
  * (poll, send what's new, repeat) and ends once the run is final and every event is sent. A client that drops
  * reconnects with `Last-Event-ID` and gets only what it missed. Heartbeats keep a quiet stream open.
+ *
+ * For a Workflow run it also forwards the model's tokens as they stream (`event: token`), from the moment it
+ * connects. A token of a turn whose event was already sent is dropped: the event has the whole text.
  */
 export async function handleStream(
   request: Request,
@@ -179,6 +219,24 @@ export async function handleStream(
   request.signal.addEventListener("abort", () => stop.abort(), { once: true });
   const encoder = new TextEncoder();
   let after = resumeFrom(request);
+  /** Turns whose event has been sent, by the step that wrote them. */
+  const sentTurns = new Set<string>();
+  let tokensFrom: string | null = null;
+  let closed = false;
+
+  async function forwardTokens(workflowRunId: string, controller: ReadableStreamDefaultController<Uint8Array>) {
+    try {
+      const reader = (await deps.tokens!(workflowRunId)).getReader();
+      stop.signal.addEventListener("abort", () => void reader.cancel().catch(() => {}), { once: true });
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done || closed) return;
+        if (!sentTurns.has(value.turn)) controller.enqueue(encoder.encode(toTokenSse(value.delta)));
+      }
+    } catch {
+      // Tokens are a nicety: the events carry everything.
+    }
+  }
 
   const body = new ReadableStream<Uint8Array>({
     async pull(controller) {
@@ -186,16 +244,23 @@ export async function handleStream(
         while (!stop.signal.aborted) {
           // Status first, then events: once the status is final, every event before it is committed, so the read
           // after it sees them all.
-          const { final, events } = await inTenant(async (tx) => {
+          const { run, events } = await inTenant(async (tx) => {
             const run = await loadRun(tx, viewer, runId);
-            return { final: !run || isFinal(run.status), events: await readEvents(tx, runId, after, STREAM_PAGE) };
+            return { run, events: await eventsAfter(tx, runId, after) };
           });
+          if (deps.tokens && run?.workflowRunId && tokensFrom !== run.workflowRunId && !isFinal(run.status)) {
+            tokensFrom = run.workflowRunId;
+            void forwardTokens(run.workflowRunId, controller);
+          }
           if (events.length > 0) {
-            after = events.at(-1)!.seq;
-            controller.enqueue(encoder.encode(events.map(toSse).join("")));
+            for (const { stepKey } of events) if (stepKey) sentTurns.add(stepKey.replace(/:\d+$/, ""));
+            after = events.at(-1)!.event.seq;
+            controller.enqueue(encoder.encode(events.map(({ event }) => toSse(event)).join("")));
             return;
           }
-          if (final) {
+          if (!run || isFinal(run.status)) {
+            closed = true;
+            stop.abort();
             controller.close();
             return;
           }
@@ -206,6 +271,7 @@ export async function handleStream(
       }
     },
     cancel() {
+      closed = true;
       stop.abort();
     },
   });

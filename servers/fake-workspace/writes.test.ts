@@ -112,37 +112,51 @@ describe("sendMail", () => {
 });
 
 describe("invite", () => {
-  const plan = () => fw.corpus.id("kestrel", "/Finance/FP&A/plan.md");
-  const invite = (client: Client, objectId: string, key?: string, itemId = plan(), drive = "kestrel") =>
+  // Tom can read (and write) the Q3 report; Marco, in HR, can't until it's shared with him.
+  const report = () => fw.corpus.id("kestrel", "/Finance/Reports/Q3 report.pdf");
+  const tom = () => fw.corpus.user("kestrel", "tom.whitfield");
+  const marco = () => fw.corpus.user("kestrel", "marco.bianchi");
+  const invite = (
+    client: Client,
+    objectId: string,
+    key?: string,
+    itemId = report(),
+    drive = "kestrel",
+    actingUser: string | null = tom(),
+  ) =>
     client.post(`/v1.0/drives/${drive}/items/${itemId}/invite`, {
       json: { recipients: [{ objectId }], roles: ["read"], requireSignIn: true, sendInvitation: false },
-      headers: key ? { "Idempotency-Key": key } : {},
+      headers: { ...(key ? { "Idempotency-Key": key } : {}), ...(actingUser ? { "X-Acting-User": actingUser } : {}) },
     });
+  const invites = async (client: Client) =>
+    ((await (await client.get("/_control/invites")).json()) as { value: Array<Record<string, unknown>> }).value;
 
   it("grants the role, shows it in permissions and delta, and notifies once", async () => {
     const client = fw.client();
     const before = (await (await client.get("/v1.0/sites/kestrel/drive/root/delta?token=latest")).json()) as {
       "@odata.deltaLink": string;
     };
-    const response = await invite(client, leo(), "share-1");
+    const response = await invite(client, marco(), "share-1");
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      value: [{ roles: ["read"], grantedToV2: { user: { id: leo(), displayName: "Leo Martin" } } }],
+      value: [{ roles: ["read"], grantedToV2: { user: { id: marco(), displayName: "Marco Bianchi" } } }],
     });
-    const permissions = (await (await client.get(`/v1.0/sites/kestrel/drive/items/${plan()}/permissions`)).json()) as {
+    const permissions = (await (
+      await client.get(`/v1.0/sites/kestrel/drive/items/${report()}/permissions`)
+    ).json()) as {
       value: Array<{ grantedToV2: { user?: { id: string } } }>;
     };
-    expect(permissions.value.some((p) => p.grantedToV2.user?.id === leo())).toBe(true);
+    expect(permissions.value.some((p) => p.grantedToV2.user?.id === marco())).toBe(true);
 
     const delta = (await (
       await client.get(before["@odata.deltaLink"].replace("http://fw", ""), {
         headers: { Prefer: "deltashowsharingchanges" },
       })
     ).json()) as { value: Array<{ id: string; "@microsoft.graph.sharedChanged"?: string }> };
-    expect(delta.value).toEqual([expect.objectContaining({ id: plan(), "@microsoft.graph.sharedChanged": "True" })]);
+    expect(delta.value).toEqual([expect.objectContaining({ id: report(), "@microsoft.graph.sharedChanged": "True" })]);
 
     const seq = client.runtime.workspace.sites.get("kestrel")!.seq;
-    expect((await invite(client, leo(), "share-1")).status).toBe(200);
+    expect((await invite(client, marco(), "share-1")).status).toBe(200);
     expect(client.runtime.workspace.sites.get("kestrel")!.seq).toBe(seq);
   });
 
@@ -150,12 +164,7 @@ describe("invite", () => {
     const client = fw.client();
     const seq = client.runtime.workspace.sites.get("kestrel")!.seq;
     const finance = fw.corpus.group("kestrel", "/Kestrel/Finance");
-    const response = await invite(
-      client,
-      finance,
-      undefined,
-      fw.corpus.id("kestrel", "/Finance/Reports/Q3 report.pdf"),
-    );
+    const response = await invite(client, finance);
     expect(response.status).toBe(200);
     expect(client.runtime.workspace.sites.get("kestrel")!.seq).toBe(seq);
   });
@@ -164,8 +173,38 @@ describe("invite", () => {
     const client = fw.client();
     expect((await invite(client, "stranger")).status).toBe(400);
     expect((await invite(client, fw.corpus.user("kestrel", "peter.hall"))).status).toBe(400);
-    expect((await invite(client, leo(), undefined, plan(), "harbour")).status).toBe(403);
-    expect((await invite(client, leo(), "k")).status).toBe(200);
+    expect((await invite(client, marco(), undefined, report(), "harbour")).status).toBe(403);
+    expect((await invite(client, marco(), "k")).status).toBe(200);
     expect((await invite(client, fw.corpus.user("kestrel", "tom.whitfield"), "k")).status).toBe(422);
+  });
+
+  it("acts for the user in X-Acting-User: one who can't read the item can't share it", async () => {
+    const client = fw.client();
+    const heron = fw.corpus.id("kestrel", "/Exec/Project Heron memo.pdf");
+    expect((await invite(client, marco(), undefined, heron)).status).toBe(403);
+    expect((await invite(client, marco(), undefined, report(), "kestrel", null)).status).toBe(401);
+    expect((await invite(client, marco(), undefined, report(), "kestrel", marco())).status).toBe(403);
+    expect((await invite(client, marco(), undefined, report(), "kestrel", "nobody")).status).toBe(403);
+    expect(await invites(client)).toEqual([]);
+    const permissions = (await (await client.get(`/v1.0/sites/kestrel/drive/items/${heron}/permissions`)).json()) as {
+      value: Array<{ grantedToV2: { user?: { id: string } } }>;
+    };
+    expect(permissions.value.some((p) => p.grantedToV2.user?.id === marco())).toBe(false);
+  });
+
+  it("logs each invite once, with its acting user and key", async () => {
+    const client = fw.client();
+    await invite(client, marco(), "log-1");
+    await invite(client, marco(), "log-1");
+    expect(await invites(client)).toEqual([
+      expect.objectContaining({
+        itemId: report(),
+        by: tom(),
+        recipients: [marco()],
+        added: [marco()],
+        idempotencyKey: "log-1",
+      }),
+    ]);
+    expect((await fw.client({ sendControl: false }).get("/_control/invites")).status).toBe(403);
   });
 });

@@ -593,3 +593,45 @@ export const agentSwitches = pgTable(
   },
   () => [tenantIsolation()],
 );
+
+/**
+ * The hand-built job queue (section 05.1). A job carries ids only. Workers claim with `FOR UPDATE SKIP LOCKED` and
+ * hold a lease (`locked_by`, `locked_until`) they renew while they work; a lease that runs out puts the job back.
+ * Jobs that share a `key` run one at a time, and at most one of them waits in `queued`.
+ */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    queue: text("queue").notNull(),
+    key: text("key"),
+    payload: jsonb("payload").notNull(),
+    state: text("state").notNull().default("queued"),
+    runAt: timestamp("run_at", { withTimezone: true }).notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    lockedBy: text("locked_by"),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    check("jobs_state_check", sql`state IN ('queued', 'running', 'done', 'dead')`),
+    check("jobs_payload_check", sql`jsonb_typeof(payload) = 'object'`),
+    check("jobs_attempts_check", sql`attempts >= 0 AND max_attempts >= 1`),
+    check("jobs_lease_check", sql`(state = 'running') = (locked_until IS NOT NULL)`),
+    index("jobs_queued_idx")
+      .on(t.queue, t.runAt)
+      .where(sql`state = 'queued'`),
+    index("jobs_running_idx")
+      .on(t.queue, t.lockedUntil)
+      .where(sql`state = 'running'`),
+    uniqueIndex("jobs_queued_key_idx")
+      .on(t.queue, t.key)
+      .where(sql`state = 'queued' AND key IS NOT NULL`),
+    tenantIsolation(),
+  ],
+);

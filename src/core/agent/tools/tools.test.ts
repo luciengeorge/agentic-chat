@@ -311,6 +311,24 @@ describe.skipIf(!postgresAvailable)("the agent's tools, as the viewer", () => {
       expect(fetch.mock.calls[0][0]).toBe(
         `http://fw/v1.0/drives/kestrel/items/${corpus.id("kestrel", PATH.q3)}/invite`,
       );
+      expect(new Headers(fetch.mock.calls[0][1]?.headers).get("x-acting-user")).toBe(user("leo.martin"));
+    });
+
+    it("is refused by the service when its ACL says the user can't read the item (the second line)", async () => {
+      // Postgres wrongly lets Leo read the Heron memo (a stale grant); the drive still doesn't.
+      await t.sql`INSERT INTO document_acl (tenant_id, document_id, principal_id, effect, acl_version)
+                  VALUES (${kestrel}, ${DOC.heron}, ${user("leo.martin")}, 'allow', 1)`;
+      try {
+        const result = await run("share_document", {
+          documentId: DOC.heron,
+          recipientId: user("tom.whitfield"),
+          role: "read",
+        });
+        expect(result).toMatchObject({ ok: false, error: expect.stringContaining("can't read") });
+        expect(workspace.invites.done).toEqual([]);
+      } finally {
+        await t.sql`DELETE FROM document_acl WHERE document_id = ${DOC.heron} AND principal_id = ${user("leo.martin")}`;
+      }
     });
 
     it("refuses an unreadable document, a disabled recipient and another tenant's", async () => {

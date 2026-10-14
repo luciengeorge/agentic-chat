@@ -61,7 +61,13 @@ export function createWorkspaceWriter(options: WorkspaceWriterOptions) {
   const sleep = options.sleep ?? abortable;
   const base = options.baseUrl.replace(/\/$/, "");
 
-  async function post(path: string, body: unknown, idempotencyKey: string, signal: AbortSignal): Promise<Response> {
+  async function post(
+    path: string,
+    body: unknown,
+    idempotencyKey: string,
+    signal: AbortSignal,
+    headers: Record<string, string> = {},
+  ): Promise<Response> {
     for (let attempt = 0; ; attempt++) {
       const response = await fetch(`${base}${path}`, {
         method: "POST",
@@ -69,6 +75,7 @@ export function createWorkspaceWriter(options: WorkspaceWriterOptions) {
           authorization: `Bearer ${token}`,
           "content-type": "application/json",
           "idempotency-key": idempotencyKey,
+          ...headers,
         },
         body: JSON.stringify(body),
         signal,
@@ -118,12 +125,20 @@ export function createWorkspaceWriter(options: WorkspaceWriterOptions) {
       );
     },
 
-    async invite(itemId: string, principalId: string, idempotencyKey: string, signal: AbortSignal) {
+    /** Shares the item as `actingUserId`, who the service checks can read it (a delegated token's subject). */
+    async invite(
+      actingUserId: string,
+      itemId: string,
+      principalId: string,
+      idempotencyKey: string,
+      signal: AbortSignal,
+    ) {
       await post(
         `/v1.0/drives/${encodeURIComponent(site)}/items/${encodeURIComponent(itemId)}/invite`,
         { recipients: [{ objectId: principalId }], roles: ["read"], requireSignIn: true, sendInvitation: false },
         idempotencyKey,
         signal,
+        { "x-acting-user": actingUserId },
       );
     },
   };

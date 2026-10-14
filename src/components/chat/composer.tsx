@@ -1,4 +1,4 @@
-import { ArrowUp02Icon, StopIcon } from "@hugeicons/core-free-icons";
+import { AiMagicIcon, ArrowUp02Icon, StopIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const MAX_CHARS = 4000;
 
@@ -22,11 +23,16 @@ export function Composer({
   onSend,
   onStop,
   autoFocus,
+  agent,
+  onAgentChange,
 }: {
   busy: boolean;
   onSend: (question: string) => void;
   onStop: () => void;
   autoFocus?: boolean;
+  /** "Run as agent": the message starts an agent run instead of a plain answer. Until section 16's router. */
+  agent?: boolean;
+  onAgentChange?: (agent: boolean) => void;
 }) {
   const form = useForm({
     defaultValues: { question: "" },
@@ -56,8 +62,13 @@ export function Composer({
                 name={field.name}
                 rows={1}
                 autoFocus={autoFocus}
-                placeholder="Ask about policies, contracts, error codes…"
-                className="max-h-48 min-h-12 resize-none border-0 bg-transparent py-3 pr-14 pl-4 text-[0.9375rem] shadow-none focus-visible:ring-0 dark:bg-transparent"
+                placeholder={
+                  agent ? "Ask the agent to find, email or share…" : "Ask about policies, contracts, error codes…"
+                }
+                className={cn(
+                  "max-h-48 min-h-12 resize-none border-0 bg-transparent py-3 pr-14 pl-4 text-[0.9375rem] shadow-none focus-visible:ring-0 dark:bg-transparent",
+                  onAgentChange && "pb-11",
+                )}
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
@@ -69,6 +80,21 @@ export function Composer({
                 }}
                 aria-invalid={!field.state.meta.isValid}
               />
+              {onAgentChange ? (
+                <div className="absolute bottom-2 left-2">
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant={agent ? "secondary" : "ghost"}
+                    aria-pressed={agent}
+                    onClick={() => onAgentChange(!agent)}
+                    title="Let the agent use tools: search, read, look people up, and email or share after you approve"
+                  >
+                    <HugeiconsIcon icon={AiMagicIcon} strokeWidth={2} data-icon="inline-start" />
+                    Run as agent
+                  </Button>
+                </div>
+              ) : null}
               <div className="absolute right-2 bottom-2">
                 {busy ? (
                   <Button type="button" size="icon-sm" variant="secondary" onClick={onStop} aria-label="Stop answering">

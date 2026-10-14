@@ -1,5 +1,6 @@
+import type { RunGuard } from "#learn/agent/loop";
 import type { RunEvent, RunEventData } from "#learn/agent/types";
-import type { ChatModel, ReasoningEffort } from "#learn/model/types";
+import type { ChatModel, ReasoningEffort, Usage } from "#learn/model/types";
 
 import { countTokens, latestCompaction } from "#learn/agent/context";
 
@@ -17,6 +18,8 @@ export interface CompactDeps {
   reasoningEffort: ReasoningEffort;
   maxOutputTokens?: number;
   abortSignal?: AbortSignal;
+  /** The kill switch and daily budget: a summary is a model call like any other, so its tokens are charged. */
+  guard?: RunGuard;
 }
 
 const OUTPUT_CHARS = 2_000;
@@ -183,7 +186,9 @@ export async function compact(
     ...covered.map(line).filter((l): l is string => l !== null),
   ].join("\n");
 
+  await deps.guard?.beforeModelTurn();
   let text = "";
+  let usage: Usage | undefined;
   for await (const event of deps.model.stream({
     instructions: SUMMARY_INSTRUCTIONS,
     messages: [{ role: "user", content: transcript }],
@@ -192,7 +197,9 @@ export async function compact(
     abortSignal: deps.abortSignal,
   })) {
     if (event.type === "text-delta") text += event.delta;
+    else if (event.type === "finish") usage = event.usage;
   }
+  if (usage) await deps.guard?.afterModelTurn(usage);
 
   const facts = keptFacts(sorted.filter((e) => e.seq <= throughSeq));
   const summary = [text.trim(), facts].filter(Boolean).join("\n\n");
