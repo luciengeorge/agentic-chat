@@ -11,6 +11,7 @@ async function failure(response: Response): Promise<Error> {
     run_finished: "That run has already finished.",
     not_found: "That run isn't yours, or it no longer exists.",
     not_in_directory: "Your account isn't in the company directory yet.",
+    disabled: "That automation is turned off.",
   };
   return new Error(messages[body.error ?? ""] ?? `Something went wrong (HTTP ${response.status}). Try again.`);
 }
@@ -27,6 +28,19 @@ async function post(url: string, body?: unknown): Promise<unknown> {
 
 export const startRun = (run: { id: string; conversationId: string; message: { id: string; text: string } }) =>
   post("/api/runs", run);
+
+export type Routed =
+  | { route: "answer"; reason: string }
+  | { route: "agent"; reason: string; followUp: boolean; id: string; seq: number; duplicate: boolean };
+
+/** Where a chat message goes: a cited answer, a new agent run, or the conversation's live run. `agent` skips the
+ * router. */
+export const routeMessage = (body: {
+  conversationId: string;
+  runId: string;
+  message: { id: string; text: string };
+  agent: boolean;
+}) => post("/api/chat/router", body) as Promise<Routed>;
 
 export const decideApproval = (approvalId: string, decision: Decision) =>
   post(`/api/approvals/${approvalId}`, { decision });

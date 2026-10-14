@@ -1,6 +1,7 @@
 import { defineHook, getWorkflowMetadata } from "workflow";
 import { start } from "workflow/api";
 
+import { fireDriveChange } from "./automation-steps";
 import { embedChunks, failIngest, finishIngest, parseAndChunk, startIngest, storeBlob } from "./ingest-steps";
 import { claimOutboxRow } from "./sync-steps";
 
@@ -27,7 +28,7 @@ export function pageRanges(pages: number, size: number): { from: number; to: num
 
 /**
  * Ingests one version of a document: claim the outbox row, store the bytes, parse, chunk, write the chunks, embed
- * them, mark it ready. A long PDF fans out to one child run per page range, each resuming this run's hook when it's done.
+ * them, mark it ready, and fire the drive-change automations watching its folder. A long PDF fans out to one child run per page range, each resuming this run's hook when it's done.
  * Any failure marks the document failed.
  */
 export async function ingestWorkflow(
@@ -70,7 +71,9 @@ export async function ingestWorkflow(
       await parseAndChunk(tenantId, documentId, version, null, 0);
     }
     await embedChunks(tenantId, documentId, version);
-    return await finishIngest(tenantId, documentId, version);
+    const finished = await finishIngest(tenantId, documentId, version);
+    if (finished.status === "ready") await fireDriveChange(tenantId, documentId, version);
+    return finished;
   } catch (error) {
     await failIngest(tenantId, documentId, version, error instanceof Error ? error.message : String(error));
     throw error;

@@ -11,12 +11,13 @@ import type { Viewer } from "#learn/retrieve/types";
 import type { Db } from "@/db/create";
 
 import { withTenantOn } from "@/db/tenant";
-import { loadRun, type RunWaker } from "@/lib/agent-runs";
+import { cancelRun, loadRun, type RunWaker } from "@/lib/agent-runs";
 import { createLogger } from "@/lib/logger";
 
 import type { TokenChunk } from "./agent-run-steps";
 
 import { agentRunWorkflow, approvalToken, type RunSignal, runToken } from "./agent-run";
+import { doneToken, type RunDone } from "./orchestrator-steps";
 
 const logger = createLogger("workflows.agent-run");
 
@@ -41,13 +42,20 @@ async function resume(token: string, payload: unknown, tries = RESUME_TRIES): Pr
   }
 }
 
-/** Starts a workflow for the run, unless one is driving it; then wakes that one instead. A workflow that ended
- * while the run still has work (it crashed, or someone cancelled it in Workflow) is replaced. */
+/**
+ * Starts a workflow for the run, unless one is driving it; then wakes that one instead. A workflow that crashed
+ * while the run still has work is replaced. One cancelled outside the app (the Workflow CLI, `ex start`) isn't:
+ * the run is cancelled to match.
+ */
 export async function kickWorkflow(db: Db, viewer: Viewer, runId: string): Promise<void> {
   const run = await withTenantOn(db, viewer.tenantId, (tx) => loadRun(tx, viewer, runId));
   if (!run) return;
   if (run.workflowRunId) {
     const status = await getRun(run.workflowRunId).status.catch(() => "failed");
+    if (status === "cancelled") {
+      await reconcileCancelled(db, viewer, runId);
+      return;
+    }
     if (!FINAL_WORKFLOW.has(status)) {
       if (await resume(runToken(runId), { kind: "wake" } satisfies RunSignal)) return;
       logger.warn("run hook never appeared; starting the run again", { runId, workflowRunId: run.workflowRunId });
@@ -93,4 +101,37 @@ export async function tokenStream(workflowRunId: string): Promise<ReadableStream
   const tail = await probe.getTailIndex();
   await probe.cancel();
   return run.getReadable<TokenChunk>({ startIndex: tail + 1 });
+}
+
+/**
+ * A run whose Workflow run was cancelled outside the app stays `running` or `waiting` in Postgres, since nothing
+ * is left to write its end. This cancels it (and its live sub-agents), rejects its pending approvals, and tells
+ * whoever waits on it (a parent run, an automation's fan-out). True if it changed anything.
+ */
+export async function reconcileCancelled(db: Db, viewer: Viewer, runId: string): Promise<boolean> {
+  const result = await cancelRun(db, viewer, runId, workflowWaker(db), {
+    reason: "cancelled outside the app",
+    byUser: false,
+  });
+  if (result !== "ok") return false;
+  await resumeHook(doneToken(runId), { status: "cancelled" } satisfies RunDone).catch(() => {});
+  logger.info("run reconciled: its workflow was cancelled outside the app", { runId });
+  return true;
+}
+
+/**
+ * Finds every live run whose Workflow run was cancelled outside the app, across tenants (the owner's pool lists
+ * them; each is then cancelled in its own tenant), and reconciles it. Returns the runs it changed.
+ */
+export async function reconcileCancelledRuns(system: Db, db: Db): Promise<string[]> {
+  const rows = await system.execute<{ id: string; tenant_id: string; user_id: string; workflow_run_id: string }>(sql`
+    SELECT id, tenant_id, user_id, workflow_run_id FROM runs
+    WHERE status IN ('queued', 'running', 'waiting') AND workflow_run_id IS NOT NULL`);
+  const changed: string[] = [];
+  for (const row of rows) {
+    const status = await getRun(row.workflow_run_id).status.catch(() => null);
+    if (status !== "cancelled") continue;
+    if (await reconcileCancelled(db, { tenantId: row.tenant_id, userId: row.user_id }, row.id)) changed.push(row.id);
+  }
+  return changed;
 }

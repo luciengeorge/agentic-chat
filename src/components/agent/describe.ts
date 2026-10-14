@@ -23,6 +23,8 @@ export function callSummary(call: ToolCall): string {
       return "Share a document";
     case "remember":
       return `Remember ${quoted(input.note)}`;
+    case "delegate":
+      return `Sub-agent: ${quoted(input.task)}`;
     default:
       return call.tool;
   }
@@ -49,6 +51,8 @@ export function outcomeSummary(call: ToolCall, outcome: ToolOutcome): string {
       return typeof output.recipient === "string" ? `Shared with ${output.recipient}` : "Shared";
     case "remember":
       return "Saved";
+    case "delegate":
+      return "Answered";
     default:
       return "Done";
   }

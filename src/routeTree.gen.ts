@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AutomationsRouteImport } from './routes/automations'
 import { Route as ChatRouteRouteImport } from './routes/chat/route'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as LoginRouteImport } from './routes/login'
@@ -20,7 +21,10 @@ import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversat
 import { Route as ApiApprovalsIndexRouteImport } from './routes/api/approvals/index'
 import { Route as ApiApprovalsApprovalIdRouteImport } from './routes/api/approvals/$approvalId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiAutomationsIndexRouteImport } from './routes/api/automations/index'
+import { Route as ApiAutomationsAutomationIdRouteImport } from './routes/api/automations/$automationId'
 import { Route as ApiChatIndexRouteImport } from './routes/api/chat/index'
+import { Route as ApiChatRouterRouteImport } from './routes/api/chat/router'
 import { Route as ApiIngestOcrRouteImport } from './routes/api/ingest/ocr'
 import { Route as ApiIngestRasteriseRouteImport } from './routes/api/ingest/rasterise'
 import { Route as ApiMemoryIndexRouteImport } from './routes/api/memory/index'
@@ -29,6 +33,7 @@ import { Route as ApiRunsIndexRouteImport } from './routes/api/runs/index'
 import { Route as ApiSpikeIndexRouteImport } from './routes/api/spike/index'
 import { Route as ApiSpikeResumeRouteImport } from './routes/api/spike/resume'
 import { Route as ApiWebhooksWorkspaceRouteImport } from './routes/api/webhooks/workspace'
+import { Route as ApiAutomationsAutomationIdRunRouteImport } from './routes/api/automations/$automationId.run'
 import { Route as ApiChatDocumentsDocumentIdRouteImport } from './routes/api/chat/documents.$documentId'
 import { Route as ApiRunsRunIdCancelRouteImport } from './routes/api/runs/$runId.cancel'
 import { Route as ApiRunsRunIdMessagesRouteImport } from './routes/api/runs/$runId.messages'
@@ -39,6 +44,11 @@ import { Route as ApiSpikeRunIdStreamRouteImport } from './routes/api/spike/$run
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomationsRoute = AutomationsRouteImport.update({
+  id: '/automations',
+  path: '/automations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRouteRoute = ChatRouteRouteImport.update({
@@ -91,9 +101,25 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAutomationsIndexRoute = ApiAutomationsIndexRouteImport.update({
+  id: '/api/automations/',
+  path: '/api/automations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAutomationsAutomationIdRoute =
+  ApiAutomationsAutomationIdRouteImport.update({
+    id: '/api/automations/$automationId',
+    path: '/api/automations/$automationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiChatIndexRoute = ApiChatIndexRouteImport.update({
   id: '/api/chat/',
   path: '/api/chat/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatRouterRoute = ApiChatRouterRouteImport.update({
+  id: '/api/chat/router',
+  path: '/api/chat/router',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIngestOcrRoute = ApiIngestOcrRouteImport.update({
@@ -136,6 +162,12 @@ const ApiWebhooksWorkspaceRoute = ApiWebhooksWorkspaceRouteImport.update({
   path: '/api/webhooks/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAutomationsAutomationIdRunRoute =
+  ApiAutomationsAutomationIdRunRouteImport.update({
+    id: '/run',
+    path: '/run',
+    getParentRoute: () => ApiAutomationsAutomationIdRoute,
+  } as any)
 const ApiChatDocumentsDocumentIdRoute =
   ApiChatDocumentsDocumentIdRouteImport.update({
     id: '/api/chat/documents/$documentId',
@@ -171,6 +203,7 @@ const ApiSpikeRunIdStreamRoute = ApiSpikeRunIdStreamRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteRouteWithChildren
+  '/automations': typeof AutomationsRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -179,16 +212,20 @@ export interface FileRoutesByFullPath {
   '/chat/': typeof ChatIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
+  '/api/chat/router': typeof ApiChatRouterRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/approvals/': typeof ApiApprovalsIndexRoute
+  '/api/automations/': typeof ApiAutomationsIndexRoute
   '/api/chat/': typeof ApiChatIndexRoute
   '/api/memory/': typeof ApiMemoryIndexRoute
   '/api/runs/': typeof ApiRunsIndexRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
+  '/api/automations/$automationId/run': typeof ApiAutomationsAutomationIdRunRoute
   '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
   '/api/runs/$runId/cancel': typeof ApiRunsRunIdCancelRoute
   '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
@@ -198,6 +235,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/automations': typeof AutomationsRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -206,16 +244,20 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
+  '/api/chat/router': typeof ApiChatRouterRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/approvals': typeof ApiApprovalsIndexRoute
+  '/api/automations': typeof ApiAutomationsIndexRoute
   '/api/chat': typeof ApiChatIndexRoute
   '/api/memory': typeof ApiMemoryIndexRoute
   '/api/runs': typeof ApiRunsIndexRoute
   '/api/spike': typeof ApiSpikeIndexRoute
+  '/api/automations/$automationId/run': typeof ApiAutomationsAutomationIdRunRoute
   '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
   '/api/runs/$runId/cancel': typeof ApiRunsRunIdCancelRoute
   '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
@@ -227,6 +269,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteRouteWithChildren
+  '/automations': typeof AutomationsRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -235,16 +278,20 @@ export interface FileRoutesById {
   '/chat/': typeof ChatIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
+  '/api/chat/router': typeof ApiChatRouterRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
   '/api/approvals/': typeof ApiApprovalsIndexRoute
+  '/api/automations/': typeof ApiAutomationsIndexRoute
   '/api/chat/': typeof ApiChatIndexRoute
   '/api/memory/': typeof ApiMemoryIndexRoute
   '/api/runs/': typeof ApiRunsIndexRoute
   '/api/spike/': typeof ApiSpikeIndexRoute
+  '/api/automations/$automationId/run': typeof ApiAutomationsAutomationIdRunRoute
   '/api/chat/documents/$documentId': typeof ApiChatDocumentsDocumentIdRoute
   '/api/runs/$runId/cancel': typeof ApiRunsRunIdCancelRoute
   '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
@@ -257,6 +304,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chat'
+    | '/automations'
     | '/inbox'
     | '/login'
     | '/me'
@@ -265,16 +313,20 @@ export interface FileRouteTypes {
     | '/chat/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
+    | '/api/automations/$automationId'
+    | '/api/chat/router'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
     | '/api/approvals/'
+    | '/api/automations/'
     | '/api/chat/'
     | '/api/memory/'
     | '/api/runs/'
     | '/api/spike/'
+    | '/api/automations/$automationId/run'
     | '/api/chat/documents/$documentId'
     | '/api/runs/$runId/cancel'
     | '/api/runs/$runId/messages'
@@ -284,6 +336,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/automations'
     | '/inbox'
     | '/login'
     | '/me'
@@ -292,16 +345,20 @@ export interface FileRouteTypes {
     | '/chat'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
+    | '/api/automations/$automationId'
+    | '/api/chat/router'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
     | '/api/approvals'
+    | '/api/automations'
     | '/api/chat'
     | '/api/memory'
     | '/api/runs'
     | '/api/spike'
+    | '/api/automations/$automationId/run'
     | '/api/chat/documents/$documentId'
     | '/api/runs/$runId/cancel'
     | '/api/runs/$runId/messages'
@@ -312,6 +369,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/chat'
+    | '/automations'
     | '/inbox'
     | '/login'
     | '/me'
@@ -320,16 +378,20 @@ export interface FileRouteTypes {
     | '/chat/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
+    | '/api/automations/$automationId'
+    | '/api/chat/router'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
     | '/api/approvals/'
+    | '/api/automations/'
     | '/api/chat/'
     | '/api/memory/'
     | '/api/runs/'
     | '/api/spike/'
+    | '/api/automations/$automationId/run'
     | '/api/chat/documents/$documentId'
     | '/api/runs/$runId/cancel'
     | '/api/runs/$runId/messages'
@@ -341,18 +403,22 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRouteRoute: typeof ChatRouteRouteWithChildren
+  AutomationsRoute: typeof AutomationsRoute
   InboxRoute: typeof InboxRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   ApiMeRoute: typeof ApiMeRoute
   ApiApprovalsApprovalIdRoute: typeof ApiApprovalsApprovalIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAutomationsAutomationIdRoute: typeof ApiAutomationsAutomationIdRouteWithChildren
+  ApiChatRouterRoute: typeof ApiChatRouterRoute
   ApiIngestOcrRoute: typeof ApiIngestOcrRoute
   ApiIngestRasteriseRoute: typeof ApiIngestRasteriseRoute
   ApiMemoryNoteIdRoute: typeof ApiMemoryNoteIdRoute
   ApiSpikeResumeRoute: typeof ApiSpikeResumeRoute
   ApiWebhooksWorkspaceRoute: typeof ApiWebhooksWorkspaceRoute
   ApiApprovalsIndexRoute: typeof ApiApprovalsIndexRoute
+  ApiAutomationsIndexRoute: typeof ApiAutomationsIndexRoute
   ApiChatIndexRoute: typeof ApiChatIndexRoute
   ApiMemoryIndexRoute: typeof ApiMemoryIndexRoute
   ApiRunsIndexRoute: typeof ApiRunsIndexRoute
@@ -372,6 +438,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automations': {
+      id: '/automations'
+      path: '/automations'
+      fullPath: '/automations'
+      preLoaderRoute: typeof AutomationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -444,11 +517,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/automations/': {
+      id: '/api/automations/'
+      path: '/api/automations'
+      fullPath: '/api/automations/'
+      preLoaderRoute: typeof ApiAutomationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/automations/$automationId': {
+      id: '/api/automations/$automationId'
+      path: '/api/automations/$automationId'
+      fullPath: '/api/automations/$automationId'
+      preLoaderRoute: typeof ApiAutomationsAutomationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat/': {
       id: '/api/chat/'
       path: '/api/chat'
       fullPath: '/api/chat/'
       preLoaderRoute: typeof ApiChatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/router': {
+      id: '/api/chat/router'
+      path: '/api/chat/router'
+      fullPath: '/api/chat/router'
+      preLoaderRoute: typeof ApiChatRouterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ingest/ocr': {
@@ -506,6 +600,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/webhooks/workspace'
       preLoaderRoute: typeof ApiWebhooksWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/automations/$automationId/run': {
+      id: '/api/automations/$automationId/run'
+      path: '/run'
+      fullPath: '/api/automations/$automationId/run'
+      preLoaderRoute: typeof ApiAutomationsAutomationIdRunRouteImport
+      parentRoute: typeof ApiAutomationsAutomationIdRoute
     }
     '/api/chat/documents/$documentId': {
       id: '/api/chat/documents/$documentId'
@@ -566,21 +667,39 @@ const ChatRouteRouteWithChildren = ChatRouteRoute._addFileChildren(
   ChatRouteRouteChildren,
 )
 
+interface ApiAutomationsAutomationIdRouteChildren {
+  ApiAutomationsAutomationIdRunRoute: typeof ApiAutomationsAutomationIdRunRoute
+}
+
+const ApiAutomationsAutomationIdRouteChildren: ApiAutomationsAutomationIdRouteChildren =
+  {
+    ApiAutomationsAutomationIdRunRoute: ApiAutomationsAutomationIdRunRoute,
+  }
+
+const ApiAutomationsAutomationIdRouteWithChildren =
+  ApiAutomationsAutomationIdRoute._addFileChildren(
+    ApiAutomationsAutomationIdRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRouteRoute: ChatRouteRouteWithChildren,
+  AutomationsRoute: AutomationsRoute,
   InboxRoute: InboxRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   ApiMeRoute: ApiMeRoute,
   ApiApprovalsApprovalIdRoute: ApiApprovalsApprovalIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAutomationsAutomationIdRoute: ApiAutomationsAutomationIdRouteWithChildren,
+  ApiChatRouterRoute: ApiChatRouterRoute,
   ApiIngestOcrRoute: ApiIngestOcrRoute,
   ApiIngestRasteriseRoute: ApiIngestRasteriseRoute,
   ApiMemoryNoteIdRoute: ApiMemoryNoteIdRoute,
   ApiSpikeResumeRoute: ApiSpikeResumeRoute,
   ApiWebhooksWorkspaceRoute: ApiWebhooksWorkspaceRoute,
   ApiApprovalsIndexRoute: ApiApprovalsIndexRoute,
+  ApiAutomationsIndexRoute: ApiAutomationsIndexRoute,
   ApiChatIndexRoute: ApiChatIndexRoute,
   ApiMemoryIndexRoute: ApiMemoryIndexRoute,
   ApiRunsIndexRoute: ApiRunsIndexRoute,

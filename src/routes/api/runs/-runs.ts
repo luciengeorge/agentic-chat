@@ -22,7 +22,7 @@ const STREAM_PAGE = 500;
 /** Five runs in a burst, then one every 30 seconds. The daily token budget (section 13) is the real cap. */
 export const RUN_BUCKET: Bucket = { name: "agent", capacity: 5, refillPerSecond: 1 / 30 };
 
-const MessageSchema = z.object({
+export const MessageSchema = z.object({
   /** The client's id: a resend with the same id stores nothing new. */
   id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   text: z.string().trim().min(1).max(MAX_MESSAGE_CHARS),
@@ -53,12 +53,12 @@ export interface RunRoutesDeps {
   heartbeatMs?: number;
 }
 
-const json = (status: number, body: Record<string, unknown>, headers: HeadersInit = {}) =>
+export const json = (status: number, body: Record<string, unknown>, headers: HeadersInit = {}) =>
   Response.json(body, { status, headers });
 
 const notFound = () => json(404, { error: "not_found" });
 
-function pgCode(error: unknown): string | undefined {
+export function pgCode(error: unknown): string | undefined {
   for (let e = error; e && typeof e === "object"; e = (e as { cause?: unknown }).cause) {
     const code = (e as { code?: unknown }).code;
     if (typeof code === "string") return code;
@@ -66,7 +66,7 @@ function pgCode(error: unknown): string | undefined {
   return undefined;
 }
 
-async function readBody<T>(request: Request, schema: z.ZodType<T>): Promise<T | Response> {
+export async function readBody<T>(request: Request, schema: z.ZodType<T>): Promise<T | Response> {
   if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return json(413, { error: "too_large" });
   const raw = await request.text();
   if (raw.length > MAX_BODY_BYTES) return json(413, { error: "too_large" });
@@ -94,7 +94,16 @@ function answer(result: MessageResult, runId: string, viewer: Viewer, deps: RunR
 export async function handleStartRun(request: Request, viewer: Viewer, deps: RunRoutesDeps): Promise<Response> {
   const body = await readBody(request, StartRunSchema);
   if (body instanceof Response) return body;
+  return startRunResponse(viewer, body, deps);
+}
 
+/** Starts the run (rate-limited, in a conversation of the viewer's) and kicks its runner: 202 `{ id, seq,
+ * duplicate }`. The chat router uses it too. */
+export async function startRunResponse(
+  viewer: Viewer,
+  body: z.infer<typeof StartRunSchema>,
+  deps: RunRoutesDeps,
+): Promise<Response> {
   const now = (deps.now ?? (() => new Date()))();
   let limit;
   try {
@@ -140,7 +149,18 @@ export async function handleAddMessage(
   if (!z.uuid().safeParse(runId).success) return notFound();
   const body = await readBody(request, AddMessageSchema);
   if (body instanceof Response) return body;
-  const result = await addMessage(deps.db, viewer, runId, { messageId: body.message.id, text: body.message.text });
+  return addMessageResponse(viewer, runId, body.message, deps);
+}
+
+/** Adds the message to the live run (once per message id) and wakes its runner: 202 `{ id, seq, duplicate }`, or
+ * 409 for a finished run. The chat router uses it for a follow-up. */
+export async function addMessageResponse(
+  viewer: Viewer,
+  runId: string,
+  message: { id: string; text: string },
+  deps: RunRoutesDeps,
+): Promise<Response> {
+  const result = await addMessage(deps.db, viewer, runId, { messageId: message.id, text: message.text });
   return answer(result, runId, viewer, deps);
 }
 

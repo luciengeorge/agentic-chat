@@ -154,3 +154,33 @@ describe("RunTimeline", () => {
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 });
+
+describe("a sub-agent's run in the timeline", () => {
+  it("nests the child's run under its delegate call, collapsed until opened", () => {
+    const parent = log(
+      { type: "user_message", messageId: "u1", text: "Compare v1 and v2 on hotels" },
+      {
+        type: "assistant_turn",
+        text: "",
+        toolCalls: [{ callId: "c1", tool: "delegate", input: { task: "Report v1's hotel rules" } }],
+        usage,
+      },
+      { type: "tool_result", callId: "c1", ok: true, output: { runId: "child-1", summary: "150 a night" } },
+    );
+    render(
+      <RunTimeline
+        items={foldTimeline(parent)}
+        status="running"
+        streamingText=""
+        onDecide={() => {}}
+        onCancel={() => {}}
+        childRunOf={({ call }) => (call.tool === "delegate" ? `child-of-${call.callId}` : null)}
+        renderChild={(runId) => <p>child run {runId}</p>}
+      />,
+    );
+    expect(screen.getByText("Sub-agent: “Report v1's hotel rules”")).toBeInTheDocument();
+    expect(screen.queryByText("child run child-of-c1")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show the sub-agent's steps" }));
+    expect(screen.getByText("child run child-of-c1")).toBeInTheDocument();
+  });
+});

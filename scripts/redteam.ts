@@ -10,27 +10,28 @@
  * mail and shares by its own idempotency keys (`agent:<runId>:...`), and deletes any note a run managed to store.
  */
 import { createOpenAI } from "@ai-sdk/openai";
-import { sql } from "drizzle-orm";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { AgentTool } from "#learn/agent/types";
-import type { Viewer } from "#learn/retrieve/types";
 
 import { rememberTool } from "#learn/agent/memory";
 import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
 import { costUsd, report, runScenario, type ScenarioResult } from "#learn/redteam/run";
-import { type Effects, SCENARIOS } from "#learn/redteam/scenarios";
+import { SCENARIOS } from "#learn/redteam/scenarios";
 import { appDb, closeDb } from "@/db/pool";
 import { withTenant } from "@/db/tenant";
 import { agentGuard, agentTools } from "@/lib/agent-tools";
 import { workspaceUrl } from "@/workflows/sync-common";
 
+import { DEV_CONTROL_TOKEN } from "../servers/fake-workspace/control";
+import { effectsReader, redteamWorld } from "./ex/smoke-redteam";
+
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const REPORTS = join(ROOT, "fixtures/redteam/reports");
-const CONTROL = { "x-workspace-control": process.env.FAKE_WORKSPACE_CONTROL_TOKEN || "dev-workspace-control" };
+const CONTROL_TOKEN = process.env.FAKE_WORKSPACE_CONTROL_TOKEN || DEV_CONTROL_TOKEN;
 
 async function waitForWorkspace(base: string) {
   for (let i = 0; i < 60; i++) {
@@ -45,37 +46,12 @@ async function waitForWorkspace(base: string) {
   throw new Error(`fake-workspace isn't up on ${base}`);
 }
 
-async function viewerFor(username: string): Promise<Viewer> {
-  const [org] = await appDb().execute<{ id: string }>(sql`SELECT id FROM organization WHERE slug = 'kestrel'`);
-  if (!org) throw new Error("no kestrel tenant: run pnpm ex up");
-  const [user] = await withTenant(org.id, (tx) =>
-    tx.execute<{ id: string }>(sql`SELECT id FROM principals WHERE kind = 'user' AND name = ${username}`),
-  );
-  if (!user) throw new Error(`no user ${username} in kestrel's directory`);
-  return { tenantId: org.id, userId: user.id };
-}
-
-async function listed<T>(base: string, path: string): Promise<T[]> {
-  const response = await fetch(`${base}${path}`, { headers: CONTROL });
-  if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
-  return ((await response.json()) as { value: T[] }).value;
-}
-
-function effectsReader(base: string, viewer: Viewer) {
-  return async (runId: string): Promise<Effects> => {
-    const ours = (key: string | null) => key?.startsWith(`agent:${runId}:`) ?? false;
-    type Keyed = { idempotencyKey: string | null };
-    const mails = (await listed<Effects["mails"][number] & Keyed>(base, "/_control/mail")).filter((m) =>
-      ours(m.idempotencyKey),
-    );
-    const invites = (await listed<Effects["invites"][number] & Keyed>(base, "/_control/invites")).filter((i) =>
-      ours(i.idempotencyKey),
-    );
-    const notes = await withTenant(viewer.tenantId, (tx) =>
-      tx.execute<{ text: string }>(sql`DELETE FROM memory_notes WHERE source_run_id = ${runId} RETURNING text`),
-    );
-    return { mails, invites, notes: notes.map((n) => n.text) };
-  };
+/** `<date>.md`, or `<date>-2.md` and on when a report of that day is already there. */
+function reportPath(date: string): string {
+  for (let n = 1; ; n++) {
+    const path = join(REPORTS, n === 1 ? `${date}.md` : `${date}-${n}.md`);
+    if (!existsSync(path)) return path;
+  }
 }
 
 async function main() {
@@ -87,18 +63,20 @@ async function main() {
   const base = workspaceUrl().replace(/\/$/, "");
   await waitForWorkspace(base);
   const model = aiSdkChatModel(createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(CHAT_MODEL));
+  const { ids, viewer } = await redteamWorld(withTenant, appDb());
 
   const results: ScenarioResult[] = [];
   for (const scenario of scenarios) {
-    const viewer = await viewerFor(scenario.user);
+    const who = viewer(scenario.user);
     const started = Date.now();
     const result = await runScenario(scenario, {
       model,
       reasoningEffort: CHAT_REASONING_EFFORT,
       tools: [...agentTools(), rememberTool({ withTenant }) as AgentTool],
-      viewer,
-      guard: agentGuard(viewer),
-      effects: effectsReader(base, viewer),
+      viewer: who,
+      guard: agentGuard(who),
+      effects: effectsReader(fetch, base, withTenant, who.tenantId, CONTROL_TOKEN),
+      ids,
     });
     results.push(result);
     console.log(
@@ -112,7 +90,7 @@ async function main() {
   if (!only) {
     const date = new Date().toISOString().slice(0, 10);
     mkdirSync(REPORTS, { recursive: true });
-    const path = join(REPORTS, `${date}.md`);
+    const path = reportPath(date);
     writeFileSync(path, report(date, `live, ${CHAT_MODEL} at ${CHAT_REASONING_EFFORT} effort`, results));
     console.log(`report: ${path}`);
   }
