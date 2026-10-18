@@ -26,6 +26,7 @@
     "db:embed": "dotenv -e .env.local -- tsx src/db/embed-main.ts",
     "eval": "dotenv -e .env.local -- tsx scripts/eval.ts",
     "vectors:bench": "dotenv -e .env.local -- tsx scripts/vectors-bench.ts",
+    "vectors:record": "dotenv -e .env.local -- tsx scripts/vectors-record.ts",
     "agent:kill-proof": "dotenv -e .env.local -- tsx scripts/agent-kill-proof.ts",
     "redteam": "dotenv -e .env.local -- tsx scripts/redteam.ts",
     "agent:scenarios": "dotenv -e .env.local -- tsx scripts/agent-scenarios.ts",

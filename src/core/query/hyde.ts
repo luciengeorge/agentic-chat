@@ -2,8 +2,7 @@ import { generateText, type LanguageModel, Output } from "ai";
 import { z } from "zod";
 
 import type { Embedder } from "#learn/embed/embed";
-
-import type { ReasoningEffort } from "./rewrite";
+import type { ReasoningEffort } from "#learn/query/rewrite";
 
 /**
  * HyDE (hypothetical document embeddings): a question and the passage that answers it are worded differently ("how
@@ -16,11 +15,13 @@ export type HypotheticalWriter = (question: string) => Promise<string>;
 /** Longer passages cost more to embed and drift from the question. */
 export const MAX_PASSAGE_CHARS = 2000;
 
-const PassageSchema = z.object({
+/** What the model must return: one passage. */
+export const PassageSchema = z.object({
   passage: z.string().describe("A passage from an internal document that would answer the question"),
 });
 
-const SYSTEM = `You help search a company's internal documents: policies, reports, contracts, runbooks.
+/** HyDE's instructions to the model. */
+export const HYDE_INSTRUCTIONS = `You help search a company's internal documents: policies, reports, contracts, runbooks.
 Write the passage, 50 to 120 words, that a document answering the question would contain, in that document's words.
 If you don't know the facts, write plausible ones: the passage is only used to search, never shown.
 Keep any identifier in the question (a contract number like KPC-2026-0142, an error code like KP-4031, a SKU) exactly as written.`;
@@ -30,7 +31,7 @@ export function modelHypothesis(model: LanguageModel, reasoning: ReasoningEffort
   return async (question) => {
     const { output } = await generateText({
       model,
-      system: SYSTEM,
+      system: HYDE_INSTRUCTIONS,
       prompt: question,
       output: Output.object({ schema: PassageSchema, name: "hypothetical_passage" }),
       reasoning,
@@ -41,7 +42,7 @@ export function modelHypothesis(model: LanguageModel, reasoning: ReasoningEffort
   };
 }
 
-/** The passage and its embedding: what vector search runs on in place of the question's. */
+/** The passage and its embedding: `retrieve` searches it as one more vector list, beside the question's. */
 export async function hydeEmbedding(
   question: string,
   deps: { writer: HypotheticalWriter; embedder: Embedder },

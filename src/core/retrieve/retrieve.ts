@@ -8,14 +8,14 @@ import type { Reranker } from "#learn/rerank/rerank";
 import type { Tx } from "@/db/tenant";
 
 import { documentCards, routeDocuments } from "#learn/query/route";
+import { rerankCandidates } from "#learn/rerank/rerank";
+import { candidateDocuments, decideChunks, viewerPrincipals } from "#learn/retrieve/acl";
 import { LEXICAL_FIELD, lexicalSearch } from "#learn/search/lexical";
 import { rrf } from "#learn/search/rrf";
 import { uuidArray } from "#learn/search/sql";
 import { vectorSearch } from "#learn/search/vector";
 
 import type { Retrieval, RetrievedChunk, Retrieve, Viewer } from "./types";
-
-import { candidateDocuments, readable, viewerPrincipals } from "./acl";
 
 export interface RetrieveDeps {
   /** Runs `fn` in a transaction scoped to the tenant (`withTenant` in the app). */
@@ -53,8 +53,6 @@ export const DEFAULT_SETTINGS: RetrieveSettings = {
 };
 
 const MAX_K = 50;
-
-type Row = Omit<RetrievedChunk, "score"> & { allowed: boolean };
 
 export function queryHash(query: string): string {
   return createHash("sha256").update(query).digest("hex");
@@ -124,42 +122,21 @@ export function createRetrieve(deps: RetrieveDeps, settings: Partial<RetrieveSet
       }
       const fused = rrf(lists).slice(0, base.candidates);
 
-      const rows =
-        fused.length === 0
-          ? []
-          : await tx.execute<Row>(sql`
-              SELECT c.id, c.document_id AS "documentId", d.title, d.path, c.text,
-                c.page_start AS "pageStart", c.page_end AS "pageEnd", c.section,
-                ${readable(viewer.userId, sql`c.document_id`)} AS allowed
-              FROM chunks c
-              JOIN documents d ON d.id = c.document_id AND d.version = c.document_version
-              WHERE c.id = ANY(${uuidArray(fused.map((entry) => entry.id))})`);
+      const { allowed, denied } = await decideChunks(
+        tx,
+        viewer.userId,
+        fused.map((entry) => entry.id),
+      );
 
       const [{ mark }] = await tx.execute<{ mark: string }>(
         sql`SELECT CASE WHEN is_called THEN last_value ELSE 0 END AS mark FROM acl_version_seq`,
       );
-
-      const byId = new Map(rows.map((row) => [row.id, row]));
-      const allowed: Row[] = [];
-      const denied: string[] = [];
-      for (const { id } of fused) {
-        const row = byId.get(id);
-        if (!row) continue;
-        if (row.allowed) allowed.push(row);
-        else denied.push(id);
-      }
       return { allowed, denied, aclVersion: Number(mark), routed };
     });
 
-    const pool = searched.allowed.slice(0, base.rerankDepth);
-    const ranked = await deps.reranker.rerank(
-      question,
-      pool.map((row) => row.text),
+    const chunks: RetrievedChunk[] = await rerankCandidates(deps.reranker, question, searched.allowed, {
+      depth: base.rerankDepth,
       k,
-    );
-    const chunks: RetrievedChunk[] = ranked.map(({ index, score }) => {
-      const { allowed: _allowed, ...chunk } = pool[index];
-      return { ...chunk, score };
     });
 
     const auditId = await deps.withTenant(viewer.tenantId, async (tx) => {

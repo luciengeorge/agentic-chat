@@ -85,7 +85,10 @@ export function buildBm25Index(documents: { id: string; text: string }[]): Bm25I
 
 /**
  * Every document holding at least one query term, best first (ties by id). A term repeated in the query counts
- * once, as pg_search's `|||` does.
+ * once. pg_search's `|||` differs in two ways (checked on 0.26.1 over the 434 recorded chunks, where with both
+ * applied the scores agree to 32-bit precision): it scores a repeated query term each time it appears, and it
+ * keeps each document's length in one byte (Tantivy's field norm), exact up to 40 tokens and rounded down to a
+ * coarser step above (234 becomes 232).
  */
 export function bm25Search(
   index: Bm25Index,
@@ -108,4 +111,39 @@ export function bm25Search(
     if (matched) out.push({ id: index.ids[i], score });
   });
   return out.sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+export interface TermExplanation {
+  term: string;
+  /** How often the term appears in this document. */
+  tf: number;
+  /** How many documents in the index hold it. */
+  documentFrequency: number;
+  idf: number;
+  /** What the term adds to the document's score: 0 when it's absent. */
+  score: number;
+}
+
+/**
+ * Why one document scored what it did: each distinct query term in the order the query has them, with its count,
+ * how rare it is and what it adds. The parts sum to the document's score in `bm25Search`. Null for an id the index
+ * doesn't hold.
+ */
+export function explainScore(
+  index: Bm25Index,
+  query: string,
+  id: string,
+  params: Bm25Params = { k1: DEFAULT_K1, b: DEFAULT_B },
+): { score: number; terms: TermExplanation[] } | null {
+  const i = index.ids.indexOf(id);
+  if (i === -1) return null;
+  const n = index.ids.length;
+  const terms = [...new Set(tokenize(query))].map((term) => {
+    const tf = index.termCounts[i].get(term) ?? 0;
+    const documentFrequency = index.documentFrequency.get(term) ?? 0;
+    const termIdf = idf(n, documentFrequency);
+    const score = termScore(tf, termIdf, index.lengths[i], index.averageLength, params);
+    return { term, tf, documentFrequency, idf: termIdf, score };
+  });
+  return { score: terms.reduce((sum, term) => sum + term.score, 0), terms };
 }

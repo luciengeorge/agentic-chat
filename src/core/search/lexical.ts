@@ -2,7 +2,7 @@ import { type SQL, sql } from "drizzle-orm";
 
 import type { Tx } from "@/db/tenant";
 
-import { uuidArray } from "./sql";
+import { uuidArray } from "#learn/search/sql";
 
 export interface Hit {
   id: string;
