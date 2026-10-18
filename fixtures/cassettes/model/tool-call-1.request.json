@@ -1,0 +1,54 @@
+{
+  "model": "gpt-6-luna",
+  "instructions": "You are Kestrel Pay's assistant. Find facts with search_documents before you answer, and answer only from what it returns. Be brief.",
+  "input": [
+    {
+      "role": "user",
+      "content": "What is the hotel limit for a night in London?"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "search_documents",
+      "description": "Search the company documents the user can read. Returns the best passages with their document ids, titles, paths and pages. Use read_document to read a whole document.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "What to look for, in plain words."
+          },
+          "k": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many passages to return, 1 to 8 (default 8)."
+          }
+        },
+        "required": [
+          "query",
+          "k"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  ],
+  "tool_choice": "auto",
+  "reasoning": {
+    "effort": "medium"
+  },
+  "max_output_tokens": 2000,
+  "stream": true,
+  "store": false
+}

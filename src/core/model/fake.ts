@@ -1,7 +1,9 @@
-import type { ChatEvent, ChatModel } from "./types";
+import type { ChatEvent, ChatModel } from "#learn/model/types";
 
-const delay = (ms: number, signal?: AbortSignal) =>
+/** Waits `ms`, or rejects with the signal's reason, at once if it has already aborted. */
+export const delay = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
     const timer = setTimeout(resolve, ms);
     signal?.addEventListener(
       "abort",
@@ -23,15 +25,7 @@ export function echoModel({ delayMs = 25 }: { delayMs?: number } = {}): ChatMode
     id: "fake:echo",
     async *stream(request): AsyncGenerator<ChatEvent> {
       const last = request.messages.at(-1);
-      const prompt = last?.role === "user" ? last.content : "";
-      const sources = [...prompt.matchAll(/<source id="(S\d+)" title="([^"]*)"[^>]*>\n([\s\S]*?)\n<\/source>/g)];
-      const lines = sources.slice(0, 2).map(([, label, title, text]) => {
-        const sentence = firstSentence(text);
-        return `- **${title}**: ${sentence} [[${label}: "${quoteOf(sentence)}"]]`;
-      });
-      const answer = lines.length
-        ? `*(Offline answer: no OPENAI_API_KEY is set, so this repeats the top sources.)*\n\n${lines.join("\n")}`
-        : "I couldn't find an answer to that in the documents you can access.";
+      const answer = echoAnswer(last?.role === "user" ? last.content : "");
       for (const piece of answer.match(/\S+\s*/g) ?? []) {
         await delay(delayMs, request.abortSignal);
         yield { type: "text-delta", delta: piece };
@@ -43,6 +37,18 @@ export function echoModel({ delayMs = 25 }: { delayMs?: number } = {}): ChatMode
       };
     },
   };
+}
+
+/** What the echo model says to a prompt: the first sentence of the first two sources, cited, or the abstention. */
+export function echoAnswer(prompt: string): string {
+  const sources = [...prompt.matchAll(/<source id="(S\d+)" title="([^"]*)"[^>]*>\n([\s\S]*?)\n<\/source>/g)];
+  const lines = sources.slice(0, 2).map(([, label, title, text]) => {
+    const sentence = firstSentence(text);
+    return `- **${title}**: ${sentence} [[${label}: "${quoteOf(sentence)}"]]`;
+  });
+  return lines.length
+    ? `*(Offline answer: no OPENAI_API_KEY is set, so this repeats the top sources.)*\n\n${lines.join("\n")}`
+    : "I couldn't find an answer to that in the documents you can access.";
 }
 
 function firstSentence(text: string): string {

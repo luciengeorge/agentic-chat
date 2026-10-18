@@ -5,7 +5,7 @@
  */
 import { countTokens as count } from "gpt-tokenizer/encoding/o200k_base";
 
-import type { ChatMessage, ChatRequest, ToolSpec, Usage } from "./types";
+import type { ChatMessage, ChatRequest, ToolSpec, Usage } from "#learn/model/types";
 
 const NO_SPECIAL = { disallowedSpecial: new Set<string>() };
 

@@ -15,7 +15,7 @@ import {
   type Job,
   reclaimExpired,
   type Transactor,
-} from "./queue";
+} from "#learn/queue/queue";
 
 export interface WorkerOptions<P> {
   /** Runs each statement on its own (the owner's pool: a worker crosses tenants). */

@@ -17,10 +17,36 @@ export const Route = createFileRoute("/labs/")({
 
 const LABS = [
   {
+    section: "01",
+    to: "/labs/models",
+    title: "Models",
+    description: "Replay a recorded model call: the request body, every server-sent event, and the tokens it cost.",
+  },
+  {
+    section: "02",
+    to: "/labs/connectors",
+    title: "Connectors",
+    description: "Throttle fake-workspace, pin its clock, watch its webhooks, and crawl it with your connector.",
+  },
+  {
+    section: "03",
+    to: "/labs/parsing",
+    title: "Parsing",
+    description:
+      "See a page as the parser reads it: its blocks, text layer or OCR, the confidence, and the review queue.",
+  },
+  {
     section: "04",
     to: "/labs/chunking",
     title: "Chunking",
     description: "Pick a page and see where the chunker cuts it, with token counts and the overlap marked.",
+  },
+  {
+    section: "05",
+    to: "/labs/background",
+    title: "Background work",
+    description:
+      "A queue board of jobs by class and state, the outbox, and a backfill starving a delta, capped or not.",
   },
 ] as const;
 

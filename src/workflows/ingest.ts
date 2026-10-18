@@ -1,6 +1,8 @@
 import { defineHook, getWorkflowMetadata } from "workflow";
 import { start } from "workflow/api";
 
+import { fanOut, pageRanges, type RangeResult } from "#learn/queue/fanout";
+
 import { fireDriveChange } from "./automation-steps";
 import {
   driveChangeFailed,
@@ -27,15 +29,7 @@ const RANGE_PAGES = 250;
 /** Child runs started at once. */
 const BATCH = 10;
 
-type RangeResult = { status: "completed"; chunks: number } | { status: "failed"; error: string };
-
 const rangeDone = defineHook<RangeResult>();
-
-export function pageRanges(pages: number, size: number): { from: number; to: number }[] {
-  const ranges = [];
-  for (let from = 1; from <= pages; from += size) ranges.push({ from, to: Math.min(pages, from + size - 1) });
-  return ranges;
-}
 
 /**
  * Ingests one version of a document: claim the outbox row, store the bytes, parse, chunk, write the chunks, embed
@@ -72,19 +66,12 @@ export async function ingestWorkflow(
     const fanOutPages = options.fanOutPages ?? FAN_OUT_PAGES;
     if (stored.pages !== null && stored.pages > fanOutPages) {
       const ranges = pageRanges(stored.pages, options.rangePages ?? RANGE_PAGES);
-      for (let i = 0; i < ranges.length; i += BATCH) {
-        const results = await Promise.all(
-          ranges.slice(i, i + BATCH).map(async (range, offset) => {
-            const index = i + offset;
-            const token = `ingest-range:${workflowRunId}:${index}`;
-            const hook = rangeDone.create({ token });
-            await start(ingestRangeWorkflow, [tenantId, documentId, version, range.from, range.to, index, token]);
-            return hook;
-          }),
-        );
-        const failed = results.find((result) => result.status === "failed");
-        if (failed && failed.status === "failed") throw new Error(`a page range failed: ${failed.error}`);
-      }
+      await fanOut(ranges, BATCH, async (range, index) => {
+        const token = `ingest-range:${workflowRunId}:${index}`;
+        const hook = rangeDone.create({ token });
+        await start(ingestRangeWorkflow, [tenantId, documentId, version, range.from, range.to, index, token]);
+        return hook;
+      });
     } else {
       await parseAndChunk(tenantId, documentId, version, null, 0);
     }

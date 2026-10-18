@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { cpSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -139,6 +139,13 @@ describe("list", () => {
     });
   });
 
+  it("leaves out a step still being written, so it can't break the others", async () => {
+    const { ex, path } = setup();
+    mkdirSync(path("exercises/00.tour/02.problem.half-done"));
+    const { sections } = await ex(["list"]);
+    expect(sections[0].steps.map((s: { id: string }) => s.id)).toEqual(["00.1"]);
+  });
+
   it("includes hidden sections with --all, after the numbered ones", async () => {
     const { ex } = setup();
     const { sections } = await ex(["list", "--all"]);
@@ -157,6 +164,7 @@ describe("start, reset and solution", () => {
       restarted: ["dev server"],
       cancelled: ["wrun_1"],
       skipped: [],
+      next: { readme: `${PROBLEM}/README.md`, test: "pnpm ex test _smoke.1", lab: null },
     });
     expect(playground()).toEqual(["greeting.ts"]);
     expect(read("playground/greeting.ts")).toBe(read(`${PROBLEM}/greeting.ts`));
@@ -256,7 +264,7 @@ describe("start, reset and solution", () => {
     const { ex, read, write } = setup();
     await ex(["start", "_smoke.1"]);
     write("playground/greeting.ts", "mine");
-    expect(await ex(["start", "_smoke.1"])).toEqual({ step: "_smoke.1", files: [], already_active: true });
+    expect(await ex(["start", "_smoke.1"])).toMatchObject({ step: "_smoke.1", files: [], already_active: true });
     expect(read("playground/greeting.ts")).toBe("mine");
     await ex(["reset", "_smoke.1"]);
     expect(read("playground/greeting.ts")).toBe(read(`${PROBLEM}/greeting.ts`));
@@ -291,6 +299,57 @@ describe("start, reset and solution", () => {
     await ex(["start", "_smoke.1"]);
     write("playground/notes.ts", "");
     await ex(["start", "00.1"], { ok: false });
+  });
+
+  it("start says what to do next: the README, the tests, and the section's lab when it has one", async () => {
+    const { ex, write, path } = setup();
+    const { out } = await ex(["start", "_smoke.1"], { json: false });
+    expect(out).toContain(`next:\n  read  ${PROBLEM}/README.md\n  test  pnpm ex test _smoke.1\n`);
+    expect(out).not.toContain("lab");
+
+    mkdirSync(path("src/routes/labs"), { recursive: true });
+    write("src/routes/labs/tour.tsx", "");
+    const { next } = await ex(["start", "00.1"]);
+    expect(next).toEqual({
+      readme: "exercises/00.tour/01.problem.run/README.md",
+      test: null,
+      lab: expect.stringMatching(/^http:\/\/[^/]+\/labs\/tour$/),
+    });
+  });
+
+  it("stop leaves no active step: playground/ emptied, and the dev server back on the reference", async () => {
+    const { ex, slotSwitch, playground, root } = setup();
+    await ex(["start", "_smoke.1"]);
+    slotSwitch.events = [];
+    expect(await ex(["stop"])).toEqual({
+      step: "_smoke.1",
+      removed: ["greeting.ts"],
+      restarted: ["dev server"],
+      cancelled: ["wrun_1"],
+      skipped: [],
+    });
+    expect(readState(root).activeStep).toBeNull();
+    expect(playground()).toEqual([]);
+    expect(slotSwitch.events.map((e) => [e.event, e.active])).toEqual([
+      ["pause", "_smoke.1"],
+      ["cancel", "_smoke.1"],
+      ["restart", null],
+    ]);
+    expect(await ex(["stop"])).toEqual({ step: null, removed: [] });
+  });
+
+  it("stop refuses to discard your changes without --force, and keeps your progress", async () => {
+    const { ex, write, read, playground, root } = setup();
+    await ex(["start", "_smoke.1"]);
+    write("playground/greeting.ts", "mine");
+    expect(await ex(["stop"], { ok: false })).toEqual({
+      error: "playground/ has changes to _smoke.1 that `pnpm ex stop` would discard",
+      detail: "`pnpm ex diff _smoke.1` shows them; `pnpm ex stop --force` discards them",
+    });
+    expect(read("playground/greeting.ts")).toBe("mine");
+    await ex(["stop", "--force"]);
+    expect(playground()).toEqual([]);
+    expect(readState(root)).toEqual({ activeStep: null, passed: [] });
   });
 
   it("solution needs the step to be active", async () => {
@@ -329,7 +388,65 @@ describe("test", SPAWNS_VITEST, () => {
           message: "Error: not written: x",
         },
       ],
+      warnings: [],
     });
+  });
+
+  it("prints each failing test's name and message, without colour codes or the report's path", async () => {
+    const { ex, write } = setup();
+    write(
+      `${PROBLEM}/greeting.test.ts`,
+      `import { expect, test } from "vitest";
+import { formatGreeting } from "#learn/_sample/greeting";
+
+test("greets by name", () => {
+  expect(formatGreeting("x")).toBe("hello x");
+});
+
+test("says hello", () => {
+  expect("hi", "a greeting starts with hello").toBe("hello");
+});
+
+test("is a string", () => {
+  expect(typeof "x").toBe("string");
+});
+`,
+    );
+    const { out } = await ex(["test", "_smoke.1", "--target", "problem"], { ok: false, json: false });
+    expect(out).toBe(
+      [
+        "running _smoke.1's tests...",
+        "_smoke.1 against its problem code: failed, 2 of 3 tests",
+        "",
+        "✗ greets by name",
+        "  Error: not written: x",
+        "",
+        "✗ says hello",
+        "  AssertionError: a greeting starts with hello: expected 'hi' to be 'hello' // Object.is equality",
+        "",
+      ].join("\n"),
+    );
+    const solved = await ex(["test", "_smoke.1", "--target", "solution"], { ok: false, json: false });
+    expect(solved.out).toContain("_smoke.1 against its solution code: failed, 1 of 3 tests");
+  });
+
+  it("warns that Postgres is down only when the step has database tests, and names the fix", async () => {
+    const { ex, write, read } = setup();
+    write("db-down.ts", 'export default () => console.warn("Postgres is unreachable at localhost:5432: skipping");\n');
+    write(
+      "vitest.config.ts",
+      VITEST_CONFIG.replace('environment: "node"', 'environment: "node", globalSetup: ["./db-down.ts"]'),
+    );
+    expect(await ex(["test", "_smoke.1", "--target", "solution"])).toMatchObject({ passed: true, warnings: [] });
+
+    const test = `${PROBLEM}/greeting.test.ts`;
+    write(test, `// A database test imports "@/db/testing"; this one only says so.\n${read(test)}`);
+    const warned = await ex(["test", "_smoke.1", "--target", "solution"]);
+    expect(warned.warnings).toEqual([
+      "Postgres is unreachable, so this step's database tests were skipped. Start it with `pnpm ex up`.",
+    ]);
+    const { out } = await ex(["test", "_smoke.1", "--target", "solution"], { json: false });
+    expect(out).toContain("\nwarning: Postgres is unreachable, so this step's database tests were skipped.");
   });
 
   it("grades the playground, and marks the step passed", async () => {
