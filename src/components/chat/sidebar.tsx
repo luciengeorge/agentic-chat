@@ -9,13 +9,13 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 
+import { useConversations } from "#learn/frontend/queries";
 import { pendingApprovals } from "@/components/agent/api";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { getConversations } from "@/routes/chat/-functions";
 
 export function ChatSidebar({
   activeId,
@@ -25,7 +25,7 @@ export function ChatSidebar({
   viewer: { name: string; email: string; tenant: { slug: string } };
 }) {
   const router = useRouter();
-  const conversations = useQuery({ queryKey: ["conversations"], queryFn: () => getConversations() });
+  const conversations = useConversations();
   const approvals = useQuery({
     queryKey: ["approvals", "pending"],
     queryFn: pendingApprovals,

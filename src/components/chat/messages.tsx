@@ -1,12 +1,14 @@
 import { Alert02Icon, File02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
+import { replyParts } from "#learn/frontend/chat";
+import { collapseRuns, resolveCitations, toOpenSource, type OpenSource } from "#learn/frontend/citations";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
-import type { ChatUIMessage, SourceRef, Verdict } from "./types";
+import type { ChatUIMessage } from "./types";
 
-import { CitationChip, collapseRuns, resolveCitations, toOpenSource, type OpenSource } from "./citations";
+import { CitationChip } from "./citations";
 import { Markdown, withoutOpenCitation } from "./markdown";
 
 export function UserMessage({ message }: { message: ChatUIMessage }) {
@@ -20,18 +22,6 @@ export function UserMessage({ message }: { message: ChatUIMessage }) {
   );
 }
 
-function partsOf(message: ChatUIMessage) {
-  let text = "";
-  let sources: SourceRef[] = [];
-  let verdict: Verdict | undefined;
-  for (const part of message.parts) {
-    if (part.type === "text") text += part.text;
-    else if (part.type === "data-sources") sources = part.data.sources;
-    else if (part.type === "data-verdict") verdict = part.data;
-  }
-  return { text, sources, verdict };
-}
-
 export function AssistantMessage({
   message,
   streaming,
@@ -41,7 +31,7 @@ export function AssistantMessage({
   streaming: boolean;
   onOpenSource: (source: OpenSource) => void;
 }) {
-  const { text, sources, verdict } = partsOf(message);
+  const { text, sources, verdict } = replyParts(message);
   const shown = streaming ? withoutOpenCitation(text) : text;
   const { resolved, cited } = resolveCitations(shown, sources, verdict);
   const body = collapseRuns(shown, resolved);

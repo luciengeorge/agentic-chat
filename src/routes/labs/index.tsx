@@ -1,8 +1,9 @@
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, type LinkProps } from "@tanstack/react-router";
 
 import { ChatSidebar } from "@/components/chat/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { getOptionalViewer } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/labs/")({
@@ -15,7 +16,25 @@ export const Route = createFileRoute("/labs/")({
   component: LabsPage,
 });
 
-const LABS = [
+interface Lab {
+  section: string;
+  title: string;
+  description: string;
+  /** The app's own page, or an outside one (`href`) such as Workflow's run viewer. */
+  to?: LinkProps["to"];
+  href?: string;
+  /** Refuses to run when the app runs as prod: it shows other people's access, or drives dev-only services. */
+  devOnly?: boolean;
+}
+
+const LABS: Lab[] = [
+  {
+    section: "00",
+    href: "/_workflow",
+    title: "Tour: the run viewer",
+    description: "Workflow's own dashboard: every run, its steps, their inputs and outputs, and where one failed.",
+    devOnly: true,
+  },
   {
     section: "01",
     to: "/labs/models",
@@ -27,6 +46,7 @@ const LABS = [
     to: "/labs/connectors",
     title: "Connectors",
     description: "Throttle fake-workspace, pin its clock, watch its webhooks, and crawl it with your connector.",
+    devOnly: true,
   },
   {
     section: "03",
@@ -53,12 +73,14 @@ const LABS = [
     to: "/labs/vectors",
     title: "Vectors",
     description: "Recall against search time for exact, HNSW, truncated, halfvec and bit vectors, run on your code.",
+    devOnly: true,
   },
   {
     section: "07",
     to: "/labs/lexical",
     title: "Lexical and hybrid",
     description: "One question ranked by BM25, by vectors and fused with RRF, side by side, as you would see it.",
+    devOnly: true,
   },
   {
     section: "08",
@@ -71,8 +93,57 @@ const LABS = [
     to: "/labs/acls",
     title: "Identity and ACLs",
     description: "Search as anyone, in either tenant: their groups, what came back, what was denied, the audit row.",
+    devOnly: true,
   },
-] as const;
+  {
+    section: "10",
+    to: "/labs/prompt",
+    title: "Prompt inspector",
+    description:
+      "Replay a recorded turn: the assembled prompt, the sources the budget kept and skipped, the reply, the verdict.",
+  },
+  {
+    section: "11",
+    to: "/labs/boundary",
+    title: "Request log",
+    description: "The last requests through the middleware: route, viewer, tenant, status, and rate-limit tokens left.",
+    devOnly: true,
+  },
+  {
+    section: "12",
+    to: "/chat",
+    title: "Frontend: the app itself",
+    description:
+      "The chat, its citation chips and the agent's timeline, on your code. Each step's README says what to click.",
+  },
+];
+
+const rowClass = "flex items-center gap-4 rounded-xl border px-4 py-3 transition-colors hover:bg-muted";
+
+function LabRow({ lab }: { lab: Lab }) {
+  const body = (
+    <>
+      <span className="font-mono text-sm text-muted-foreground tabular-nums">{lab.section}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex items-center gap-2 text-sm font-medium">
+          {lab.title}
+          {lab.devOnly ? <Badge variant="outline">dev only</Badge> : null}
+        </span>
+        <span className="text-sm text-muted-foreground">{lab.description}</span>
+      </span>
+      <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
+    </>
+  );
+  return lab.href ? (
+    <a href={lab.href} className={rowClass}>
+      {body}
+    </a>
+  ) : (
+    <Link to={lab.to} className={rowClass}>
+      {body}
+    </Link>
+  );
+}
 
 function LabsPage() {
   const { viewer } = Route.useRouteContext();
@@ -84,23 +155,14 @@ function LabsPage() {
           <div className="flex flex-col gap-1">
             <h1 className="text-xl font-semibold tracking-tight">Labs</h1>
             <p className="text-sm text-muted-foreground">
-              One page per section of the course. Each runs the app's own code, yours while a step is active.
+              One page per section of the course. Each runs the app's own code, yours while a step of its section is
+              active. Pages marked dev only refuse to run in production.
             </p>
           </div>
           <ul className="flex flex-col gap-2">
             {LABS.map((lab) => (
-              <li key={lab.to}>
-                <Link
-                  to={lab.to}
-                  className="flex items-center gap-4 rounded-xl border px-4 py-3 transition-colors hover:bg-muted"
-                >
-                  <span className="font-mono text-sm text-muted-foreground tabular-nums">{lab.section}</span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="text-sm font-medium">{lab.title}</span>
-                    <span className="text-sm text-muted-foreground">{lab.description}</span>
-                  </span>
-                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
-                </Link>
+              <li key={lab.to ?? lab.href}>
+                <LabRow lab={lab} />
               </li>
             ))}
           </ul>

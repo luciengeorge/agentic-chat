@@ -1,35 +1,33 @@
 import { createMiddleware } from "@tanstack/react-start";
 
-import type { Viewer as RetrievalViewer } from "#learn/retrieve/types";
+import type { Viewer } from "@/lib/auth-server";
 
-import { getViewer, type Viewer } from "@/lib/auth-server";
+import { viewerMiddleware as viewerOnly } from "#learn/boundary/middleware";
 
-/** The viewer for a request, or the 401 or 403 Response `getViewer` throws. */
-export async function viewerFrom(
-  request: Request,
-  load: (headers: Headers) => Promise<Viewer>,
-): Promise<Viewer | Response> {
-  try {
-    return await load(request.headers);
-  } catch (error) {
-    if (error instanceof Response) return error;
-    throw error;
-  }
-}
+/** The boundary lives in `#learn/boundary/middleware` (section 11.2); every importer keeps importing it from here. */
+export { scopeOf, viewerFrom } from "#learn/boundary/middleware";
 
-/**
- * The server boundary. Every server function and server route that acts for a user runs behind this one
- * middleware: it loads the session and the viewer's tenant (from their membership, never from the request), or
- * answers 401 or 403 before the handler runs. Handlers read `context.viewer`.
- *
- * `getViewer` is referenced only inside `.server()`, which the client build drops, so the auth code (and its
- * database driver) never reaches the browser.
- */
-export const viewerMiddleware = createMiddleware().server(async ({ next, request }) => {
-  const viewer = await viewerFrom(request, getViewer);
-  if (viewer instanceof Response) return viewer;
-  return next({ context: { viewer } });
+/** Dev only: notes each request that went through the boundary for `/labs/boundary`. It runs outside the viewer
+ * middleware, so a 401 or 403 it answers is noted too. */
+const requestLog = createMiddleware().server(async ({ next, request, pathname, serverFnMeta }) => {
+  const started = performance.now();
+  const result = await next();
+  const { recordRequest } = await import("@/components/labs/boundary-log");
+  await recordRequest({
+    request,
+    pathname,
+    serverFn: serverFnMeta ? { name: serverFnMeta.name, filename: serverFnMeta.filename } : undefined,
+    viewer: (result.context as unknown as { viewer?: Viewer } | undefined)?.viewer ?? null,
+    status: result.response?.status ?? 200,
+    ms: performance.now() - started,
+  });
+  return result;
 });
 
-/** The two ids retrieval and the database need. */
-export const scopeOf = (viewer: Viewer): RetrievalViewer => ({ tenantId: viewer.tenant.id, userId: viewer.userId });
+/**
+ * The server boundary: every server function and server route that acts for a user names this one middleware.
+ * Handlers read `context.viewer`.
+ */
+export const viewerMiddleware = createMiddleware()
+  .middleware([requestLog, viewerOnly])
+  .server(({ next }) => next());

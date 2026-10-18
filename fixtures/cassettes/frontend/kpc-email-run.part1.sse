@@ -1,0 +1,161 @@
+id: 1
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":1,"at":"2026-10-18T17:50:40.318Z","data":{"text":"Email Tom Whitfield a two-line summary of the payment terms in contract KPC-2026-0142.","type":"user_message","messageId":"1643d8ca-c562-4dd6-8cc6-0fcc47d576a4"}}
+
+id: 2
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":2,"at":"2026-10-18T17:50:42.577Z","data":{"to":"running","from":"queued","type":"status"}}
+
+id: 3
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":3,"at":"2026-10-18T17:50:44.561Z","data":{"text":"","type":"assistant_turn","usage":{"inputTokens":2135,"outputTokens":104,"reasoningTokens":0},"toolCalls":[{"tool":"make_plan","input":{"goal":"Email Tom Whitfield a two-line summary of the payment terms in contract KPC-2026-0142.","steps":["Find and read contract KPC-2026-0142 to identify its payment terms.","Look up Tom Whitfield in the company directory.","Email Tom a two-line summary of the payment terms."],"writes":[{"note":null,"tool":"send_mail","targets":["Tom Whitfield"],"documents":[]}]},"callId":"call_iTQ9G6G7RvJD9R9xBiDsgb8e"}]}}
+
+id: 4
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":4,"at":"2026-10-18T17:50:44.634Z","data":{"ok":true,"type":"tool_result","callId":"call_iTQ9G6G7RvJD9R9xBiDsgb8e","output":{"planned":1}}}
+
+id: 5
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":5,"at":"2026-10-18T17:50:46.121Z","data":{"text":"","type":"assistant_turn","usage":{"inputTokens":2218,"outputTokens":64,"reasoningTokens":0},"toolCalls":[{"tool":"search_documents","input":{"k":5,"query":"contract KPC-2026-0142 payment terms"},"callId":"call_GSNrCcT8jhHhN51GsfIc1YKZ"},{"tool":"find_person","input":{"query":"Tom Whitfield"},"callId":"call_4ZNSEFxr3ILrXGGNAD6zwGEI"}]}}
+
+id: 6
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":6,"at":"2026-10-18T17:50:49.456Z","data":{"ok":true,"type":"tool_result","callId":"call_GSNrCcT8jhHhN51GsfIc1YKZ","output":{"passages":[{"path":"/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf","text":"# Master Services Agreement\n\nContract number KPC-2026-0142\n\nBetween Kestrel Pay Ltd, company number 10873215, of 12 Harrow Yard, London EC2A 4PN (\"Kestrel\"), and Ashgrove Cloud Services Ltd, company number 08215573, of 4 Foundry Lane, Manchester M4 6BX (\"Ashgrove\").\n\nThis executed copy holds clauses 1 to 14 and the signed signature page. Schedules 1 to 4 are filed with it in the contract system.\n\n| Summary | Detail |\n| --- | --- |\n| Kestrel owner | Nadia Kowalski, Platform Engineering Lead |\n| Commencement Date | 1 April 2026 |\n| Initial term ends | 31 March 2029 |\n| Renewal | Automatic, for 12 months at a time |\n| Notice to stop a renewal | At least 90 days before the end of the current term (for the first renewal, by 31 December 2028) |\n| Committed charges | £61,400 a month; £2,210,400 over the initial term |","title":"KPC-2026-0142 Ashgrove MSA (executed).pdf","chunkId":"b7ec41f3-b222-4a2f-98cb-cefee9224a35","pageEnd":1,"pageStart":1,"documentId":"ab8c3047-7d49-4f3f-87a1-47aceb15df22"},{"path":"/Legal/Contracts/Contract Register 2026-09-28.pdf","text":"## Contracts logged 2026\n\n| Contract no. | Counterparty | Subject | Owner | Start | End | Renewal and notice | Annual value |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| KPC-2026-0033 | Carrow Finch LLP | Legal panel terms: commercial, regulatory and employment work | Helen Marsh | 01/02/2026 | 31/01/2028 | Fixed | About £350,000 |\n| KPC-2026-0071 | Quarry Lane Recruitment Ltd | Recruitment for engineering and product roles, 18% fee | Marco Bianchi | 01/04/2026 | 31/03/2027 | Fixed | About £150,000 |\n| KPC-2026-0141 | Northbridge Acquiring Ltd | Amendment 2 to KPC-2022-0019: 3-D Secure fees | Emily Tran | 01/04/2026 | Ends with KPC-2022-0019 | Not applicable | Included in KPC-2022-0019 |\n| KPC-2026-0142 | Ashgrove Cloud Services Ltd | Master services agreement: AWS capacity resale and 24/7 managed operations for the payments platform | Nadia Kowalski | 01/04/2026 | 31/03/2029 | Auto 12 months; 90 days' notice (first deadline 31/12/2028) | £736,800 committed |\n| KPC-2026-0143 | Ashgrove Cloud Services Ltd | Data processing agreement for KPC-2026-0142 (Schedule 4) | Nadia Kowalski | 01/04/2026 | Ends with KPC-2026-0142 | Not applicable | Not applicable |\n| KPC-2026-0187 | Brightwell Payroll Ltd | Partner and referral agreement: Pay with Kestrel inside Brightwell payroll | Julia Novak | 28/08/2026 | 27/08/2028 | Auto 12 months; 90 days' notice | Referral fees, about £60,000 in the first year |\n| KPC-2026-0298 | Restricted | Mutual non-disclosure agreement | Helen Marsh | 10/06/2026 | 09/06/2028 | Not applicable | Not applicable |","title":"Contract Register 2026-09-28.pdf","chunkId":"f3875ad5-9df3-41e9-b845-6fd11ac62a14","pageEnd":5,"pageStart":5,"documentId":"3d90b6c8-e446-4f9e-9279-d3b4c72a02ae"},{"path":"/Legal/Contracts/Contract Register 2026-09-28.pdf","text":"## How to read this register\n\n- What is listed. Every active contract worth £25,000 a year or more, every lease, every data processing agreement and every outsourcing arrangement we must report to a regulator. NDAs and order forms under £25,000 are held in the contract system but not listed here, unless the General Counsel asks for a restricted entry.\n\n- Numbers. Contract numbers take the form KPC-YYYY-NNNN. Legal issues them in sequence when it opens the contract matter, so the year is the year the matter was opened, which can differ from the signing date or the start date. From 1 January 2026 Legal also logs NDAs, order forms and amendments, which is why 2026 numbers run higher than earlier years. Always quote the full number: KPC-2026-0142 and KPC-2025-0142 are different contracts, and so are KPC-2026-0142 and KPC-2026-0412.\n\n- Owner is the Kestrel budget holder responsible for the contract. (KPE) marks a contract held by Kestrel Pay Europe Ltd.\n\n- Renewal. Auto: renews unless notice is given. Fixed: ends on the end date. Evergreen: no end date; ends on notice.\n\n- Annual value excludes VAT. Restricted entries show only the number, type, owner and dates; ask the General Counsel for details.\n\n- Dates are day/month/year.","title":"Contract Register 2026-09-28.pdf","chunkId":"c1837c86-f138-49e6-91b9-5563d8514f92","pageEnd":1,"pageStart":1,"documentId":"3d90b6c8-e446-4f9e-9279-d3b4c72a02ae"},{"path":"/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf","text":"## 14. Governing law\n\nThe law of England and Wales governs this agreement; the English courts have exclusive jurisdiction.\n\n‘Signature page a : : KPC-2026-0142: Master Services: Agreement between Kestrel Pay Ltd and Ashgrove Cloud . Services Ltd : 4 : oad e J % This agreement takes effect on the date of the last signature below. The Services start on the i Commencement Date in clause 2.1. : Z . Eg LL TT nN c Eee 0 ee Coma no heme Eee > [ChetTecoogyOoer © | Date ea TT Machooas SH EE SE a nes TY | mers dae owen | Wo. =~ LT 0 [Chief Financia Ofer Ln SL ee ry | + [Slonediorand on behalf of Ashgrove Cloud services ta | | Sekai en Lael EE ER IT ¢ © me = ae [veka Ea | eis IOwrConmemmOMor | : es. 0 ewan 0 \"RECEIVED BY KESTREL LEGAL 19 MAR 2026. Logged as KPC-2026-0142. ML Re . i","title":"KPC-2026-0142 Ashgrove MSA (executed).pdf","chunkId":"2ea6e168-c46c-4544-8df6-730b57e683ed","pageEnd":3,"pageStart":2,"documentId":"ab8c3047-7d49-4f3f-87a1-47aceb15df22"},{"path":"/Legal/Contracts/Contract Register 2026-09-28.pdf","text":"| Contract no. | Counterparty | Subject | Owner | Start | End | Renewal and notice | Annual value |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| KPC-2025-0231 | Sorrel Identity Ltd | Data processing agreement for KPC-2025-0230 | Julia Novak | 15/11/2025 | Ends with KPC-2025-0230 | Not applicable | Not applicable |\n| KPC-2025-0262 | Halden Insurance Brokers Ltd | 2026 insurance programme: D&O, PI, cyber and crime | Daniel Reyes | 01/01/2026 | 31/12/2026 | Annual; 2027 terms due by 30/11/2026 | £640,000 in premiums |","title":"Contract Register 2026-09-28.pdf","chunkId":"d33f70f1-e641-49b8-a129-349b0b90b91d","pageEnd":4,"pageStart":4,"documentId":"3d90b6c8-e446-4f9e-9279-d3b4c72a02ae"}]}}}
+
+id: 7
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":7,"at":"2026-10-18T17:50:49.456Z","data":{"ok":true,"type":"tool_result","callId":"call_4ZNSEFxr3ILrXGGNAD6zwGEI","output":{"people":[{"id":"e8a6bf31-0196-5c63-8cb6-9db675db14fa","kind":"user","name":"Tom Whitfield","email":"tom.whitfield@kestrelpay.example"}]}}}
+
+id: 8
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":8,"at":"2026-10-18T17:50:50.995Z","data":{"text":"","type":"assistant_turn","usage":{"inputTokens":4377,"outputTokens":48,"reasoningTokens":0},"toolCalls":[{"tool":"read_document","input":{"fromChunk":null,"documentId":"ab8c3047-7d49-4f3f-87a1-47aceb15df22"},"callId":"call_VX8jYSloK7QTgskZvfgaSpfd"}]}}
+
+id: 9
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":9,"at":"2026-10-18T17:50:51.075Z","data":{"ok":true,"type":"tool_result","callId":"call_VX8jYSloK7QTgskZvfgaSpfd","output":{"path":"/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf","title":"KPC-2026-0142 Ashgrove MSA (executed).pdf","chunks":[{"text":"# Master Services Agreement\n\nContract number KPC-2026-0142\n\nBetween Kestrel Pay Ltd, company number 10873215, of 12 Harrow Yard, London EC2A 4PN (\"Kestrel\"), and Ashgrove Cloud Services Ltd, company number 08215573, of 4 Foundry Lane, Manchester M4 6BX (\"Ashgrove\").\n\nThis executed copy holds clauses 1 to 14 and the signed signature page. Schedules 1 to 4 are filed with it in the contract system.\n\n| Summary | Detail |\n| --- | --- |\n| Kestrel owner | Nadia Kowalski, Platform Engineering Lead |\n| Commencement Date | 1 April 2026 |\n| Initial term ends | 31 March 2029 |\n| Renewal | Automatic, for 12 months at a time |\n| Notice to stop a renewal | At least 90 days before the end of the current term (for the first renewal, by 31 December 2028) |\n| Committed charges | £61,400 a month; £2,210,400 over the initial term |","chunkId":"b7ec41f3-b222-4a2f-98cb-cefee9224a35","pageEnd":1,"section":"Master Services Agreement","pageStart":1},{"text":"## 1. Definitions\n\n\"Services\" means the services in Schedule 1. \"Production Environment\" means the AWS clusters and databases that run Kestrel's live payments platform. \"Regulator\" means the FCA or any other authority with power over Kestrel.","chunkId":"8f45adc7-ff15-4377-879e-fd07d8baf7c5","pageEnd":1,"section":"1. Definitions","pageStart":1},{"text":"## 2. Term\n\n2.1 This agreement starts on 1 April 2026 (the \"Commencement Date\") and runs for an initial term of 36 months, ending on 31 March 2029.\n\n2.2 It then renews automatically for 12 months at a time, unless either party gives at least 90 days' written notice before the end of the current term.","chunkId":"c9e5d5d9-8434-462a-b868-67cc7df0e956","pageEnd":1,"section":"2. Term","pageStart":1},{"text":"## 3. Services\n\n3.1 Ashgrove will resell to Kestrel the AWS capacity in Schedule 1 and run Kestrel's AWS production environment (EKS clusters, Aurora PostgreSQL and Kafka) with 24/7 support.\n\n3.2 The Services run in the AWS eu-west-2 (London) region, with disaster recovery in eu-west-1 (Dublin). Ashgrove will not store or process Kestrel data in any other region without Kestrel's prior written consent.","chunkId":"8d21d94f-108c-40d5-8e84-1b8669362ec1","pageEnd":1,"section":"3. Services","pageStart":1},{"text":"## 4. Charges\n\n4.1 Kestrel will pay a fixed platform fee of £61,400 a month, excluding VAT, invoiced monthly in advance. The fee covers the committed AWS capacity and the managed service set out in Schedule 2.\n\n4.2 Use above the committed capacity is charged monthly in arrears at the rates in Schedule 2.\n\n4.3 From 1 April 2027, and on each 1 April after that, Ashgrove may increase the platform fee by the UK CPI rate for the previous January, up to a maximum of 4%.\n\n4.4 Kestrel will pay valid invoices within 30 days and may withhold any amount it disputes in good faith.","chunkId":"a05c31d4-8226-43d1-ad77-7a681a8fc6d5","pageEnd":1,"section":"4. Charges","pageStart":1},{"text":"## 5. Service levels\n\n5.1 The Production Environment will be available at least 99.95% of each month. Priority 1 incidents get a response within 15 minutes, 24 hours a day.\n\n5.2 For each 0.1% of availability below the target in a month, Kestrel gets a service credit of 5% of that month's platform fee, up to 25% of the fee.\n\n5.3 Kestrel may terminate under clause 10.3 if availability falls below 99.5% in any two consecutive months, or in any three months within a 12-month period.","chunkId":"5c65c57c-44c4-4b96-a997-fcd16fc0f36f","pageEnd":2,"section":"5. Service levels","pageStart":1},{"text":"## 6. Security\n\nAshgrove will keep ISO 27001 certification and its PCI DSS Level 1 service provider attestation, send Kestrel its SOC 2 Type II report every year, and report any security incident affecting Kestrel within 24 hours of becoming aware of it.","chunkId":"de31d158-105d-48bc-a7b5-3677e11fc8e4","pageEnd":2,"section":"6. Security","pageStart":2},{"text":"## 7. Data protection\n\nAshgrove processes personal data only as Kestrel's processor, under the data processing agreement in Schedule 4 (logged as KPC-2026-0143).","chunkId":"025fe98e-b7fa-494b-bb1b-e6892fc59a9a","pageEnd":2,"section":"7. Data protection","pageStart":2},{"text":"## 8. Audit and regulator access\n\nKestrel may audit Ashgrove once a year on 30 days' notice, and after any security incident. Any Regulator gets the access to premises, people and records it requires.","chunkId":"90f5cdc6-b82a-4aa0-a3fb-8dad20e50641","pageEnd":2,"section":"8. Audit and regulator access","pageStart":2},{"text":"## 9. Liability\n\nEach party's total liability in a contract year is limited to 150% of the charges paid or payable in the previous 12 months. Liability for breach of clause 7 or of confidentiality is limited separately to £5,000,000. Nothing limits liability for fraud, death or personal injury.","chunkId":"bfe0534b-e831-4a9b-bdbc-5087a5589c2b","pageEnd":2,"section":"9. Liability","pageStart":2},{"text":"## 10. Termination\n\n10.1 Kestrel may terminate for convenience on 6 months' written notice given on or after 1 October 2027 (18 months after the Commencement Date). It must then pay an early termination fee equal to 50% of the platform fees that would have been payable for the rest of the initial term.\n\n10.2 Either party may terminate if the other commits a material breach and does not remedy it within 30 days of notice, or becomes insolvent.\n\n10.3 Kestrel may terminate without paying an early termination fee under clause 5.3, or if a Regulator directs it to end the arrangement.","chunkId":"b02f0a8d-81ac-4a2e-98a5-44ccbd0bd80a","pageEnd":2,"section":"10. Termination","pageStart":2},{"text":"## 11. Exit\n\nOn expiry or termination, Ashgrove will give up to 6 months of exit assistance at the Schedule 2 rates, return all Kestrel data in standard formats, and delete it within 30 days after the exit period ends.","chunkId":"6ac93325-dc3d-4adf-b212-a473c81192b1","pageEnd":2,"section":"11. Exit","pageStart":2},{"text":"## 12. Subcontracting\n\nAshgrove may not subcontract any part of the Production Environment services without Kestrel's prior written consent, except to Amazon Web Services EMEA SARL as the underlying cloud provider.","chunkId":"122a3ccc-9c0b-4613-a002-af9d4401cb1e","pageEnd":2,"section":"12. Subcontracting","pageStart":2},{"text":"## 13. Disputes and notices\n\nDisputes go to the Kestrel owner and Ashgrove's account director, then to Kestrel's CTO and Ashgrove's CEO. Notices go to legal@kestrelpay.example and contracts@ashgrove-cloud.example.","chunkId":"6d742fc7-412b-4a6c-acb4-b14ffcf82545","pageEnd":2,"section":"13. Disputes and notices","pageStart":2},{"text":"## 14. Governing law\n\nThe law of England and Wales governs this agreement; the English courts have exclusive jurisdiction.\n\n‘Signature page a : : KPC-2026-0142: Master Services: Agreement between Kestrel Pay Ltd and Ashgrove Cloud . Services Ltd : 4 : oad e J % This agreement takes effect on the date of the last signature below. The Services start on the i Commencement Date in clause 2.1. : Z . Eg LL TT nN c Eee 0 ee Coma no heme Eee > [ChetTecoogyOoer © | Date ea TT Machooas SH EE SE a nes TY | mers dae owen | Wo. =~ LT 0 [Chief Financia Ofer Ln SL ee ry | + [Slonediorand on behalf of Ashgrove Cloud services ta | | Sekai en Lael EE ER IT ¢ © me = ae [veka Ea | eis IOwrConmemmOMor | : es. 0 ewan 0 \"RECEIVED BY KESTREL LEGAL 19 MAR 2026. Logged as KPC-2026-0142. ML Re . i","chunkId":"2ea6e168-c46c-4544-8df6-730b57e683ed","pageEnd":3,"section":"14. Governing law","pageStart":2}],"nextChunk":null,"documentId":"ab8c3047-7d49-4f3f-87a1-47aceb15df22"}}}
+
+event: token
+data: {"delta":"I"}
+
+event: token
+data: {"delta":" found"}
+
+event: token
+data: {"delta":" the"}
+
+event: token
+data: {"delta":" contract"}
+
+event: token
+data: {"delta":"’s"}
+
+event: token
+data: {"delta":" payment"}
+
+event: token
+data: {"delta":" terms"}
+
+event: token
+data: {"delta":" and"}
+
+event: token
+data: {"delta":" Tom"}
+
+event: token
+data: {"delta":"’s"}
+
+event: token
+data: {"delta":" directory"}
+
+event: token
+data: {"delta":" entry"}
+
+event: token
+data: {"delta":"."}
+
+event: token
+data: {"delta":" I"}
+
+event: token
+data: {"delta":"’m"}
+
+event: token
+data: {"delta":" about"}
+
+event: token
+data: {"delta":" to"}
+
+event: token
+data: {"delta":" email"}
+
+event: token
+data: {"delta":" Tom"}
+
+event: token
+data: {"delta":" a"}
+
+event: token
+data: {"delta":" two"}
+
+event: token
+data: {"delta":"-line"}
+
+event: token
+data: {"delta":" summary"}
+
+event: token
+data: {"delta":" covering"}
+
+event: token
+data: {"delta":" the"}
+
+event: token
+data: {"delta":" fee"}
+
+event: token
+data: {"delta":","}
+
+event: token
+data: {"delta":" billing"}
+
+event: token
+data: {"delta":" timing"}
+
+event: token
+data: {"delta":","}
+
+event: token
+data: {"delta":" payment"}
+
+event: token
+data: {"delta":" deadline"}
+
+event: token
+data: {"delta":","}
+
+event: token
+data: {"delta":" dispute"}
+
+event: token
+data: {"delta":" right"}
+
+event: token
+data: {"delta":","}
+
+event: token
+data: {"delta":" and"}
+
+event: token
+data: {"delta":" annual"}
+
+event: token
+data: {"delta":" increase"}
+
+event: token
+data: {"delta":" cap"}
+
+event: token
+data: {"delta":"."}
+
+: heartbeat
+
+id: 10
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":10,"at":"2026-10-18T17:50:59.299Z","data":{"text":"I found the contract’s payment terms and Tom’s directory entry. I’m about to email Tom a two-line summary covering the fee, billing timing, payment deadline, dispute right, and annual increase cap.","type":"assistant_turn","usage":{"inputTokens":6788,"outputTokens":468,"reasoningTokens":293},"toolCalls":[{"tool":"send_mail","input":{"to":["tom.whitfield@kestrelpay.example"],"body":"£61,400 monthly platform fee (ex VAT) is invoiced in advance; over-capacity usage is billed monthly in arrears at Schedule 2 rates.\nValid invoices are due within 30 days (good-faith disputed amounts may be withheld); the fee can increase each 1 April from 2027 by prior January UK CPI, capped at 4%.","subject":"Payment terms — KPC-2026-0142","attachmentDocumentIds":[]},"callId":"call_zFTm3VfVAJn45FamMz1KbAPa","screen":{"documents":[],"recipients":["Tom Whitfield <tom.whitfield@kestrelpay.example>"]}}]}}
+
+id: 11
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":11,"at":"2026-10-18T17:50:59.351Z","data":{"call":{"tool":"send_mail","input":{"to":["tom.whitfield@kestrelpay.example"],"body":"£61,400 monthly platform fee (ex VAT) is invoiced in advance; over-capacity usage is billed monthly in arrears at Schedule 2 rates.\nValid invoices are due within 30 days (good-faith disputed amounts may be withheld); the fee can increase each 1 April from 2027 by prior January UK CPI, capped at 4%.","subject":"Payment terms — KPC-2026-0142","attachmentDocumentIds":[]},"callId":"call_zFTm3VfVAJn45FamMz1KbAPa","screen":{"documents":[],"recipients":["Tom Whitfield <tom.whitfield@kestrelpay.example>"]}},"type":"approval_requested","expiresAt":"2026-10-25T17:50:59.350Z","approvalId":"71fc5274-520c-4915-a879-ede8e0499b24"}}
+
+id: 12
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":12,"at":"2026-10-18T17:50:59.351Z","data":{"to":"waiting","from":"running","type":"status","reason":"approval"}}
+

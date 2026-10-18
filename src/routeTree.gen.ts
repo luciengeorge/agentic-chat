@@ -21,11 +21,13 @@ import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversat
 import { Route as LabsIndexRouteImport } from './routes/labs/index'
 import { Route as LabsAclsRouteImport } from './routes/labs/acls'
 import { Route as LabsBackgroundRouteImport } from './routes/labs/background'
+import { Route as LabsBoundaryRouteImport } from './routes/labs/boundary'
 import { Route as LabsChunkingRouteImport } from './routes/labs/chunking'
 import { Route as LabsConnectorsRouteImport } from './routes/labs/connectors'
 import { Route as LabsLexicalRouteImport } from './routes/labs/lexical'
 import { Route as LabsModelsRouteImport } from './routes/labs/models'
 import { Route as LabsParsingRouteImport } from './routes/labs/parsing'
+import { Route as LabsPromptRouteImport } from './routes/labs/prompt'
 import { Route as LabsRerankRouteImport } from './routes/labs/rerank'
 import { Route as LabsVectorsRouteImport } from './routes/labs/vectors'
 import { Route as ApiApprovalsIndexRouteImport } from './routes/api/approvals/index'
@@ -111,6 +113,11 @@ const LabsBackgroundRoute = LabsBackgroundRouteImport.update({
   path: '/labs/background',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LabsBoundaryRoute = LabsBoundaryRouteImport.update({
+  id: '/labs/boundary',
+  path: '/labs/boundary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabsChunkingRoute = LabsChunkingRouteImport.update({
   id: '/labs/chunking',
   path: '/labs/chunking',
@@ -134,6 +141,11 @@ const LabsModelsRoute = LabsModelsRouteImport.update({
 const LabsParsingRoute = LabsParsingRouteImport.update({
   id: '/labs/parsing',
   path: '/labs/parsing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsPromptRoute = LabsPromptRouteImport.update({
+  id: '/labs/prompt',
+  path: '/labs/prompt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabsRerankRoute = LabsRerankRouteImport.update({
@@ -271,11 +283,13 @@ export interface FileRoutesByFullPath {
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/labs/acls': typeof LabsAclsRoute
   '/labs/background': typeof LabsBackgroundRoute
+  '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/models': typeof LabsModelsRoute
   '/labs/parsing': typeof LabsParsingRoute
+  '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
   '/labs/vectors': typeof LabsVectorsRoute
   '/chat/': typeof ChatIndexRoute
@@ -313,11 +327,13 @@ export interface FileRoutesByTo {
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/labs/acls': typeof LabsAclsRoute
   '/labs/background': typeof LabsBackgroundRoute
+  '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/models': typeof LabsModelsRoute
   '/labs/parsing': typeof LabsParsingRoute
+  '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
   '/labs/vectors': typeof LabsVectorsRoute
   '/chat': typeof ChatIndexRoute
@@ -357,11 +373,13 @@ export interface FileRoutesById {
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/labs/acls': typeof LabsAclsRoute
   '/labs/background': typeof LabsBackgroundRoute
+  '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/models': typeof LabsModelsRoute
   '/labs/parsing': typeof LabsParsingRoute
+  '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
   '/labs/vectors': typeof LabsVectorsRoute
   '/chat/': typeof ChatIndexRoute
@@ -402,11 +420,13 @@ export interface FileRouteTypes {
     | '/chat/$conversationId'
     | '/labs/acls'
     | '/labs/background'
+    | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
     | '/labs/lexical'
     | '/labs/models'
     | '/labs/parsing'
+    | '/labs/prompt'
     | '/labs/rerank'
     | '/labs/vectors'
     | '/chat/'
@@ -444,11 +464,13 @@ export interface FileRouteTypes {
     | '/chat/$conversationId'
     | '/labs/acls'
     | '/labs/background'
+    | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
     | '/labs/lexical'
     | '/labs/models'
     | '/labs/parsing'
+    | '/labs/prompt'
     | '/labs/rerank'
     | '/labs/vectors'
     | '/chat'
@@ -487,11 +509,13 @@ export interface FileRouteTypes {
     | '/chat/$conversationId'
     | '/labs/acls'
     | '/labs/background'
+    | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
     | '/labs/lexical'
     | '/labs/models'
     | '/labs/parsing'
+    | '/labs/prompt'
     | '/labs/rerank'
     | '/labs/vectors'
     | '/chat/'
@@ -530,11 +554,13 @@ export interface RootRouteChildren {
   ApiMeRoute: typeof ApiMeRoute
   LabsAclsRoute: typeof LabsAclsRoute
   LabsBackgroundRoute: typeof LabsBackgroundRoute
+  LabsBoundaryRoute: typeof LabsBoundaryRoute
   LabsChunkingRoute: typeof LabsChunkingRoute
   LabsConnectorsRoute: typeof LabsConnectorsRoute
   LabsLexicalRoute: typeof LabsLexicalRoute
   LabsModelsRoute: typeof LabsModelsRoute
   LabsParsingRoute: typeof LabsParsingRoute
+  LabsPromptRoute: typeof LabsPromptRoute
   LabsRerankRoute: typeof LabsRerankRoute
   LabsVectorsRoute: typeof LabsVectorsRoute
   LabsIndexRoute: typeof LabsIndexRoute
@@ -647,6 +673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabsBackgroundRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/labs/boundary': {
+      id: '/labs/boundary'
+      path: '/labs/boundary'
+      fullPath: '/labs/boundary'
+      preLoaderRoute: typeof LabsBoundaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/labs/chunking': {
       id: '/labs/chunking'
       path: '/labs/chunking'
@@ -680,6 +713,13 @@ declare module '@tanstack/react-router' {
       path: '/labs/parsing'
       fullPath: '/labs/parsing'
       preLoaderRoute: typeof LabsParsingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/prompt': {
+      id: '/labs/prompt'
+      path: '/labs/prompt'
+      fullPath: '/labs/prompt'
+      preLoaderRoute: typeof LabsPromptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/labs/rerank': {
@@ -891,11 +931,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMeRoute: ApiMeRoute,
   LabsAclsRoute: LabsAclsRoute,
   LabsBackgroundRoute: LabsBackgroundRoute,
+  LabsBoundaryRoute: LabsBoundaryRoute,
   LabsChunkingRoute: LabsChunkingRoute,
   LabsConnectorsRoute: LabsConnectorsRoute,
   LabsLexicalRoute: LabsLexicalRoute,
   LabsModelsRoute: LabsModelsRoute,
   LabsParsingRoute: LabsParsingRoute,
+  LabsPromptRoute: LabsPromptRoute,
   LabsRerankRoute: LabsRerankRoute,
   LabsVectorsRoute: LabsVectorsRoute,
   LabsIndexRoute: LabsIndexRoute,

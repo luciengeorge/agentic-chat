@@ -1,39 +1,28 @@
 import { createUIMessageStream, createUIMessageStreamResponse, type UIMessageStreamWriter } from "ai";
 import { randomUUID } from "node:crypto";
-import { z } from "zod";
 
 import type { ChatModel, ReasoningEffort } from "#learn/model/types";
 import type { Retrieve, Viewer } from "#learn/retrieve/types";
 import type { ChatUIMessage, SourceRef, Verdict } from "@/components/chat/types";
 import type { Db } from "@/db/create";
 
-import { validateCitations, type CitableSource } from "#learn/cite/citations";
+import { readChatTurn } from "#learn/boundary/chat-request";
+import { takeToken, type Bucket } from "#learn/boundary/rate-limit";
+import { HEARTBEAT_MS, withHeartbeat } from "#learn/boundary/stream";
+import { validateCitations } from "#learn/cite/citations";
 import { answer, type AnswerResult } from "#learn/generate/answer";
+import { sourceRef, verdictOf, writeAnswer, type StreamedAnswer } from "#learn/generate/stream";
 import { withTenantOn } from "@/db/tenant";
 import { createLogger } from "@/lib/logger";
-import { takeToken, type Bucket } from "@/lib/rate-limit";
 
 import { beginTurn, saveReply, type ReplyContent, type StoredReply } from "./-store";
 
 const logger = createLogger("chat");
 
-export const MAX_BODY_BYTES = 64 * 1024;
-export const MAX_QUESTION_CHARS = 4000;
-export const HEARTBEAT_MS = 15_000;
-
-/** What the browser sends: the conversation id and only the newest message (the server keeps the history). The
- * message id is the idempotency key. Nothing here names a tenant or a user: those come from the session. */
-export const ChatRequestSchema = z.object({
-  id: z.uuid(),
-  message: z.object({
-    id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
-    role: z.literal("user"),
-    parts: z
-      .array(z.object({ type: z.literal("text"), text: z.string() }))
-      .min(1)
-      .max(8),
-  }),
-});
+/** The request's limits live in `#learn/boundary/chat-request` (section 11.3), the heartbeat in
+ * `#learn/boundary/stream` (11.5). */
+export { ChatRequestSchema, MAX_BODY_BYTES, MAX_QUESTION_CHARS } from "#learn/boundary/chat-request";
+export { HEARTBEAT_MS, withHeartbeat };
 
 export interface ChatDeps {
   db: Db;
@@ -59,26 +48,11 @@ const json = (status: number, body: Record<string, unknown>, headers: HeadersIni
 
 /** `POST /api/chat`, behind `viewerMiddleware` (which gives `scope`): one question in, one answer streamed back as
  * a UI message stream. */
-export async function handleChat(request: Request, scope: Viewer, deps: ChatDeps): Promise<Response> {
-  // Content-length can be missing or wrong, so the body is measured again once read.
-  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return json(413, { error: "too_large" });
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return json(413, { error: "too_large" });
-  let body: unknown;
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    return json(400, { error: "invalid_json" });
-  }
-  const parsed = ChatRequestSchema.safeParse(body);
-  if (!parsed.success) return json(400, { error: "invalid_request", issues: z.flattenError(parsed.error).fieldErrors });
-
-  const question = parsed.data.message.parts
-    .map((p) => p.text)
-    .join("\n")
-    .trim();
-  if (!question) return json(400, { error: "empty_question" });
-  if (question.length > MAX_QUESTION_CHARS) return json(400, { error: "question_too_long", max: MAX_QUESTION_CHARS });
+export async function handleChat(request: Request, viewer: Viewer, deps: ChatDeps): Promise<Response> {
+  const chat = await readChatTurn(request, viewer);
+  if (chat instanceof Response) return chat;
+  // From here on, everything acts for the turn's scope: the session's viewer, never anything the body said.
+  const { scope, question, conversationId, messageKey: userKey } = chat;
 
   const inTenant = <T>(fn: Parameters<typeof withTenantOn<T>>[2]) => withTenantOn(deps.db, scope.tenantId, fn);
 
@@ -98,8 +72,6 @@ export async function handleChat(request: Request, scope: Viewer, deps: ChatDeps
     );
   }
 
-  const conversationId = parsed.data.id;
-  const userKey = parsed.data.message.id;
   const turn = await inTenant((tx) => beginTurn(tx, scope, conversationId, { key: userKey, text: question }));
   if (turn.kind === "not-found") return json(404, { error: "not_found" });
 
@@ -158,40 +130,28 @@ async function respond(
   writer.write({ type: "start", messageId: id });
 
   const retrieval = await deps.retrieve(scope, question);
-  let sources: SourceRef[] = [];
-  let fullSources: CitableSource[] = [];
-  let text = "";
-  let result: AnswerResult | null = null;
-  let textStarted = false;
+  const streamed: StreamedAnswer = { sources: [], text: "", result: null };
 
   try {
-    for await (const event of answer({
-      question,
-      history,
-      retrieval,
-      model: deps.model,
-      reasoningEffort: deps.reasoningEffort,
-      maxOutputTokens: deps.maxOutputTokens,
-      abortSignal: signal,
-    })) {
-      if (event.type === "sources") {
-        fullSources = event.sources;
-        sources = event.sources.map(({ text: _text, ...ref }) => ref);
-        writer.write({ type: "data-sources", id: "sources", data: { sources } });
-      } else if (event.type === "text-delta") {
-        if (!textStarted) writer.write({ type: "text-start", id: "text" });
-        textStarted = true;
-        text += event.delta;
-        writer.write({ type: "text-delta", id: "text", delta: event.delta });
-      } else {
-        result = event.result;
-      }
-    }
+    await writeAnswer(
+      writer,
+      answer({
+        question,
+        history,
+        retrieval,
+        model: deps.model,
+        reasoningEffort: deps.reasoningEffort,
+        maxOutputTokens: deps.maxOutputTokens,
+        abortSignal: signal,
+      }),
+      streamed,
+    );
   } catch (error) {
     if (!signal.aborted) throw error;
     // The client left: keep what it saw, marked as stopped. Nobody is reading the stream any more.
     // Its citations are checked like a finished answer's, but a cut-off answer isn't flagged for lacking them.
-    const report = validateCitations(text, fullSources);
+    const { text } = streamed;
+    const report = validateCitations(text, streamed.sources);
     const partial: AnswerResult = {
       text,
       report,
@@ -202,15 +162,27 @@ async function respond(
     };
     await save({
       id,
-      content: replyContent({ text, sources, result: partial, status: "aborted", retrieval, model: deps.model.id }),
+      content: replyContent({
+        text,
+        sources: streamed.sources.map(sourceRef),
+        result: partial,
+        status: "aborted",
+        retrieval,
+        model: deps.model.id,
+      }),
     });
     logger.info("chat turn aborted", { chars: text.length });
     return;
   }
 
-  if (textStarted) writer.write({ type: "text-end", id: "text" });
-  const content = replyContent({ text, sources, result, status: "complete", retrieval, model: deps.model.id });
-  writer.write({ type: "data-verdict", id: "verdict", data: content.verdict });
+  const content = replyContent({
+    text: streamed.text,
+    sources: streamed.sources.map(sourceRef),
+    result: streamed.result,
+    status: "complete",
+    retrieval,
+    model: deps.model.id,
+  });
   await save({ id, content });
   writer.write({ type: "finish", finishReason: "stop" });
 }
@@ -231,12 +203,7 @@ function replyContent({
   model: string;
 }): ReplyContent {
   const verdict: Verdict = result
-    ? {
-        citations: result.report.citations,
-        dropped: result.report.dropped,
-        abstained: result.abstained,
-        flagged: result.flagged,
-      }
+    ? verdictOf(result)
     : { citations: [], dropped: [], abstained: false, flagged: false };
   return {
     text,
@@ -261,52 +228,6 @@ function replay(reply: StoredReply) {
       writer.write({ type: "text-end", id: "text" });
       writer.write({ type: "data-verdict", id: "verdict", data: reply.content.verdict });
       writer.write({ type: "finish", finishReason: "stop" });
-    },
-  });
-}
-
-const HEARTBEAT = new TextEncoder().encode(": heartbeat\n\n");
-
-/**
- * Sends an SSE comment every `intervalMs` while the answer is quiet (retrieval and reasoning can take a while),
- * so proxies don't close an idle connection. Clients ignore comments. Upstream chunks are whole events, so a
- * heartbeat never lands inside one. `onCancel` runs when the client goes away.
- */
-export function withHeartbeat(
-  body: ReadableStream<Uint8Array>,
-  intervalMs: number,
-  onCancel: () => void,
-): ReadableStream<Uint8Array> {
-  const reader = body.getReader();
-  let timer: ReturnType<typeof setInterval> | undefined;
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      timer = setInterval(() => {
-        try {
-          controller.enqueue(HEARTBEAT);
-        } catch {
-          clearInterval(timer);
-        }
-      }, intervalMs);
-    },
-    async pull(controller) {
-      try {
-        const { value, done } = await reader.read();
-        if (done) {
-          clearInterval(timer);
-          controller.close();
-        } else {
-          controller.enqueue(value);
-        }
-      } catch (error) {
-        clearInterval(timer);
-        controller.error(error);
-      }
-    },
-    async cancel(reason) {
-      clearInterval(timer);
-      onCancel();
-      await reader.cancel(reason);
     },
   });
 }

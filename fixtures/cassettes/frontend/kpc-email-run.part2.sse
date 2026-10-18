@@ -1,0 +1,84 @@
+id: 13
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":13,"at":"2026-10-18T17:51:01.544Z","data":{"by":"0ae8fa04-8d89-5fd9-b3f0-17a15e8a72f6","type":"approval_decided","decision":"approved","approvalId":"71fc5274-520c-4915-a879-ede8e0499b24"}}
+
+id: 14
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":14,"at":"2026-10-18T17:51:01.660Z","data":{"to":"running","from":"waiting","type":"status"}}
+
+id: 15
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":15,"at":"2026-10-18T17:51:01.690Z","data":{"ok":true,"type":"tool_result","callId":"call_zFTm3VfVAJn45FamMz1KbAPa","output":{"to":["tom.whitfield@kestrelpay.example"],"sent":true,"subject":"Payment terms — KPC-2026-0142","attachments":[]}}}
+
+event: token
+data: {"delta":"E"}
+
+event: token
+data: {"delta":"ma"}
+
+event: token
+data: {"delta":"iled"}
+
+event: token
+data: {"delta":" Tom"}
+
+event: token
+data: {"delta":" Whit"}
+
+event: token
+data: {"delta":"field"}
+
+event: token
+data: {"delta":" the"}
+
+event: token
+data: {"delta":" two"}
+
+event: token
+data: {"delta":"-line"}
+
+event: token
+data: {"delta":" summary"}
+
+event: token
+data: {"delta":" of"}
+
+event: token
+data: {"delta":" payment"}
+
+event: token
+data: {"delta":" terms"}
+
+event: token
+data: {"delta":" in"}
+
+event: token
+data: {"delta":" K"}
+
+event: token
+data: {"delta":"PC"}
+
+event: token
+data: {"delta":"-"}
+
+event: token
+data: {"delta":"202"}
+
+event: token
+data: {"delta":"6"}
+
+event: token
+data: {"delta":"-"}
+
+event: token
+data: {"delta":"014"}
+
+event: token
+data: {"delta":"2"}
+
+event: token
+data: {"delta":"."}
+
+id: 16
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":16,"at":"2026-10-18T17:51:02.808Z","data":{"text":"Emailed Tom Whitfield the two-line summary of payment terms in KPC-2026-0142.","type":"assistant_turn","usage":{"inputTokens":7008,"outputTokens":27,"reasoningTokens":0},"toolCalls":[]}}
+
+id: 17
+data: {"runId":"52a826fa-5e51-45b7-812a-873be72226c1","seq":17,"at":"2026-10-18T17:51:02.840Z","data":{"to":"succeeded","from":"running","type":"status"}}
+
