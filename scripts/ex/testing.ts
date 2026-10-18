@@ -23,7 +23,8 @@ export type TestResult = {
   message: string | null;
 };
 
-export type StepRun = { step: string; target: Target; passed: boolean; tests: TestResult[] };
+/** `warnings` are things worth fixing that didn't fail the run: Postgres down, so the step's database tests skipped. */
+export type StepRun = { step: string; target: Target; passed: boolean; tests: TestResult[]; warnings: string[] };
 
 const RUNNER = fileURLToPath(new URL("./vitest-run.ts", import.meta.url));
 const TSX = createRequire(import.meta.url).resolve("tsx");
@@ -99,17 +100,20 @@ type JsonReport = {
   }[];
 };
 
-/** The error line(s) of a failure, without the stack trace. */
+const ANSI = /\u001b\[[0-9;]*m/g;
+
+/** The error line(s) of a failure, without the stack trace or colour codes. */
 function firstMessage(text: string | undefined): string | null {
   if (!text) return null;
-  const lines = text.split("\n");
+  const lines = text.replace(ANSI, "").split("\n");
   const stack = lines.findIndex((line) => /^\s+at /.test(line));
   return (stack === -1 ? lines : lines.slice(0, stack)).join("\n").trim() || null;
 }
 
 /**
  * Vitest's JSON report, one entry per test, plus one `error` entry per file that failed outside a test.
- * Sorted by nodeid: with projects, Vitest lists files in whatever order the projects finish.
+ * Sorted by file, and in file order within one: with projects, Vitest lists files in whatever order the projects
+ * finish.
  */
 export function parseReport(root: string, report: JsonReport): TestResult[] {
   return report.testResults
@@ -126,7 +130,20 @@ export function parseReport(root: string, report: JsonReport): TestResult[] {
       }
       return tests;
     })
-    .sort((a, b) => (a.nodeid < b.nodeid ? -1 : a.nodeid > b.nodeid ? 1 : 0));
+    .sort((a, b) => {
+      const [fileA, fileB] = [a.nodeid.split(" > ")[0]!, b.nodeid.split(" > ")[0]!];
+      return fileA < fileB ? -1 : fileA > fileB ? 1 : 0;
+    });
+}
+
+/** What global setup prints when it can't reach Postgres (`src/db/test/global-setup.ts`). */
+const POSTGRES_DOWN = "Postgres is unreachable";
+
+/** A step's tests use a database when one of them imports the test database helpers. */
+export function hasDatabaseTests(step: Step): boolean {
+  return stepFiles(step.problemDir)
+    .filter(isTestFile)
+    .some((name) => /["']@\/db\/testing["']/.test(readFileSync(join(step.problemDir, name), "utf8")));
 }
 
 /**
@@ -179,7 +196,11 @@ export async function runStepTests(
     // Vitest reports real paths.
     const tests = parseReport(realpathSync(root), JSON.parse(readFileSync(report, "utf8")) as JsonReport);
     const passed = result.code === 0 && tests.some((test) => test.outcome === "passed");
-    return { step: step.id, target, passed, tests };
+    const warnings =
+      capture && `${result.stdout}${result.stderr}`.includes(POSTGRES_DOWN) && hasDatabaseTests(step)
+        ? ["Postgres is unreachable, so this step's database tests were skipped. Start it with `pnpm ex up`."]
+        : [];
+    return { step: step.id, target, passed, tests, warnings };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
     if (workflowRoot) rmSync(workflowRoot, { recursive: true, force: true });

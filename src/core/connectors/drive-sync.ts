@@ -31,7 +31,7 @@ export interface DriveSyncReport {
   cursor: string;
 }
 
-function emptyReport(cursor: string): DriveSyncReport {
+export function emptyReport(cursor: string): DriveSyncReport {
   return {
     files: 0,
     created: 0,
@@ -88,7 +88,7 @@ export async function deltaSync(tx: Tx, tenantId: string, source: Connector, cur
 }
 
 /** Creates or updates the file's document, and stamps its ACL. New content means a new version to ingest. */
-async function applyFile(
+export async function applyFile(
   tx: Tx,
   tenantId: string,
   source: Connector,

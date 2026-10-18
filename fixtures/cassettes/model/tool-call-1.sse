@@ -1,0 +1,63 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_04455b388f9a2262016ad4e642deb487d2af4e8dcff589c594","object":"response","created_at":1792337474,"status":"in_progress","access_programs":null,"background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You are Kestrel Pay's assistant. Find facts with search_documents before you answer, and answer only from what it returns. Be brief.","max_output_tokens":2000,"max_tool_calls":null,"model":"gpt-6-luna","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"all_turns","effort":"medium","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"auto","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"function","description":"Search the company documents the user can read. Returns the best passages with their document ids, titles, paths and pages. Use read_document to read a whole document.","name":"search_documents","output_schema":null,"parameters":{"type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":500,"description":"What to look for, in plain words."},"k":{"anyOf":[{"type":"integer","minimum":1,"maximum":8},{"type":"null"}],"description":"How many passages to return, 1 to 8 (default 8)."}},"required":["query","k"],"additionalProperties":false},"strict":true}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":0}
+
+event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_04455b388f9a2262016ad4e642deb487d2af4e8dcff589c594","object":"response","created_at":1792337474,"status":"in_progress","access_programs":null,"background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You are Kestrel Pay's assistant. Find facts with search_documents before you answer, and answer only from what it returns. Be brief.","max_output_tokens":2000,"max_tool_calls":null,"model":"gpt-6-luna","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"all_turns","effort":"medium","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"auto","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"function","description":"Search the company documents the user can read. Returns the best passages with their document ids, titles, paths and pages. Use read_document to read a whole document.","name":"search_documents","output_schema":null,"parameters":{"type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":500,"description":"What to look for, in plain words."},"k":{"anyOf":[{"type":"integer","minimum":1,"maximum":8},{"type":"null"}],"description":"How many passages to return, 1 to 8 (default 8)."}},"required":["query","k"],"additionalProperties":false},"strict":true}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":1}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","type":"function_call","status":"in_progress","arguments":"","call_id":"call_IyXA5wBnbLEOgiPMVwEOKVJR","name":"search_documents"},"output_index":0,"sequence_number":2}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"{\"","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"2uRXLt8V08vhCk","output_index":0,"sequence_number":3}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"query","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"Lo4BEa4F2fG","output_index":0,"sequence_number":4}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\":\"","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"gFpRsbDs2mZoF","output_index":0,"sequence_number":5}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"hotel","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"9glQd2B3iM8","output_index":0,"sequence_number":6}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":" nightly","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"BSS9bbmr","output_index":0,"sequence_number":7}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":" limit","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"Lj1qWDVCNe","output_index":0,"sequence_number":8}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":" London","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"50ThAGfwD","output_index":0,"sequence_number":9}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":" lodging","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"lHeFIC7j","output_index":0,"sequence_number":10}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":" travel","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"lWWlDp1So","output_index":0,"sequence_number":11}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":" expenses","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"GrPTvg0","output_index":0,"sequence_number":12}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\",\"","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"qpaZAiVmZVeCs","output_index":0,"sequence_number":13}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"k","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"WfwY3oWBP7cPkvl","output_index":0,"sequence_number":14}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"\":","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"UmpKoQKqEMhiWc","output_index":0,"sequence_number":15}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"5","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"Pv4BuKKH8BxNkmS","output_index":0,"sequence_number":16}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","delta":"}","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","obfuscation":"IAiztn1lsQHL08f","output_index":0,"sequence_number":17}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","arguments":"{\"query\":\"hotel nightly limit London lodging travel expenses\",\"k\":5}","item_id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","output_index":0,"sequence_number":18}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","type":"function_call","status":"completed","arguments":"{\"query\":\"hotel nightly limit London lodging travel expenses\",\"k\":5}","call_id":"call_IyXA5wBnbLEOgiPMVwEOKVJR","name":"search_documents"},"output_index":0,"sequence_number":19}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_04455b388f9a2262016ad4e642deb487d2af4e8dcff589c594","object":"response","created_at":1792337474,"status":"completed","access_programs":null,"background":false,"completed_at":1792337476,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You are Kestrel Pay's assistant. Find facts with search_documents before you answer, and answer only from what it returns. Be brief.","max_output_tokens":2000,"max_tool_calls":null,"model":"gpt-6-luna","moderation":null,"output":[{"id":"fc_04455b388f9a2262016ad4e643d5a487d2a2cbd0969b6c79f2","type":"function_call","status":"completed","arguments":"{\"query\":\"hotel nightly limit London lodging travel expenses\",\"k\":5}","call_id":"call_IyXA5wBnbLEOgiPMVwEOKVJR","name":"search_documents"}],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"all_turns","effort":"medium","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"default","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"function","description":"Search the company documents the user can read. Returns the best passages with their document ids, titles, paths and pages. Use read_document to read a whole document.","name":"search_documents","output_schema":null,"parameters":{"type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":500,"description":"What to look for, in plain words."},"k":{"anyOf":[{"type":"integer","minimum":1,"maximum":8},{"type":"null"}],"description":"How many passages to return, 1 to 8 (default 8)."}},"required":["query","k"],"additionalProperties":false},"strict":true}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":{"input_tokens":172,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":28,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":200},"user":null,"metadata":{}},"sequence_number":20}
+

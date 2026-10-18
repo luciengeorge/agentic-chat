@@ -5,12 +5,12 @@
  */
 import { eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { FatalError, RetryableError } from "workflow";
+import { FatalError } from "workflow";
 
 import type { Connector } from "#learn/connectors/types";
 
 import { createGraphClient, type GraphClient, graphConnector } from "#learn/connectors/graph";
-import { ConnectorError } from "#learn/connectors/types";
+import { stepError } from "#learn/queue/retry";
 import { appDb } from "@/db/pool";
 import { organization } from "@/db/schema";
 import { acEnv } from "@/lib/env";
@@ -69,18 +69,7 @@ export function ingestStart(env: Record<string, string | undefined> = process.en
   return env.INGEST_START === "workflow-first" ? "workflow-first" : "outbox";
 }
 
-/**
- * Throttling, outages and lost connections retry (after `Retry-After` when the service gave one); any other
- * answer from the service means the request itself is wrong, which retrying won't fix.
- */
-export function stepError(error: unknown): unknown {
-  if (error instanceof ConnectorError) {
-    if (error.retryable) return new RetryableError(error.message, { retryAfter: error.retryAfterMs ?? 2_000 });
-    return new FatalError(error.message);
-  }
-  return error;
-}
-
+/** Runs a step's work, turning a connector's errors into Workflow's retry decisions (`stepError`). */
 export async function asStep<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();

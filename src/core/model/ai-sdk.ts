@@ -10,7 +10,7 @@ import {
   type ToolSet,
 } from "ai";
 
-import type { ChatMessage, ChatModel, FinishReason, StructuredModel, ToolChoice, ToolSpec } from "./types";
+import type { ChatMessage, ChatModel, FinishReason, StructuredModel, ToolChoice, ToolSpec } from "#learn/model/types";
 
 const finishReason = (reason: SdkFinishReason): FinishReason =>
   reason === "stop" || reason === "length" || reason === "tool-calls" ? reason : "other";

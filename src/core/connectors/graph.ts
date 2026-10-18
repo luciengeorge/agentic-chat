@@ -2,17 +2,13 @@
  * A client for a Microsoft Graph-style drive and directory (fake-workspace plays SharePoint and Entra ID). It
  * pages with `@odata.nextLink`, backs off on 429 as `Retry-After` says, reads changes with delta, and lists
  * permissions, content and the directory. It holds no state: the caller keeps the delta link (in `sync_state`).
- * `graphConnector` wraps it as a `Connector` (`#learn/connectors/types`), which is all drive sync sees.
+ * `graphConnector` (`#learn/connectors/graph-connector`) wraps it as a `Connector`, which is all drive sync sees.
  */
-import {
-  type Change,
-  type Connector,
-  ConnectorError,
-  ResyncRequiredError,
-  type SourceFile,
-} from "#learn/connectors/types";
+import { ConnectorError, ResyncRequiredError } from "#learn/connectors/types";
 
 export { ResyncRequiredError };
+// The Graph client as a `Connector` lives on its own (section 02, step 1), and is exported from here too.
+export { grantedIds, graphConnector, toSourceFile } from "#learn/connectors/graph-connector";
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -90,7 +86,7 @@ export interface CrawledFile {
   path: string;
 }
 
-const RETRY_STATUSES = new Set([429, 503]);
+export const RETRY_STATUSES = new Set([429, 503]);
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -117,6 +113,16 @@ export function retryAfterMs(response: Response): number | null {
   return Number.isNaN(date) ? null : Math.max(0, date - Date.now());
 }
 
+/**
+ * How long to wait before trying `response`'s request again, or null to give up: only a throttle (429) or an
+ * outage (503) is worth another try, and only `maxRetries` times. The wait is what `Retry-After` says, or without
+ * one 500 ms doubling each attempt, at most 30 s.
+ */
+export function retryDelay(response: Response, attempt: number, maxRetries: number): number | null {
+  if (!RETRY_STATUSES.has(response.status) || attempt >= maxRetries) return null;
+  return retryAfterMs(response) ?? Math.min(500 * 2 ** attempt, 30_000);
+}
+
 export function createGraphClient(options: GraphClientOptions) {
   const { site, token, maxRetries = 5, pageSize = 100 } = options;
   const fetch = options.fetch ?? globalThis.fetch;
@@ -138,13 +144,14 @@ export function createGraphClient(options: GraphClientOptions) {
         throw new GraphRequestError(0, "networkError", `${init.method ?? "GET"} ${path}: ${(error as Error).message}`);
       }
       if (response.ok) return response;
-      const wait = retryAfterMs(response);
-      if (RETRY_STATUSES.has(response.status) && attempt < maxRetries) {
+      const wait = retryDelay(response, attempt, maxRetries);
+      if (wait !== null) {
+        // Free the connection: an unread body holds it open.
         await response.body?.cancel();
-        await sleep(wait ?? Math.min(500 * 2 ** attempt, 30_000));
+        await sleep(wait);
         continue;
       }
-      throw await errorFrom(response, path, wait);
+      throw await errorFrom(response, path, retryAfterMs(response));
     }
   }
 
@@ -294,90 +301,6 @@ export function createGraphClient(options: GraphClientOptions) {
 }
 
 export type GraphClient = ReturnType<typeof createGraphClient>;
-
-/**
- * The directory ids an item's effective permissions grant, own and inherited alike (Graph lists both). Read and
- * write both let a person find the document, so both count. Sharing links and anything without a user or group
- * grant nobody.
- */
-export function grantedIds(permissions: readonly Permission[]): string[] {
-  const ids = new Set<string>();
-  for (const { grantedToV2 } of permissions) {
-    const id = grantedToV2.user?.id ?? grantedToV2.group?.id;
-    if (id) ids.add(id);
-  }
-  return [...ids].sort();
-}
-
-/** A drive item as a `SourceFile`. Only files are: a folder isn't a document. */
-export function toSourceFile(item: DriveItem, path: string): SourceFile {
-  const contentHash = sha256Of(item);
-  if (!item.file || !contentHash) throw new Error(`item ${item.id} at ${path} isn't a file`);
-  return {
-    id: item.id,
-    name: item.name,
-    path,
-    mimeType: item.file.mimeType,
-    version: item.eTag,
-    contentHash,
-  };
-}
-
-/**
- * The Graph client as a `Connector`. Graph's delta lists a changed item without its path, and a renamed or moved
- * folder without its contents, so a changed file is read again for its path and a changed folder's files are
- * crawled again (which re-paths what a folder rename moved). A file deleted between the delta and the read is
- * skipped: the next delta brings its tombstone.
- */
-export function graphConnector(graph: GraphClient): Connector {
-  return {
-    async *crawl() {
-      for await (const page of graph.crawlPages()) yield page.map(({ item, path }) => toSourceFile(item, path));
-    },
-
-    latestCursor: () => graph.latestDeltaLink(),
-
-    async delta(cursor) {
-      const { changes, deltaLink } = await graph.delta(cursor);
-      const out: Change[] = [];
-      for (const change of changes) {
-        if (change.deleted) {
-          out.push({ type: "deleted", id: change.id });
-        } else if ("root" in change && change.root) {
-          continue;
-        } else if ("folder" in change && change.folder) {
-          for await (const page of graph.crawlPages(change.id)) {
-            for (const { item, path } of page) out.push({ type: "file", file: toSourceFile(item, path) });
-          }
-        } else {
-          let item: DriveItem;
-          try {
-            item = await graph.item(change.id);
-          } catch (error) {
-            if (error instanceof GraphRequestError && error.status === 404) continue;
-            throw error;
-          }
-          out.push({ type: "file", file: toSourceFile(item, itemPath(item)) });
-        }
-      }
-      return { changes: out, cursor: deltaLink };
-    },
-
-    permissions: async (fileId) => grantedIds(await graph.permissions(fileId)),
-
-    content: (fileId) => graph.content(fileId),
-
-    async subscribe({ notificationUrl, clientState, expiresAt }) {
-      const subscription = await graph.subscribe({ notificationUrl, clientState, expirationDateTime: expiresAt });
-      return { id: subscription.id, expiresAt: new Date(subscription.expirationDateTime) };
-    },
-
-    async renew(subscriptionId, expiresAt) {
-      const subscription = await graph.renew(subscriptionId, expiresAt);
-      return { id: subscription.id, expiresAt: new Date(subscription.expirationDateTime) };
-    },
-  };
-}
 
 async function errorFrom(response: Response, path: string, retryAfter: number | null): Promise<GraphRequestError> {
   let code = "unknown";

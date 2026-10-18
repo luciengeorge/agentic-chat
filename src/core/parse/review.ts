@@ -11,17 +11,15 @@ import { sql } from "drizzle-orm";
 
 import type { Chunk } from "#learn/chunk/types";
 import type { Embedder } from "#learn/embed/embed";
+import type { Page, ParseDeps } from "#learn/parse/types";
 import type { Tx } from "@/db/tenant";
 
 import { chunk } from "#learn/chunk/chunk";
+import { parse, PDF } from "#learn/parse/parse";
+import { ocrBlocks } from "#learn/parse/pdf";
 import { readable } from "#learn/retrieve/acl";
 import { uuidArray } from "#learn/search/sql";
 import { chunks, ocrReviews } from "@/db/schema";
-
-import type { Page, ParseDeps } from "./types";
-
-import { parse, PDF } from "./parse";
-import { ocrBlocks } from "./pdf";
 
 /**
  * Pages under this mean word confidence (0 to 100) are queued. On this corpus tesseract scores the handwriting 83

@@ -79,7 +79,7 @@ function loadStep(sectionId: string, sectionHidden: boolean, problemDir: string,
   };
 }
 
-function loadSection(dir: string, name: string): Section {
+function loadSection(dir: string, name: string, strict: boolean): Section {
   const match = SECTION_DIR.exec(name)!.groups!;
   const readme = join(dir, STEP_README);
   const meta = existsSync(readme) ? parseMeta(SectionMeta, readme) : SectionMeta.parse({});
@@ -94,6 +94,9 @@ function loadSection(dir: string, name: string): Section {
   }
   const steps = [...problems]
     .sort(([a], [b]) => a - b)
+    // A step still being written (no README, or no solution dir yet) is left out, so it can't break `ex` for
+    // a learner working on another step. The gate is strict: there it's an error.
+    .filter(([num, problem]) => strict || (existsSync(join(problem, STEP_README)) && solutions.has(num)))
     .map(([num, problem]) => {
       const solution = solutions.get(num);
       if (!solution) throw new ExError(`${problem} has no matching solution directory`);
@@ -102,12 +105,12 @@ function loadSection(dir: string, name: string): Section {
   return { id, slug, title: meta.title ?? slug, hidden: meta.hidden, steps };
 }
 
-export function loadCatalog(root: string): Section[] {
+export function loadCatalog(root: string, { strict = false }: { strict?: boolean } = {}): Section[] {
   const exercises = join(root, "exercises");
   if (!existsSync(exercises)) return [];
   const sections = readdirSync(exercises, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && SECTION_DIR.test(entry.name))
-    .map((entry) => loadSection(join(exercises, entry.name), entry.name));
+    .map((entry) => loadSection(join(exercises, entry.name), entry.name, strict));
   // Hidden sections (`_smoke`) sort after the numbered ones.
   const key = (section: Section) => `${section.id.startsWith("_") ? 1 : 0}${section.id}`;
   return sections.sort((a, b) => (key(a) < key(b) ? -1 : 1));

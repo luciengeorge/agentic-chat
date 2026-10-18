@@ -65,6 +65,15 @@ export function activate(root: string, step: Step): string[] {
   return files;
 }
 
+/** No active step: playground/ emptied, so the app's slots load the reference again. Returns what it removed. */
+export function deactivate(root: string): string[] {
+  const dir = playground(root);
+  const removed = existsSync(dir) ? readdirSync(dir).filter((name) => name !== ".DS_Store") : [];
+  for (const name of removed) rmSync(join(dir, name), { recursive: true, force: true });
+  writeState(root, { ...readState(root), activeStep: null });
+  return removed.sort();
+}
+
 export function markPassed(root: string, step: Step): void {
   const state = readState(root);
   writeState(root, { ...state, passed: [...state.passed, step.id] });
