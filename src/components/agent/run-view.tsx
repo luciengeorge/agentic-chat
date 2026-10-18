@@ -2,13 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { childRunId, DELEGATE_TOOL } from "#learn/agent/orchestrate";
+import { useRunStream } from "#learn/frontend/run-stream";
 
 import type { Decision } from "./approval-card";
 
 import { cancelRun, decideApproval } from "./api";
 import { RunTimeline } from "./run-timeline";
 import { foldTimeline, statusOf } from "./timeline";
-import { useRunStream } from "./use-run-stream";
 
 /** A run in the chat, live: its stream, and the approve, reject and cancel actions. A sub-agent's run shows nested
  * under the delegate call that started it. */

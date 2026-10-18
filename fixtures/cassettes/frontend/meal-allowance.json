@@ -1,0 +1,1416 @@
+{
+  "recorded": "2026-10-18T17:50:26.868Z",
+  "user": "leo.martin",
+  "viewer": {
+    "userId": "0ae8fa04-8d89-5fd9-b3f0-17a15e8a72f6",
+    "email": "leo.martin@kestrelpay.example",
+    "username": "leo.martin",
+    "name": "Leo Martin",
+    "tenant": {
+      "id": "20fd3679-43f8-4180-bbd0-ca36be1f0ee5",
+      "slug": "kestrel"
+    }
+  },
+  "question": "What's the daily meal allowance on a work trip?",
+  "conversationId": "03a8350d-78bb-40e5-9e30-445110d3f936",
+  "router": {
+    "request": {
+      "conversationId": "03a8350d-78bb-40e5-9e30-445110d3f936",
+      "runId": "0d6371b7-7f3f-4b69-84f1-dcb23651ec06",
+      "message": {
+        "id": "746667f0-a99e-4179-b8f1-311ec68d5e2a",
+        "text": "What's the daily meal allowance on a work trip?"
+      },
+      "agent": false
+    },
+    "response": {
+      "route": "answer",
+      "reason": "A question about one policy figure: the daily meal allowance for work travel."
+    }
+  },
+  "chat": {
+    "request": {
+      "id": "03a8350d-78bb-40e5-9e30-445110d3f936",
+      "message": {
+        "id": "tadO7O0FH2YjEBan",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "What's the daily meal allowance on a work trip?"
+          }
+        ]
+      }
+    },
+    "status": 200,
+    "headersAt": 36,
+    "reads": [
+      {
+        "at": 0,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoic3RhcnQiLCJtZXNzYWdlSWQiOiJhOWY5NTBiYi0wOWEzLTQ3MjAtYTZkZC04ODM3YWI0YTlmNGEifQoK"
+      },
+      {
+        "at": 3167,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoiZGF0YS1zb3VyY2VzIiwiaWQiOiJzb3VyY2VzIiwiZGF0YSI6eyJzb3VyY2VzIjpbeyJsYWJlbCI6IlMxIiwiY2h1bmtJZCI6IjkzM2Y5NmRiLWM2ZDQtNDU3Ni05OTU4LWVlZjU0ZTNiMmUxMyIsImRvY3VtZW50SWQiOiJiMmZmYzVhMC1kMDY2LTRjMmYtYTE5NC00MTA0ZWMxMjYwMWEiLCJ0aXRsZSI6IlRyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5LnBkZiIsInBhdGgiOiIvSFIvUG9saWNpZXMvVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kucGRmIiwicGFnZVN0YXJ0IjoyLCJwYWdlRW5kIjoyfSx7ImxhYmVsIjoiUzIiLCJjaHVua0lkIjoiMWMxYTdmOTQtZjJjNi00NzkzLWE0ODUtNzdjNjA0ODNiNTM2IiwiZG9jdW1lbnRJZCI6ImQ2MGE1ZTZiLTc2MTQtNGM0Ni05NGQ2LTBiYmI0ZGUyNDc3ZiIsInRpdGxlIjoiVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kgdjIucGRmIiwicGF0aCI6Ii9IUi9Qb2xpY2llcy9UcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeSB2Mi5wZGYiLCJwYWdlU3RhcnQiOjIsInBhZ2VFbmQiOjJ9LHsibGFiZWwiOiJTMyIsImNodW5rSWQiOiIwMGJlZTIyOC0zMGMwLTQxZWMtOTg0ZS0xOGQ4YjgyMmRmZGMiLCJkb2N1bWVudElkIjoiZDYwYTVlNmItNzYxNC00YzQ2LTk0ZDYtMGJiYjRkZTI0NzdmIiwidGl0bGUiOiJUcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeSB2Mi5wZGYiLCJwYXRoIjoiL0hSL1BvbGljaWVzL1RyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5IHYyLnBkZiIsInBhZ2VTdGFydCI6NCwicGFnZUVuZCI6NH0seyJsYWJlbCI6IlM0IiwiY2h1bmtJZCI6ImU2YzRmOTNiLTU4ZGUtNDUwOC05MWMyLTI4YTcyMTFlZmFjNiIsImRvY3VtZW50SWQiOiJiMmZmYzVhMC1kMDY2LTRjMmYtYTE5NC00MTA0ZWMxMjYwMWEiLCJ0aXRsZSI6IlRyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5LnBkZiIsInBhdGgiOiIvSFIvUG9saWNpZXMvVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kucGRmIiwicGFnZVN0YXJ0IjoyLCJwYWdlRW5kIjoyfSx7ImxhYmVsIjoiUzUiLCJjaHVua0lkIjoiOWZjYjJlYzMtZDlmMy00NGRjLTgwMzEtOTI5NzQzMzdkMmZlIiwiZG9jdW1lbnRJZCI6ImQ2MGE1ZTZiLTc2MTQtNGM0Ni05NGQ2LTBiYmI0ZGUyNDc3ZiIsInRpdGxlIjoiVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kgdjIucGRmIiwicGF0aCI6Ii9IUi9Qb2xpY2llcy9UcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeSB2Mi5wZGYiLCJwYWdlU3RhcnQiOjIsInBhZ2VFbmQiOjJ9LHsibGFiZWwiOiJTNiIsImNodW5rSWQiOiIwNTEwM2IyYS1lYTMwLTQ1ZTMtODZjMC0yNTZkOTVkNDBjZTkiLCJkb2N1bWVudElkIjoiZDYwYTVlNmItNzYxNC00YzQ2LTk0ZDYtMGJiYjRkZTI0NzdmIiwidGl0bGUiOiJUcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeSB2Mi5wZGYiLCJwYXRoIjoiL0hSL1BvbGljaWVzL1RyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5IHYyLnBkZiIsInBhZ2VTdGFydCI6MiwicGFnZUVuZCI6Mn0seyJsYWJlbCI6IlM3IiwiY2h1bmtJZCI6ImVmYjVhMzBkLTIwNTAtNDE1Yy1iOTRmLTBiNDU3M2E3ODJiZiIsImRvY3VtZW50SWQiOiJiMmZmYzVhMC1kMDY2LTRjMmYtYTE5NC00MTA0ZWMxMjYwMWEiLCJ0aXRsZSI6IlRyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5LnBkZiIsInBhdGgiOiIvSFIvUG9saWNpZXMvVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kucGRmIiwicGFnZVN0YXJ0IjoyLCJwYWdlRW5kIjoyfSx7ImxhYmVsIjoiUzgiLCJjaHVua0lkIjoiMmU0ZjM3Y2MtM2NjZC00MTRjLTk2ZjMtYjZkNGI0NzlkNDUwIiwiZG9jdW1lbnRJZCI6ImQ2MGE1ZTZiLTc2MTQtNGM0Ni05NGQ2LTBiYmI0ZGUyNDc3ZiIsInRpdGxlIjoiVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kgdjIucGRmIiwicGF0aCI6Ii9IUi9Qb2xpY2llcy9UcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeSB2Mi5wZGYiLCJwYWdlU3RhcnQiOjEsInBhZ2VFbmQiOjF9XX19Cgo="
+      },
+      {
+        "at": 6668,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1zdGFydCIsImlkIjoidGV4dCJ9CgpkYXRhOiB7InR5cGUiOiJ0ZXh0LWRlbHRhIiwiaWQiOiJ0ZXh0IiwiZGVsdGEiOiJGb3IifQoK"
+      },
+      {
+        "at": 6668,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGNvc3RzIn0KCg=="
+      },
+      {
+        "at": 6670,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGluY3VycmVkIn0KCg=="
+      },
+      {
+        "at": 6673,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG9uIn0KCg=="
+      },
+      {
+        "at": 6674,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG9yIn0KCg=="
+      },
+      {
+        "at": 6675,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGFmdGVyIn0KCg=="
+      },
+      {
+        "at": 6773,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICJ9Cgo="
+      },
+      {
+        "at": 6774,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMSJ9Cgo="
+      },
+      {
+        "at": 6775,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIEp1bHkifQoK"
+      },
+      {
+        "at": 6776,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICJ9Cgo="
+      },
+      {
+        "at": 6777,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMjAyIn0KCg=="
+      },
+      {
+        "at": 6779,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiNiJ9Cgo="
+      },
+      {
+        "at": 6779,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiLCJ9Cgo="
+      },
+      {
+        "at": 6780,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHRoZSJ9Cgo="
+      },
+      {
+        "at": 6782,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRhaWx5In0KCmRhdGE6IHsidHlwZSI6InRleHQtZGVsdGEiLCJpZCI6InRleHQiLCJkZWx0YSI6IiBtZWFsIn0KCg=="
+      },
+      {
+        "at": 6783,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGFsbG93YW5jZSJ9Cgo="
+      },
+      {
+        "at": 6784,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGlzIn0KCg=="
+      },
+      {
+        "at": 6784,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICoqIn0KCg=="
+      },
+      {
+        "at": 6785,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiwqMifQoK"
+      },
+      {
+        "at": 6786,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiNDAifQoK"
+      },
+      {
+        "at": 6786,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiKioifQoK"
+      },
+      {
+        "at": 6787,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiLiJ9Cgo="
+      },
+      {
+        "at": 6789,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFtbIn0KCg=="
+      },
+      {
+        "at": 6790,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiUyJ9Cgo="
+      },
+      {
+        "at": 6791,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiNSJ9Cgo="
+      },
+      {
+        "at": 6791,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOiJ9Cgo="
+      },
+      {
+        "at": 6792,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFwiIn0KCg=="
+      },
+      {
+        "at": 6792,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiTWVhbHMifQoK"
+      },
+      {
+        "at": 6793,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGFuZCJ9Cgo="
+      },
+      {
+        "at": 6793,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHN1YnMifQoK"
+      },
+      {
+        "at": 6794,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiaXN0ZW5jZSJ9Cgo="
+      },
+      {
+        "at": 6794,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHwifQoK"
+      },
+      {
+        "at": 6795,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIMKjIn0KCg=="
+      },
+      {
+        "at": 6795,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiNDAifQoK"
+      },
+      {
+        "at": 6796,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGEifQoK"
+      },
+      {
+        "at": 6797,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRheSJ9Cgo="
+      },
+      {
+        "at": 6797,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXCJdXSJ9Cgo="
+      },
+      {
+        "at": 6798,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFtbIn0KCg=="
+      },
+      {
+        "at": 6798,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiUyJ9Cgo="
+      },
+      {
+        "at": 6799,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOCJ9Cgo="
+      },
+      {
+        "at": 6800,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOiJ9Cgo="
+      },
+      {
+        "at": 6800,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFwiIn0KCg=="
+      },
+      {
+        "at": 6801,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiY29zdCJ9Cgo="
+      },
+      {
+        "at": 6801,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGluY3VycmVkIn0KCg=="
+      },
+      {
+        "at": 6801,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG9uIn0KCg=="
+      },
+      {
+        "at": 6802,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG9yIn0KCg=="
+      },
+      {
+        "at": 6803,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGFmdGVyIn0KCg=="
+      },
+      {
+        "at": 6804,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICJ9Cgo="
+      },
+      {
+        "at": 6804,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMSJ9Cgo="
+      },
+      {
+        "at": 6813,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIEp1bHkifQoK"
+      },
+      {
+        "at": 6814,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICJ9Cgo="
+      },
+      {
+        "at": 6814,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMjAyIn0KCg=="
+      },
+      {
+        "at": 6815,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiNiJ9Cgo="
+      },
+      {
+        "at": 6823,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXCJdIn0KCg=="
+      },
+      {
+        "at": 6824,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXVxuXG4ifQoK"
+      },
+      {
+        "at": 6824,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiRm9yIn0KCg=="
+      },
+      {
+        "at": 6831,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGNvc3RzIn0KCg=="
+      },
+      {
+        "at": 6831,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGluY3VycmVkIn0KCg=="
+      },
+      {
+        "at": 6832,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGJlZm9yZSJ9Cgo="
+      },
+      {
+        "at": 6855,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHRoYXQifQoK"
+      },
+      {
+        "at": 6855,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRhdGUifQoK"
+      },
+      {
+        "at": 6865,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiLCJ9CgpkYXRhOiB7InR5cGUiOiJ0ZXh0LWRlbHRhIiwiaWQiOiJ0ZXh0IiwiZGVsdGEiOiIgdGhlIn0KCg=="
+      },
+      {
+        "at": 6875,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHByZXZpb3VzIn0KCg=="
+      },
+      {
+        "at": 6876,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGFsbG93YW5jZSJ9Cgo="
+      },
+      {
+        "at": 6877,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHdhcyJ9Cgo="
+      },
+      {
+        "at": 6878,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICoqIn0KCg=="
+      },
+      {
+        "at": 6884,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiwqMifQoK"
+      },
+      {
+        "at": 6885,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMzUifQoK"
+      },
+      {
+        "at": 6885,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGEifQoK"
+      },
+      {
+        "at": 6886,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRheSJ9Cgo="
+      },
+      {
+        "at": 6893,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiKioifQoK"
+      },
+      {
+        "at": 6894,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiLiJ9CgpkYXRhOiB7InR5cGUiOiJ0ZXh0LWRlbHRhIiwiaWQiOiJ0ZXh0IiwiZGVsdGEiOiIgW1sifQoK"
+      },
+      {
+        "at": 6895,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiUyJ9Cgo="
+      },
+      {
+        "at": 6901,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiNCJ9Cgo="
+      },
+      {
+        "at": 6902,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOiJ9Cgo="
+      },
+      {
+        "at": 6903,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFwiIn0KCg=="
+      },
+      {
+        "at": 6903,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiTWVhbHMifQoK"
+      },
+      {
+        "at": 6907,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGFuZCJ9Cgo="
+      },
+      {
+        "at": 6908,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHN1YnMifQoK"
+      },
+      {
+        "at": 6908,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiaXN0ZW5jZSJ9Cgo="
+      },
+      {
+        "at": 6927,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHwifQoK"
+      },
+      {
+        "at": 6927,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIMKjIn0KCg=="
+      },
+      {
+        "at": 6928,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMzUifQoK"
+      },
+      {
+        "at": 6929,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGEifQoK"
+      },
+      {
+        "at": 6929,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRheSJ9Cgo="
+      },
+      {
+        "at": 6933,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXCJdXSJ9Cgo="
+      },
+      {
+        "at": 6933,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFtbIn0KCg=="
+      },
+      {
+        "at": 6934,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiUyJ9Cgo="
+      },
+      {
+        "at": 6942,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOCJ9Cgo="
+      },
+      {
+        "at": 6942,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOiJ9Cgo="
+      },
+      {
+        "at": 6943,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFwiIn0KCg=="
+      },
+      {
+        "at": 6950,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiQ29zdHMifQoK"
+      },
+      {
+        "at": 6950,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGluY3VycmVkIn0KCg=="
+      },
+      {
+        "at": 6951,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGJlZm9yZSJ9Cgo="
+      },
+      {
+        "at": 6959,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHRoYXQifQoK"
+      },
+      {
+        "at": 6959,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRhdGUifQoK"
+      },
+      {
+        "at": 6960,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGFyZSJ9Cgo="
+      },
+      {
+        "at": 6967,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGNsYWltZWQifQoK"
+      },
+      {
+        "at": 6968,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHVuZGVyIn0KCg=="
+      },
+      {
+        "at": 6968,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHZlcnNpb24ifQoK"
+      },
+      {
+        "at": 6976,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICJ9Cgo="
+      },
+      {
+        "at": 6977,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMSJ9Cgo="
+      },
+      {
+        "at": 6985,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiLiJ9Cgo="
+      },
+      {
+        "at": 6986,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMCJ9Cgo="
+      },
+      {
+        "at": 6986,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXCJdIn0KCg=="
+      },
+      {
+        "at": 6995,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXVxuXG4ifQoK"
+      },
+      {
+        "at": 6995,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiWW91In0KCg=="
+      },
+      {
+        "at": 6996,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGNhbiJ9Cgo="
+      },
+      {
+        "at": 7002,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGNsYWltIn0KCg=="
+      },
+      {
+        "at": 7003,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG1lYWxzIn0KCg=="
+      },
+      {
+        "at": 7012,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHdoZW4ifQoK"
+      },
+      {
+        "at": 7012,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHRyYXZlbGxpbmcifQoK"
+      },
+      {
+        "at": 7019,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG92ZXJuaWdodCJ9Cgo="
+      },
+      {
+        "at": 7019,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGZvciJ9Cgo="
+      },
+      {
+        "at": 7029,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGJ1c2luZXNzIn0KCg=="
+      },
+      {
+        "at": 7045,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG9yIn0KCg=="
+      },
+      {
+        "at": 7081,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHdoZW4ifQoK"
+      },
+      {
+        "at": 7098,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHdvcmtpbmcifQoK"
+      },
+      {
+        "at": 7115,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGF3YXkifQoK"
+      },
+      {
+        "at": 7120,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGZyb20ifQoK"
+      },
+      {
+        "at": 7121,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHlvdXIifQoK"
+      },
+      {
+        "at": 7122,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHVzdWFsIn0KCg=="
+      },
+      {
+        "at": 7123,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG9mZmljZSJ9Cgo="
+      },
+      {
+        "at": 7123,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGZvciJ9Cgo="
+      },
+      {
+        "at": 7124,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG1vcmUifQoK"
+      },
+      {
+        "at": 7124,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHRoYW4ifQoK"
+      },
+      {
+        "at": 7125,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICJ9Cgo="
+      },
+      {
+        "at": 7125,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMTAifQoK"
+      },
+      {
+        "at": 7126,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGhvdXJzIn0KCg=="
+      },
+      {
+        "at": 7126,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGluIn0KCg=="
+      },
+      {
+        "at": 7127,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGEifQoK"
+      },
+      {
+        "at": 7128,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRheSJ9Cgo="
+      },
+      {
+        "at": 7130,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiLiJ9CgpkYXRhOiB7InR5cGUiOiJ0ZXh0LWRlbHRhIiwiaWQiOiJ0ZXh0IiwiZGVsdGEiOiIgW1sifQoK"
+      },
+      {
+        "at": 7130,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiUyJ9Cgo="
+      },
+      {
+        "at": 7131,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMiJ9Cgo="
+      },
+      {
+        "at": 7131,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOiJ9Cgo="
+      },
+      {
+        "at": 7132,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFwiIn0KCg=="
+      },
+      {
+        "at": 7132,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoidHJhdmVsIn0KCg=="
+      },
+      {
+        "at": 7132,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG92ZXJuaWdodCJ9Cgo="
+      },
+      {
+        "at": 7133,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIG9uIn0KCg=="
+      },
+      {
+        "at": 7133,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGJ1c2luZXNzIn0KCmRhdGE6IHsidHlwZSI6InRleHQtZGVsdGEiLCJpZCI6InRleHQiLCJkZWx0YSI6IlwiXSJ9Cgo="
+      },
+      {
+        "at": 7134,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXVsifQoK"
+      },
+      {
+        "at": 7134,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiWyJ9Cgo="
+      },
+      {
+        "at": 7134,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiUyJ9Cgo="
+      },
+      {
+        "at": 7135,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMiJ9Cgo="
+      },
+      {
+        "at": 7135,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiOiJ9Cgo="
+      },
+      {
+        "at": 7137,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIFwiIn0KCmRhdGE6IHsidHlwZSI6InRleHQtZGVsdGEiLCJpZCI6InRleHQiLCJkZWx0YSI6Im1vcmUifQoK"
+      },
+      {
+        "at": 7137,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIHRoYW4ifQoK"
+      },
+      {
+        "at": 7138,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiICJ9Cgo="
+      },
+      {
+        "at": 7138,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiMTAifQoK"
+      },
+      {
+        "at": 7139,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGhvdXJzIn0KCg=="
+      },
+      {
+        "at": 7139,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGluIn0KCg=="
+      },
+      {
+        "at": 7145,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGEifQoKZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiIGRheSJ9Cgo="
+      },
+      {
+        "at": 7146,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1kZWx0YSIsImlkIjoidGV4dCIsImRlbHRhIjoiXCJdXSJ9Cgo="
+      },
+      {
+        "at": 7194,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoidGV4dC1lbmQiLCJpZCI6InRleHQifQoKZGF0YTogeyJ0eXBlIjoiZGF0YS12ZXJkaWN0IiwiaWQiOiJ2ZXJkaWN0IiwiZGF0YSI6eyJjaXRhdGlvbnMiOlt7Im1hcmtlciI6IltbUzU6IFwiTWVhbHMgYW5kIHN1YnNpc3RlbmNlIHwgwqM0MCBhIGRheVwiXV0iLCJsYWJlbCI6IlM1IiwicXVvdGUiOiJNZWFscyBhbmQgc3Vic2lzdGVuY2UgfCDCozQwIGEgZGF5IiwiY2h1bmtJZCI6IjlmY2IyZWMzLWQ5ZjMtNDRkYy04MDMxLTkyOTc0MzM3ZDJmZSIsImRvY3VtZW50SWQiOiJkNjBhNWU2Yi03NjE0LTRjNDYtOTRkNi0wYmJiNGRlMjQ3N2YiLCJ0aXRsZSI6IlRyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5IHYyLnBkZiIsInBhdGgiOiIvSFIvUG9saWNpZXMvVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kgdjIucGRmIiwicGFnZSI6Mn0seyJtYXJrZXIiOiJbW1M4OiBcImNvc3QgaW5jdXJyZWQgb24gb3IgYWZ0ZXIgMSBKdWx5IDIwMjZcIl1dIiwibGFiZWwiOiJTOCIsInF1b3RlIjoiY29zdCBpbmN1cnJlZCBvbiBvciBhZnRlciAxIEp1bHkgMjAyNiIsImNodW5rSWQiOiIyZTRmMzdjYy0zY2NkLTQxNGMtOTZmMy1iNmQ0YjQ3OWQ0NTAiLCJkb2N1bWVudElkIjoiZDYwYTVlNmItNzYxNC00YzQ2LTk0ZDYtMGJiYjRkZTI0NzdmIiwidGl0bGUiOiJUcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeSB2Mi5wZGYiLCJwYXRoIjoiL0hSL1BvbGljaWVzL1RyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5IHYyLnBkZiIsInBhZ2UiOjF9LHsibWFya2VyIjoiW1tTNDogXCJNZWFscyBhbmQgc3Vic2lzdGVuY2UgfCDCozM1IGEgZGF5XCJdXSIsImxhYmVsIjoiUzQiLCJxdW90ZSI6Ik1lYWxzIGFuZCBzdWJzaXN0ZW5jZSB8IMKjMzUgYSBkYXkiLCJjaHVua0lkIjoiZTZjNGY5M2ItNThkZS00NTA4LTkxYzItMjhhNzIxMWVmYWM2IiwiZG9jdW1lbnRJZCI6ImIyZmZjNWEwLWQwNjYtNGMyZi1hMTk0LTQxMDRlYzEyNjAxYSIsInRpdGxlIjoiVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kucGRmIiwicGF0aCI6Ii9IUi9Qb2xpY2llcy9UcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeS5wZGYiLCJwYWdlIjoyfSx7Im1hcmtlciI6IltbUzg6IFwiQ29zdHMgaW5jdXJyZWQgYmVmb3JlIHRoYXQgZGF0ZSBhcmUgY2xhaW1lZCB1bmRlciB2ZXJzaW9uIDEuMFwiXV0iLCJsYWJlbCI6IlM4IiwicXVvdGUiOiJDb3N0cyBpbmN1cnJlZCBiZWZvcmUgdGhhdCBkYXRlIGFyZSBjbGFpbWVkIHVuZGVyIHZlcnNpb24gMS4wIiwiY2h1bmtJZCI6IjJlNGYzN2NjLTNjY2QtNDE0Yy05NmYzLWI2ZDRiNDc5ZDQ1MCIsImRvY3VtZW50SWQiOiJkNjBhNWU2Yi03NjE0LTRjNDYtOTRkNi0wYmJiNGRlMjQ3N2YiLCJ0aXRsZSI6IlRyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5IHYyLnBkZiIsInBhdGgiOiIvSFIvUG9saWNpZXMvVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kgdjIucGRmIiwicGFnZSI6MX0seyJtYXJrZXIiOiJbW1MyOiBcInRyYXZlbCBvdmVybmlnaHQgb24gYnVzaW5lc3NcIl1dIiwibGFiZWwiOiJTMiIsInF1b3RlIjoidHJhdmVsIG92ZXJuaWdodCBvbiBidXNpbmVzcyIsImNodW5rSWQiOiIxYzFhN2Y5NC1mMmM2LTQ3OTMtYTQ4NS03N2M2MDQ4M2I1MzYiLCJkb2N1bWVudElkIjoiZDYwYTVlNmItNzYxNC00YzQ2LTk0ZDYtMGJiYjRkZTI0NzdmIiwidGl0bGUiOiJUcmF2ZWwgYW5kIEV4cGVuc2VzIFBvbGljeSB2Mi5wZGYiLCJwYXRoIjoiL0hSL1BvbGljaWVzL1RyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5IHYyLnBkZiIsInBhZ2UiOjJ9LHsibWFya2VyIjoiW1tTMjogXCJtb3JlIHRoYW4gMTAgaG91cnMgaW4gYSBkYXlcIl1dIiwibGFiZWwiOiJTMiIsInF1b3RlIjoibW9yZSB0aGFuIDEwIGhvdXJzIGluIGEgZGF5IiwiY2h1bmtJZCI6IjFjMWE3Zjk0LWYyYzYtNDc5My1hNDg1LTc3YzYwNDgzYjUzNiIsImRvY3VtZW50SWQiOiJkNjBhNWU2Yi03NjE0LTRjNDYtOTRkNi0wYmJiNGRlMjQ3N2YiLCJ0aXRsZSI6IlRyYXZlbCBhbmQgRXhwZW5zZXMgUG9saWN5IHYyLnBkZiIsInBhdGgiOiIvSFIvUG9saWNpZXMvVHJhdmVsIGFuZCBFeHBlbnNlcyBQb2xpY3kgdjIucGRmIiwicGFnZSI6Mn1dLCJkcm9wcGVkIjpbXSwiYWJzdGFpbmVkIjpmYWxzZSwiZmxhZ2dlZCI6ZmFsc2V9fQoK"
+      },
+      {
+        "at": 7217,
+        "bytes": "ZGF0YTogeyJ0eXBlIjoiZmluaXNoIiwiZmluaXNoUmVhc29uIjoic3RvcCJ9CgpkYXRhOiBbRE9ORV0KCg=="
+      }
+    ]
+  },
+  "getConversation": {
+    "title": "What's the daily meal allowance on a work trip?",
+    "messages": [
+      {
+        "id": "tadO7O0FH2YjEBan",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "What's the daily meal allowance on a work trip?"
+          }
+        ]
+      },
+      {
+        "id": "a9f950bb-09a3-4720-a6dd-8837ab4a9f4a",
+        "role": "assistant",
+        "metadata": {
+          "status": "complete"
+        },
+        "parts": [
+          {
+            "type": "data-sources",
+            "id": "sources",
+            "data": {
+              "sources": [
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+                  "label": "S1",
+                  "title": "Travel and Expenses Policy.pdf",
+                  "chunkId": "933f96db-c6d4-4576-9958-eef54e3b2e13",
+                  "pageEnd": 2,
+                  "pageStart": 2,
+                  "documentId": "b2ffc5a0-d066-4c2f-a194-4104ec12601a"
+                },
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S2",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "chunkId": "1c1a7f94-f2c6-4793-a485-77c60483b536",
+                  "pageEnd": 2,
+                  "pageStart": 2,
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S3",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "chunkId": "00bee228-30c0-41ec-984e-18d8b822dfdc",
+                  "pageEnd": 4,
+                  "pageStart": 4,
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+                  "label": "S4",
+                  "title": "Travel and Expenses Policy.pdf",
+                  "chunkId": "e6c4f93b-58de-4508-91c2-28a7211efac6",
+                  "pageEnd": 2,
+                  "pageStart": 2,
+                  "documentId": "b2ffc5a0-d066-4c2f-a194-4104ec12601a"
+                },
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S5",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "chunkId": "9fcb2ec3-d9f3-44dc-8031-92974337d2fe",
+                  "pageEnd": 2,
+                  "pageStart": 2,
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S6",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "chunkId": "05103b2a-ea30-45e3-86c0-256d95d40ce9",
+                  "pageEnd": 2,
+                  "pageStart": 2,
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+                  "label": "S7",
+                  "title": "Travel and Expenses Policy.pdf",
+                  "chunkId": "efb5a30d-2050-415c-b94f-0b4573a782bf",
+                  "pageEnd": 2,
+                  "pageStart": 2,
+                  "documentId": "b2ffc5a0-d066-4c2f-a194-4104ec12601a"
+                },
+                {
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S8",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "chunkId": "2e4f37cc-3ccd-414c-96f3-b6d4b479d450",
+                  "pageEnd": 1,
+                  "pageStart": 1,
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                }
+              ]
+            }
+          },
+          {
+            "type": "text",
+            "text": "For costs incurred on or after 1 July 2026, the daily meal allowance is **£40**. [[S5: \"Meals and subsistence | £40 a day\"]] [[S8: \"cost incurred on or after 1 July 2026\"]]\n\nFor costs incurred before that date, the previous allowance was **£35 a day**. [[S4: \"Meals and subsistence | £35 a day\"]] [[S8: \"Costs incurred before that date are claimed under version 1.0\"]]\n\nYou can claim meals when travelling overnight for business or when working away from your usual office for more than 10 hours in a day. [[S2: \"travel overnight on business\"]][[S2: \"more than 10 hours in a day\"]]",
+            "state": "done"
+          },
+          {
+            "type": "data-verdict",
+            "id": "verdict",
+            "data": {
+              "dropped": [],
+              "flagged": false,
+              "abstained": false,
+              "citations": [
+                {
+                  "page": 2,
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S5",
+                  "quote": "Meals and subsistence | £40 a day",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "marker": "[[S5: \"Meals and subsistence | £40 a day\"]]",
+                  "chunkId": "9fcb2ec3-d9f3-44dc-8031-92974337d2fe",
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "page": 1,
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S8",
+                  "quote": "cost incurred on or after 1 July 2026",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "marker": "[[S8: \"cost incurred on or after 1 July 2026\"]]",
+                  "chunkId": "2e4f37cc-3ccd-414c-96f3-b6d4b479d450",
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "page": 2,
+                  "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+                  "label": "S4",
+                  "quote": "Meals and subsistence | £35 a day",
+                  "title": "Travel and Expenses Policy.pdf",
+                  "marker": "[[S4: \"Meals and subsistence | £35 a day\"]]",
+                  "chunkId": "e6c4f93b-58de-4508-91c2-28a7211efac6",
+                  "documentId": "b2ffc5a0-d066-4c2f-a194-4104ec12601a"
+                },
+                {
+                  "page": 1,
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S8",
+                  "quote": "Costs incurred before that date are claimed under version 1.0",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "marker": "[[S8: \"Costs incurred before that date are claimed under version 1.0\"]]",
+                  "chunkId": "2e4f37cc-3ccd-414c-96f3-b6d4b479d450",
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "page": 2,
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S2",
+                  "quote": "travel overnight on business",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "marker": "[[S2: \"travel overnight on business\"]]",
+                  "chunkId": "1c1a7f94-f2c6-4793-a485-77c60483b536",
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                },
+                {
+                  "page": 2,
+                  "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+                  "label": "S2",
+                  "quote": "more than 10 hours in a day",
+                  "title": "Travel and Expenses Policy v2.pdf",
+                  "marker": "[[S2: \"more than 10 hours in a day\"]]",
+                  "chunkId": "1c1a7f94-f2c6-4793-a485-77c60483b536",
+                  "documentId": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "getConversationRuns": [],
+  "getConversationsBefore": [
+    {
+      "id": "18a4ab02-02ff-4b23-8753-4ad450e4851f",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T15:01:37.426Z"
+    },
+    {
+      "id": "e336b828-6c29-47c9-9654-fcdf441c0d86",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T15:01:30.863Z"
+    },
+    {
+      "id": "a3e249c8-ce52-4680-a3eb-c19a7a615f66",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:46:44.415Z"
+    },
+    {
+      "id": "6614ca7f-4770-42ad-ae13-77548fad89fd",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:46:38.550Z"
+    },
+    {
+      "id": "3c31348b-a124-4f3f-acf8-efde6f0b941f",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:45:40.684Z"
+    },
+    {
+      "id": "3e81fb15-514e-4da1-8b7a-7149e66edd9a",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:45:34.697Z"
+    },
+    {
+      "id": "a94fb124-b8d8-474e-bc05-313cc0764295",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:08:16.715Z"
+    },
+    {
+      "id": "5202d9db-1d2c-43c0-8d96-7384e15a8eb8",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:08:11.256Z"
+    },
+    {
+      "id": "9fd59515-0ee4-4db3-a220-53b338c31442",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:02:26.285Z"
+    },
+    {
+      "id": "d05eb8c2-2fb8-42e4-b581-5405e2d6e4df",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:02:20.612Z"
+    },
+    {
+      "id": "3da62e23-81e6-4fca-bd2e-4e31910608d3",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:35:45.681Z"
+    },
+    {
+      "id": "11459df5-e243-45c2-b221-3692192192d7",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:35:36.555Z"
+    },
+    {
+      "id": "ad511d2f-86ed-4d30-81ed-3bd315f028cc",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:34:39.221Z"
+    },
+    {
+      "id": "11524a5d-0451-4b0e-921b-149b043a0bf8",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:34:32.671Z"
+    },
+    {
+      "id": "8d944276-c471-47e8-80a0-483c9d858f39",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:24:40.363Z"
+    },
+    {
+      "id": "a3286a5d-2287-4589-a2ff-a48da8d0bdf1",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:24:34.302Z"
+    },
+    {
+      "id": "a50871fe-1669-4510-9a56-55f25923877c",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:21:43.275Z"
+    },
+    {
+      "id": "2079e5a3-6425-404d-9c0e-677c5b903691",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:21:30.467Z"
+    },
+    {
+      "id": "1b9ce379-ad02-40b9-97dc-f3a165d64b42",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:15:40.744Z"
+    },
+    {
+      "id": "832f9f9d-aa98-41fe-a362-b42a9f5501db",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:15:28.491Z"
+    },
+    {
+      "id": "e64d11ba-37e4-4eba-b17a-68c00722e655",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:14:44.903Z"
+    },
+    {
+      "id": "6a70eb74-da6e-48a2-a78d-e41f43175aaf",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:14:39.311Z"
+    },
+    {
+      "id": "462334e5-ef13-4435-938e-a0f1ec1a6f53",
+      "title": "Email Tom Whitfield a two-line summary of the payment terms in contract KPC-2026",
+      "updatedAt": "2026-10-14T13:10:24.471Z"
+    },
+    {
+      "id": "1799168e-13d6-459d-88db-6456402971b9",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:09:18.298Z"
+    },
+    {
+      "id": "601d67af-29f8-428d-b035-49db7b9b0b76",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:09:10.257Z"
+    },
+    {
+      "id": "e2d4006d-7013-4db9-a00d-475ae701f773",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:03:17.663Z"
+    },
+    {
+      "id": "8e1435ac-2ba3-46e6-b665-7033cd0785e7",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:03:11.506Z"
+    },
+    {
+      "id": "9d43cec6-238d-4fce-9e51-d811b50a2490",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T12:21:51.024Z"
+    },
+    {
+      "id": "0867bbcd-c75c-4513-89ea-c6e9a6629f0e",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T12:21:44.377Z"
+    },
+    {
+      "id": "8d77d643-2e82-4ec6-a3bf-8d2a0c8d5630",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T12:18:53.121Z"
+    },
+    {
+      "id": "d07f6b91-99a6-404a-8dc2-f5f1b817ddb9",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T12:18:45.704Z"
+    },
+    {
+      "id": "81313b97-f6f5-49e2-810a-287f81aa204c",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:59:21.605Z"
+    },
+    {
+      "id": "8e617a04-4aba-4aec-bd2a-876500cac86c",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:59:00.710Z"
+    },
+    {
+      "id": "dfa4425d-1285-4f0e-acfa-d64727f0b101",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:58:25.190Z"
+    },
+    {
+      "id": "c809eee2-678b-45ac-b354-452f16fe7644",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:58:17.871Z"
+    },
+    {
+      "id": "8582acbc-83b4-4080-82a7-d3e77e9d4e39",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:55:18.114Z"
+    },
+    {
+      "id": "b1542d20-7249-436a-9895-fa4311d1d54b",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:55:11.768Z"
+    },
+    {
+      "id": "b6efe812-9c69-4848-830f-8c1b2915e936",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:36:57.381Z"
+    },
+    {
+      "id": "6d758d49-1077-4079-9fe2-2f91130e4bea",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:36:47.792Z"
+    },
+    {
+      "id": "981940fe-e779-45e2-9740-be1acefeabd3",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:34:54.797Z"
+    },
+    {
+      "id": "6268fad6-7f81-4a54-932c-249bf4394e2d",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:34:43.685Z"
+    },
+    {
+      "id": "3e26a77e-6fb6-4015-aa88-9a6fd634ccd7",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:31:41.906Z"
+    },
+    {
+      "id": "2acf6455-ac52-49ac-89aa-f2689519d96e",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:31:34.688Z"
+    },
+    {
+      "id": "ba3ed094-aa43-43cf-a4f5-6e7e6a11cc54",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:22:52.989Z"
+    },
+    {
+      "id": "82d917e2-7ed1-4a96-a9e7-b841e8dd12e3",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:22:44.746Z"
+    },
+    {
+      "id": "d725d5bb-a249-4a16-a438-e9ed9699a30d",
+      "title": "List every hotel, meal, travel and entertainment limit in the travel and expens…",
+      "updatedAt": "2026-10-13T19:40:20.702Z"
+    },
+    {
+      "id": "51f40f83-bd8f-4c17-b23f-9b591886ceb7",
+      "title": "Summarise every section of the travel and expenses policy v2 in detail, section…",
+      "updatedAt": "2026-10-13T19:40:00.151Z"
+    },
+    {
+      "id": "c72bb4c6-a031-4c0f-aa2c-0e9e8089e9ea",
+      "title": "What is the status of the Project Heron deal, and what price is being discussed?",
+      "updatedAt": "2026-10-13T19:35:38.690Z"
+    },
+    {
+      "id": "71922cb1-66d9-47a7-aca6-7326059ba786",
+      "title": "What can I claim for meals and hotels on a work trip under the expenses policy?",
+      "updatedAt": "2026-10-13T19:34:30.439Z"
+    }
+  ],
+  "getConversationsAfter": [
+    {
+      "id": "03a8350d-78bb-40e5-9e30-445110d3f936",
+      "title": "What's the daily meal allowance on a work trip?",
+      "updatedAt": "2026-10-18T17:50:26.772Z"
+    },
+    {
+      "id": "18a4ab02-02ff-4b23-8753-4ad450e4851f",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T15:01:37.426Z"
+    },
+    {
+      "id": "e336b828-6c29-47c9-9654-fcdf441c0d86",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T15:01:30.863Z"
+    },
+    {
+      "id": "a3e249c8-ce52-4680-a3eb-c19a7a615f66",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:46:44.415Z"
+    },
+    {
+      "id": "6614ca7f-4770-42ad-ae13-77548fad89fd",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:46:38.550Z"
+    },
+    {
+      "id": "3c31348b-a124-4f3f-acf8-efde6f0b941f",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:45:40.684Z"
+    },
+    {
+      "id": "3e81fb15-514e-4da1-8b7a-7149e66edd9a",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:45:34.697Z"
+    },
+    {
+      "id": "a94fb124-b8d8-474e-bc05-313cc0764295",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:08:16.715Z"
+    },
+    {
+      "id": "5202d9db-1d2c-43c0-8d96-7384e15a8eb8",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:08:11.256Z"
+    },
+    {
+      "id": "9fd59515-0ee4-4db3-a220-53b338c31442",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T14:02:26.285Z"
+    },
+    {
+      "id": "d05eb8c2-2fb8-42e4-b581-5405e2d6e4df",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T14:02:20.612Z"
+    },
+    {
+      "id": "3da62e23-81e6-4fca-bd2e-4e31910608d3",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:35:45.681Z"
+    },
+    {
+      "id": "11459df5-e243-45c2-b221-3692192192d7",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:35:36.555Z"
+    },
+    {
+      "id": "ad511d2f-86ed-4d30-81ed-3bd315f028cc",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:34:39.221Z"
+    },
+    {
+      "id": "11524a5d-0451-4b0e-921b-149b043a0bf8",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:34:32.671Z"
+    },
+    {
+      "id": "8d944276-c471-47e8-80a0-483c9d858f39",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:24:40.363Z"
+    },
+    {
+      "id": "a3286a5d-2287-4589-a2ff-a48da8d0bdf1",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:24:34.302Z"
+    },
+    {
+      "id": "a50871fe-1669-4510-9a56-55f25923877c",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:21:43.275Z"
+    },
+    {
+      "id": "2079e5a3-6425-404d-9c0e-677c5b903691",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:21:30.467Z"
+    },
+    {
+      "id": "1b9ce379-ad02-40b9-97dc-f3a165d64b42",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:15:40.744Z"
+    },
+    {
+      "id": "832f9f9d-aa98-41fe-a362-b42a9f5501db",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:15:28.491Z"
+    },
+    {
+      "id": "e64d11ba-37e4-4eba-b17a-68c00722e655",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:14:44.903Z"
+    },
+    {
+      "id": "6a70eb74-da6e-48a2-a78d-e41f43175aaf",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:14:39.311Z"
+    },
+    {
+      "id": "462334e5-ef13-4435-938e-a0f1ec1a6f53",
+      "title": "Email Tom Whitfield a two-line summary of the payment terms in contract KPC-2026",
+      "updatedAt": "2026-10-14T13:10:24.471Z"
+    },
+    {
+      "id": "1799168e-13d6-459d-88db-6456402971b9",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:09:18.298Z"
+    },
+    {
+      "id": "601d67af-29f8-428d-b035-49db7b9b0b76",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:09:10.257Z"
+    },
+    {
+      "id": "e2d4006d-7013-4db9-a00d-475ae701f773",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T13:03:17.663Z"
+    },
+    {
+      "id": "8e1435ac-2ba3-46e6-b665-7033cd0785e7",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T13:03:11.506Z"
+    },
+    {
+      "id": "9d43cec6-238d-4fce-9e51-d811b50a2490",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T12:21:51.024Z"
+    },
+    {
+      "id": "0867bbcd-c75c-4513-89ea-c6e9a6629f0e",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T12:21:44.377Z"
+    },
+    {
+      "id": "8d77d643-2e82-4ec6-a3bf-8d2a0c8d5630",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-14T12:18:53.121Z"
+    },
+    {
+      "id": "d07f6b91-99a6-404a-8dc2-f5f1b817ddb9",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-14T12:18:45.704Z"
+    },
+    {
+      "id": "81313b97-f6f5-49e2-810a-287f81aa204c",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:59:21.605Z"
+    },
+    {
+      "id": "8e617a04-4aba-4aec-bd2a-876500cac86c",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:59:00.710Z"
+    },
+    {
+      "id": "dfa4425d-1285-4f0e-acfa-d64727f0b101",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:58:25.190Z"
+    },
+    {
+      "id": "c809eee2-678b-45ac-b354-452f16fe7644",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:58:17.871Z"
+    },
+    {
+      "id": "8582acbc-83b4-4080-82a7-d3e77e9d4e39",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:55:18.114Z"
+    },
+    {
+      "id": "b1542d20-7249-436a-9895-fa4311d1d54b",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:55:11.768Z"
+    },
+    {
+      "id": "b6efe812-9c69-4848-830f-8c1b2915e936",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:36:57.381Z"
+    },
+    {
+      "id": "6d758d49-1077-4079-9fe2-2f91130e4bea",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:36:47.792Z"
+    },
+    {
+      "id": "981940fe-e779-45e2-9740-be1acefeabd3",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:34:54.797Z"
+    },
+    {
+      "id": "6268fad6-7f81-4a54-932c-249bf4394e2d",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:34:43.685Z"
+    },
+    {
+      "id": "3e26a77e-6fb6-4015-aa88-9a6fd634ccd7",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:31:41.906Z"
+    },
+    {
+      "id": "2acf6455-ac52-49ac-89aa-f2689519d96e",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:31:34.688Z"
+    },
+    {
+      "id": "ba3ed094-aa43-43cf-a4f5-6e7e6a11cc54",
+      "title": "What is Project Heron, and how much is Kestrel paying?",
+      "updatedAt": "2026-10-13T20:22:52.989Z"
+    },
+    {
+      "id": "82d917e2-7ed1-4a96-a9e7-b841e8dd12e3",
+      "title": "How much can I claim a day for meals when I travel for work?",
+      "updatedAt": "2026-10-13T20:22:44.746Z"
+    },
+    {
+      "id": "d725d5bb-a249-4a16-a438-e9ed9699a30d",
+      "title": "List every hotel, meal, travel and entertainment limit in the travel and expens…",
+      "updatedAt": "2026-10-13T19:40:20.702Z"
+    },
+    {
+      "id": "51f40f83-bd8f-4c17-b23f-9b591886ceb7",
+      "title": "Summarise every section of the travel and expenses policy v2 in detail, section…",
+      "updatedAt": "2026-10-13T19:40:00.151Z"
+    },
+    {
+      "id": "c72bb4c6-a031-4c0f-aa2c-0e9e8089e9ea",
+      "title": "What is the status of the Project Heron deal, and what price is being discussed?",
+      "updatedAt": "2026-10-13T19:35:38.690Z"
+    },
+    {
+      "id": "71922cb1-66d9-47a7-aca6-7326059ba786",
+      "title": "What can I claim for meals and hotels on a work trip under the expenses policy?",
+      "updatedAt": "2026-10-13T19:34:30.439Z"
+    }
+  ],
+  "getCitedChunk": {
+    "9fcb2ec3-d9f3-44dc-8031-92974337d2fe": {
+      "chunkId": "9fcb2ec3-d9f3-44dc-8031-92974337d2fe",
+      "text": "## 4. Limits\n\nThe limits apply per person. Outside the UK, costs in another currency are converted at the rate on the day you incurred them.\n\n| Item | Limit |\n| --- | --- |\n| Meals and subsistence | £40 a day |\n| Hotel, London | £200 a night |\n| Hotel, rest of the UK | £130 a night |\n| Hotel, Lisbon or Dublin | €180 a night |\n| Hotel, other EU cities | €160 a night |\n| Client entertainment | £75 a head, approved in advance |\n| Team meals (manager-led) | £30 a head, up to once a quarter |\n| Home office equipment | £300 once, in your first 3 months |",
+      "section": "4. Limits",
+      "pageStart": 2,
+      "pageEnd": 2,
+      "document": {
+        "id": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f",
+        "title": "Travel and Expenses Policy v2.pdf",
+        "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+        "mimeType": "application/pdf"
+      }
+    },
+    "2e4f37cc-3ccd-414c-96f3-b6d4b479d450": {
+      "chunkId": "2e4f37cc-3ccd-414c-96f3-b6d4b479d450",
+      "text": "## 1. Purpose\n\nThis policy sets out which costs Kestrel Pay pays back when you spend money on company business, the limits that apply, and how to claim. It covers travel, accommodation, meals, client entertainment and small purchases made on behalf of the company.\n\nThe policy applies to any cost incurred on or after 1 July 2026. Costs incurred before that date are claimed under version 1.0, even if you submit the claim later.\n\nIf something is not covered here, ask your line manager before you spend the money. If your manager is unsure, they should ask the Finance AP team.",
+      "section": "1. Purpose",
+      "pageStart": 1,
+      "pageEnd": 1,
+      "document": {
+        "id": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f",
+        "title": "Travel and Expenses Policy v2.pdf",
+        "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+        "mimeType": "application/pdf"
+      }
+    },
+    "e6c4f93b-58de-4508-91c2-28a7211efac6": {
+      "chunkId": "e6c4f93b-58de-4508-91c2-28a7211efac6",
+      "text": "## 4. Limits\n\nThe limits apply per person. Outside the UK, costs in another currency are converted at the rate on the day you incurred them.\n\n| Item | Limit |\n| --- | --- |\n| Meals and subsistence | £35 a day |\n| Hotel, London | £180 a night |\n| Hotel, rest of the UK | £120 a night |\n| Hotel, Lisbon or Dublin | €170 a night |\n| Hotel, other EU cities | €150 a night |\n| Client entertainment | £60 a head, approved in advance |\n| Team meals (manager-led) | £30 a head, up to once a quarter |\n| Home office equipment | £300 once, in your first 3 months |",
+      "section": "4. Limits",
+      "pageStart": 2,
+      "pageEnd": 2,
+      "document": {
+        "id": "b2ffc5a0-d066-4c2f-a194-4104ec12601a",
+        "title": "Travel and Expenses Policy.pdf",
+        "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+        "mimeType": "application/pdf"
+      }
+    },
+    "1c1a7f94-f2c6-4793-a485-77c60483b536": {
+      "chunkId": "1c1a7f94-f2c6-4793-a485-77c60483b536",
+      "text": "### 4.1 Meals and subsistence\n\nYou can claim meals when you travel overnight on business, or when you work away from your usual office for more than 10 hours in a day. The daily limit covers breakfast, lunch, dinner and soft drinks.\n\nAlcohol is not reimbursed, except as part of approved client entertainment under section 4.3.\n\nIf breakfast is included in your hotel rate, the daily limit stays the same.",
+      "section": "4.1 Meals and subsistence",
+      "pageStart": 2,
+      "pageEnd": 2,
+      "document": {
+        "id": "d60a5e6b-7614-4c46-94d6-0bbb4de2477f",
+        "title": "Travel and Expenses Policy v2.pdf",
+        "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+        "mimeType": "application/pdf"
+      }
+    }
+  }
+}
