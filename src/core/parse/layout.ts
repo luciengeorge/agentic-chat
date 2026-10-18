@@ -11,13 +11,15 @@ export interface PositionedText {
   fontSize: number;
 }
 
-interface Segment {
+/** A run of text on one line, with where it starts and ends (points from the left). */
+export interface Segment {
   x0: number;
   x1: number;
   text: string;
 }
 
-interface Line {
+/** One line of the page: its baseline, its font size and its segments, left to right. */
+export interface Line {
   y: number;
   fontSize: number;
   segments: Segment[];
@@ -153,7 +155,7 @@ function tableExtent(lines: Line[], start: number): number {
  * the gutters between them are empty in every line; that holds for right-aligned numbers too. A
  * row starts where the gap to the line above is wider than a wrapped line's.
  */
-function tableRows(lines: Line[]): string[][] {
+export function tableRows(lines: Line[]): string[][] {
   const spans = lines.flatMap((line) => line.segments).sort((a, b) => a.x0 - b.x0);
   const columns: { x0: number; x1: number }[] = [];
   for (const span of spans) {

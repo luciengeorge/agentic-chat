@@ -1,8 +1,8 @@
-import { countTokens as count } from "gpt-tokenizer/encoding/o200k_base";
-
 import type { CitableSource } from "#learn/cite/citations";
 import type { TextMessage } from "#learn/model/types";
 import type { RetrievedChunk } from "#learn/retrieve/types";
+
+import { countTokens } from "#learn/model/tokens";
 
 /** What the assistant says when the sources don't answer. It doesn't say whether anything was withheld: "you
  * can't see that" would leak that it exists. */
@@ -35,8 +35,7 @@ export interface Prompt {
   tokens: { instructions: number; sources: number; history: number };
 }
 
-const NO_SPECIAL = { disallowedSpecial: new Set<string>() };
-export const countTokens = (text: string) => count(text, NO_SPECIAL);
+export { countTokens };
 
 export const INSTRUCTIONS = `You answer questions for employees using only the numbered sources in the user's message.
 
@@ -70,7 +69,65 @@ export function renderSource(label: string, chunk: RetrievedChunk): string {
 }
 
 /** Citations cost tokens and mean nothing outside their own turn. */
-const stripCitations = (text: string) => text.replace(/\s*\[\[.+?\]\]/gs, "");
+export const stripCitations = (text: string) => text.replace(/\s*\[\[.+?\]\]/gs, "");
+
+export interface FittedSources {
+  /** The chunks that fit, labelled S1, S2… in the order they went in. */
+  sources: CitableSource[];
+  /** Each kept source as its `<source>` block, in the same order. */
+  rendered: string[];
+  /** The ids of the chunks left out because they didn't fit. */
+  omitted: string[];
+  /** What the rendered blocks cost together. */
+  tokens: number;
+}
+
+/** The sources that fit `budget` tokens, in rank order. A chunk that doesn't fit is skipped, and smaller ones after
+ * it can still go in. */
+export function fitSources(chunks: RetrievedChunk[], budget: number): FittedSources {
+  const sources: CitableSource[] = [];
+  const rendered: string[] = [];
+  const omitted: string[] = [];
+  let tokens = 0;
+  for (const chunk of chunks) {
+    const label = `S${sources.length + 1}`;
+    const text = renderSource(label, chunk);
+    const cost = countTokens(text);
+    if (tokens + cost > budget) {
+      omitted.push(chunk.id);
+      continue;
+    }
+    tokens += cost;
+    rendered.push(text);
+    sources.push({
+      label,
+      chunkId: chunk.id,
+      documentId: chunk.documentId,
+      title: chunk.title,
+      path: chunk.path,
+      pageStart: chunk.pageStart,
+      pageEnd: chunk.pageEnd,
+      text: chunk.text,
+    });
+  }
+  return { sources, rendered, omitted, tokens };
+}
+
+/** The newest earlier turns that fit `budget` tokens, oldest first, starting on a user turn, without old citations. */
+export function fitHistory(history: TextMessage[], budget: number): { messages: TextMessage[]; tokens: number } {
+  const kept: TextMessage[] = [];
+  let tokens = 0;
+  for (const message of [...history].reverse()) {
+    const content = message.role === "assistant" ? stripCitations(message.content) : message.content;
+    const cost = countTokens(content);
+    if (tokens + cost > budget) break;
+    tokens += cost;
+    kept.unshift({ role: message.role, content });
+  }
+  // The model expects turns to start with the user.
+  while (kept[0]?.role === "assistant") tokens -= countTokens(kept.shift()!.content);
+  return { messages: kept, tokens };
+}
 
 /** The model's input: rules as instructions, earlier turns, then the sources and the question in one user turn. */
 export function buildPrompt({
@@ -84,50 +141,14 @@ export function buildPrompt({
   history?: TextMessage[];
   budget?: PromptBudget;
 }): Prompt {
-  const sources: CitableSource[] = [];
-  const rendered: string[] = [];
-  const omitted: string[] = [];
-  let sourceTokens = 0;
-  for (const chunk of chunks) {
-    const label = `S${sources.length + 1}`;
-    const text = renderSource(label, chunk);
-    const tokens = countTokens(text);
-    if (sourceTokens + tokens > budget.sources) {
-      omitted.push(chunk.id);
-      continue;
-    }
-    sourceTokens += tokens;
-    rendered.push(text);
-    sources.push({
-      label,
-      chunkId: chunk.id,
-      documentId: chunk.documentId,
-      title: chunk.title,
-      path: chunk.path,
-      pageStart: chunk.pageStart,
-      pageEnd: chunk.pageEnd,
-      text: chunk.text,
-    });
-  }
-
-  const kept: TextMessage[] = [];
-  let historyTokens = 0;
-  for (const message of [...history].reverse()) {
-    const content = message.role === "assistant" ? stripCitations(message.content) : message.content;
-    const tokens = countTokens(content);
-    if (historyTokens + tokens > budget.history) break;
-    historyTokens += tokens;
-    kept.unshift({ role: message.role, content });
-  }
-  // The model expects turns to start with the user.
-  while (kept[0]?.role === "assistant") historyTokens -= countTokens(kept.shift()!.content);
-
-  const user = `<sources>\n${rendered.join("\n\n")}\n</sources>\n\n<question>\n${question}\n</question>`;
+  const fitted = fitSources(chunks, budget.sources);
+  const kept = fitHistory(history, budget.history);
+  const user = `<sources>\n${fitted.rendered.join("\n\n")}\n</sources>\n\n<question>\n${question}\n</question>`;
   return {
     instructions: INSTRUCTIONS,
-    messages: [...kept, { role: "user", content: user }],
-    sources,
-    omitted,
-    tokens: { instructions: countTokens(INSTRUCTIONS), sources: sourceTokens, history: historyTokens },
+    messages: [...kept.messages, { role: "user", content: user }],
+    sources: fitted.sources,
+    omitted: fitted.omitted,
+    tokens: { instructions: countTokens(INSTRUCTIONS), sources: fitted.tokens, history: kept.tokens },
   };
 }

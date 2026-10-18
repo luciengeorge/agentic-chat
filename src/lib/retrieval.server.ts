@@ -5,6 +5,7 @@ import type { Retrieve } from "#learn/retrieve/types";
 
 import { aiSdkEmbedder, EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, type Embedder } from "#learn/embed/embed";
 import { hashingEmbedder } from "#learn/embed/fake";
+import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
 import { modelRewriter, noRewriter, type QueryRewriter } from "#learn/query/rewrite";
 import { aiSdkReranker, overlapReranker, type Reranker } from "#learn/rerank/rerank";
@@ -64,7 +65,7 @@ export function rerankerFromEnv(env: Env = process.env): Reranker {
 export function rewriterFromEnv(env: Env = process.env): QueryRewriter {
   if (acEnv(env) !== "test" && env.OPENAI_API_KEY) {
     const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
-    return modelRewriter(openai(CHAT_MODEL), CHAT_REASONING_EFFORT);
+    return modelRewriter(aiSdkChatModel(openai(CHAT_MODEL)), CHAT_REASONING_EFFORT);
   }
   return noRewriter;
 }

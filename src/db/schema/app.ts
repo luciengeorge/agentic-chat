@@ -620,6 +620,9 @@ export const jobs = pgTable(
     lockedBy: text("locked_by"),
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastError: text("last_error"),
+    /** What kind of work it is, so a worker can cap a class: a backfill can't then hold every slot while
+     * incremental work waits (section 05.6). */
+    class: text("class").notNull().default("default"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
@@ -702,6 +705,108 @@ export const automationFires = pgTable(
       columns: [t.tenantId, t.automationId],
       foreignColumns: [automations.tenantId, automations.id],
     }).onDelete("cascade"),
+    tenantIsolation(),
+  ],
+);
+
+/**
+ * A counter per tenant that directory sync bumps whenever a membership changes (section 09.2). The principal
+ * cache keys each viewer's principal set on it, so a sync that changes a membership invalidates every entry of
+ * its tenant at once.
+ */
+export const directoryVersions = pgTable(
+  "directory_versions",
+  {
+    tenantId: tenantId().primaryKey(),
+    version: bigint("version", { mode: "number" }).notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  () => [tenantIsolation()],
+);
+
+/**
+ * Append-only history of who could reach what (section 09.5): every ACL stamp or clear on a document, and every
+ * direct membership added to or removed from a group, with the state before and after, the sync run that made
+ * the change (`app.sync_run_id`, when one did) and when. The app role may insert and read, never update or
+ * delete (the migration revokes both).
+ */
+export const aclAudit = pgTable(
+  "acl_audit",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    tenantId: tenantId(),
+    subject: text("subject").notNull(),
+    action: text("action").notNull(),
+    documentId: uuid("document_id"),
+    groupId: uuid("group_id"),
+    memberId: uuid("member_id"),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    /** The document's new `acl_version`, for a document change. */
+    aclVersion: bigint("acl_version", { mode: "number" }),
+    syncRunId: text("sync_run_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("acl_audit_subject_check", sql`subject IN ('document', 'membership')`),
+    check(
+      "acl_audit_action_check",
+      sql`(subject = 'document' AND action IN ('stamp', 'clear') AND document_id IS NOT NULL)
+        OR (subject = 'membership' AND action IN ('added', 'removed') AND group_id IS NOT NULL AND member_id IS NOT NULL)`,
+    ),
+    index("acl_audit_document_idx")
+      .on(t.documentId, t.id)
+      .where(sql`document_id IS NOT NULL`),
+    index("acl_audit_group_idx")
+      .on(t.groupId, t.id)
+      .where(sql`group_id IS NOT NULL`),
+    tenantIsolation(),
+  ],
+);
+
+/**
+ * OCR'd pages whose mean word confidence came in under the review threshold (section 03.2). A page stays
+ * searchable while it waits. A reviewer accepts it as it is, or submits corrected text, which replaces that
+ * page's chunks.
+ */
+export const ocrReviews = pgTable(
+  "ocr_reviews",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    documentId: uuid("document_id").notNull(),
+    documentVersion: integer("document_version").notNull(),
+    page: integer("page").notNull(),
+    /** The page's mean word confidence, 0 to 100. */
+    confidence: doublePrecision("confidence").notNull(),
+    /** What OCR read, as the chunks first had it. */
+    ocrText: text("ocr_text").notNull(),
+    status: text("status").notNull().default("pending"),
+    correctedText: text("corrected_text"),
+    reviewerId: uuid("reviewer_id"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("ocr_reviews_document_id_document_version_page_key").on(t.documentId, t.documentVersion, t.page),
+    check("ocr_reviews_status_check", sql`status IN ('pending', 'accepted', 'corrected')`),
+    check("ocr_reviews_corrected_check", sql`(status = 'corrected') = (corrected_text IS NOT NULL)`),
+    check("ocr_reviews_reviewer_check", sql`(status = 'pending') = (reviewer_id IS NULL)`),
+    check("ocr_reviews_page_check", sql`page >= 1`),
+    foreignKey({
+      name: "ocr_reviews_tenant_id_document_id_fkey",
+      columns: [t.tenantId, t.documentId],
+      foreignColumns: [documents.tenantId, documents.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "ocr_reviews_tenant_id_reviewer_id_fkey",
+      columns: [t.tenantId, t.reviewerId],
+      foreignColumns: [principals.tenantId, principals.id],
+    }),
+    index("ocr_reviews_pending_idx")
+      .on(t.createdAt)
+      .where(sql`status = 'pending'`),
     tenantIsolation(),
   ],
 );

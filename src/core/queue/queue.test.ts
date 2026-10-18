@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { withTenantOn } from "@/db/tenant";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
 
-import { claim, complete, enqueue, fail, heartbeat, reclaimExpired } from "./queue";
+import { claim, claimWithinLimits, complete, enqueue, fail, heartbeat, reclaimExpired } from "./queue";
 import { workOnce } from "./worker";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -116,5 +116,78 @@ describe.skipIf(!postgresAvailable)("the job queue", () => {
     // A failure while a job with its key waits leaves the retry to the waiting one.
     expect(await fail(t.db, running, "a", "boom", 0)).toBe("done");
     expect((await claim(t.db, queue, "b", 30_000))!.id).toBe(next);
+  });
+  describe("classes: a backfill can't starve incremental sync", () => {
+    // The 3,000-page filing as a full sync queues it: twelve page ranges of 250, queued before anything else.
+    const backfill = () =>
+      Promise.all(
+        Array.from({ length: 12 }, (_, i) =>
+          add({ documentId: "filing", from: i * 250 + 1, to: (i + 1) * 250 }, { class: "backfill" }),
+        ),
+      );
+    const delta = () => add({ sync: "delta", reason: "webhook" }, { class: "incremental" });
+    // Two workers, as the dev server runs. The backfill may take one; the other stays free for incremental work.
+    const LIMITS = { backfill: 1 };
+
+    it("without caps, the backfill queued first holds every worker and the delta waits", async () => {
+      await backfill();
+      const deltaId = await delta();
+      const a = (await claim(t.db, queue, "a", 30_000))!;
+      const b = (await claim(t.db, queue, "b", 30_000))!;
+      expect([a.class, b.class]).toEqual(["backfill", "backfill"]);
+      expect(await row(deltaId)).toMatchObject({ state: "queued" });
+    });
+
+    it("with backfill capped, a delta queued behind twelve page ranges gets the free worker", async () => {
+      await backfill();
+      const a = (await claimWithinLimits(t.db, queue, "a", 30_000, LIMITS))!;
+      expect(a.class).toBe("backfill");
+      // The other worker finds nothing it may take: eleven ranges wait, but backfill is at its cap.
+      expect(await claimWithinLimits(t.db, queue, "b", 30_000, LIMITS)).toBeNull();
+
+      const deltaId = await delta();
+      const b = (await claimWithinLimits(t.db, queue, "b", 30_000, LIMITS))!;
+      expect(b).toMatchObject({ id: deltaId, class: "incremental" });
+
+      await complete(t.db, b, "b");
+      expect(await claimWithinLimits(t.db, queue, "b", 30_000, LIMITS)).toBeNull();
+      await complete(t.db, a, "a");
+      expect((await claimWithinLimits(t.db, queue, "b", 30_000, LIMITS))!.class).toBe("backfill");
+    });
+
+    it("never runs more of a class than its cap, even with many workers claiming at once", async () => {
+      await backfill();
+      const claims = await Promise.all(
+        Array.from({ length: 8 }, (_, w) => claimWithinLimits(t.db, queue, `worker-${w}`, 30_000, { backfill: 3 })),
+      );
+      expect(claims.filter(Boolean)).toHaveLength(3);
+      const [{ running }] = await t.sql`
+        SELECT count(*)::int AS running FROM jobs WHERE queue = ${queue} AND state = 'running'`;
+      expect(running).toBe(3);
+    });
+
+    it("lets the worker loop take the cap, so a delta runs while the backfill saturates its share", async () => {
+      await backfill();
+      const deltaId = await delta();
+      const ran: string[] = [];
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      const options = {
+        db: t.db,
+        queue,
+        classLimits: LIMITS,
+        handler: async (job: { id: string; class: string }) => {
+          ran.push(job.class);
+          if (job.class === "backfill") await held;
+        },
+      };
+      const busy = workOnce(options, "a");
+      await sleep(50);
+      expect(await workOnce(options, "b")).toBe(true);
+      expect(ran).toEqual(["backfill", "incremental"]);
+      expect(await row(deltaId)).toMatchObject({ state: "done" });
+      release();
+      await busy;
+    });
   });
 });

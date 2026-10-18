@@ -1,15 +1,15 @@
-import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DefaultChatTransport } from "ai";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import type { OpenSource } from "#learn/frontend/citations";
+
+import { useAnswerChat } from "#learn/frontend/chat";
 import { routeMessage } from "@/components/agent/api";
 import { RunView } from "@/components/agent/run-view";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-import type { OpenSource } from "./citations";
-import type { ChatUIMessage, StoredUIMessage } from "./types";
+import type { StoredUIMessage } from "./types";
 
 import { Composer } from "./composer";
 import { AssistantMessage, UserMessage } from "./messages";
@@ -67,21 +67,10 @@ export function ChatView({
   const [agent, setAgent] = useState(false);
   const [runs, setRuns] = useState(initialRuns);
   const [starting, setStarting] = useState(false);
-  const [transport] = useState(
-    () =>
-      new DefaultChatTransport<ChatUIMessage>({
-        api: "/api/chat",
-        // The server keeps the history: send the conversation id and the new message only.
-        prepareSendMessagesRequest: ({ id, messages }) => ({ body: { id, message: messages.at(-1) } }),
-      }),
-  );
-
-  const { messages, sendMessage, status, stop } = useChat<ChatUIMessage>({
+  const { messages, sendMessage, status, stop } = useAnswerChat({
     id,
-    messages: initialMessages as ChatUIMessage[],
-    transport,
+    initialMessages,
     onError: (error) => toast.error(describe(error)),
-    onFinish: () => void queryClient.invalidateQueries({ queryKey: ["conversations"] }),
   });
 
   const busy = status === "submitted" || status === "streaming";

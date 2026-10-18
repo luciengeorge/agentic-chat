@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import type { ParseDeps } from "#learn/parse/types";
+
 const CORPUS = join(import.meta.dirname, "../../../fixtures/corpus");
 
 export interface CorpusFile {
@@ -56,4 +58,29 @@ export function corpusFile(docId: string): CorpusFile {
   const file = corpusFiles().find((f) => f.docId === docId);
   if (!file) throw new Error(`no corpus file ${docId}`);
   return file;
+}
+
+/** What tesseract.js read on each page without a text layer: `scripts/ocr-record.ts` writes it. */
+const OCR_RECORDING = join(import.meta.dirname, "ocr-recording.json");
+
+/**
+ * OCR as tesseract.js really read the document's scanned pages, replayed: the same text and confidences as the app
+ * gets, without the 2 to 9 seconds a document takes. Rasterising is skipped (the "PNG" carries the page number),
+ * and a page that wasn't recorded throws.
+ */
+export function recordedOcr(docId: string): ParseDeps {
+  const recording = JSON.parse(readFileSync(OCR_RECORDING, "utf8")) as Record<
+    string,
+    Record<string, { text: string; confidence: number }>
+  >;
+  const pages = recording[docId] ?? {};
+  return {
+    rasterise: async (_pdf, page) => Uint8Array.of(page >> 8, page & 255),
+    ocr: async (png) => {
+      const page = (png[0] << 8) | png[1];
+      const read = pages[page];
+      if (!read) throw new Error(`no recorded OCR for ${docId} page ${page}`);
+      return read;
+    },
+  };
 }

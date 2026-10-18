@@ -1,7 +1,7 @@
 import { simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 
-import type { ChatModel } from "./types";
+import type { ChatModel, StructuredModel } from "./types";
 
 import { aiSdkChatModel } from "./ai-sdk";
 
@@ -97,6 +97,35 @@ export function scriptedTurns(turns: ScriptedTurn[]): { model: ChatModel; mock: 
             },
           ],
         }),
+      };
+    },
+  });
+  return { model: aiSdkChatModel(mock), mock };
+}
+
+/**
+ * A scripted fake for structured output: the AI SDK's mock model answers each `generateText` call with the next
+ * reply as JSON text (a string is sent as given, to script a reply that isn't JSON). A call past the script fails.
+ */
+export function scriptedObjects(replies: unknown[]): {
+  model: ChatModel & StructuredModel;
+  mock: MockLanguageModelV4;
+} {
+  let call = 0;
+  const mock = new MockLanguageModelV4({
+    modelId: "scripted-objects",
+    doGenerate: async () => {
+      if (call >= replies.length)
+        throw new Error(`the script has ${replies.length} replies; the model was called again`);
+      const reply = replies[call++];
+      return {
+        content: [{ type: "text" as const, text: typeof reply === "string" ? reply : JSON.stringify(reply) }],
+        finishReason: { unified: "stop" as const, raw: "stop" },
+        usage: {
+          inputTokens: { total: 50, noCache: 50, cacheRead: undefined, cacheWrite: undefined },
+          outputTokens: { total: 10, text: 10, reasoning: 0 },
+        },
+        warnings: [],
       };
     },
   });

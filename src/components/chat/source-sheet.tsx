@@ -2,30 +2,14 @@ import { File02Icon, LinkSquare02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useQuery } from "@tanstack/react-query";
 
+import { documentHref, quotePattern, type OpenSource } from "#learn/frontend/citations";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCitedChunk } from "@/routes/chat/-functions";
 
-import type { OpenSource } from "./citations";
-
 import { Markdown } from "./markdown";
-
-const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/** A pattern for the quote's pieces (an elided quote, "a … b", has two), each matching across runs of
- * whitespace. Pipes and markdown between words won't match once the chunk is rendered, so a quote that spans
- * two table cells marks nothing; the chip's tooltip still shows it. */
-function quotePattern(quote: string | null): RegExp | undefined {
-  if (!quote) return undefined;
-  const pieces = quote
-    .replace(/[*_`]/g, "")
-    .split(/\s*(?:\.\.\.|…)\s*/)
-    .map((piece) => piece.split(/\s+/).filter(Boolean).map(escape).join("\\s+"))
-    .filter(Boolean);
-  return pieces.length ? new RegExp(`(${pieces.join("|")})`, "gi") : undefined;
-}
 
 /** The cited chunk, quote marked, with a link that opens the original at the cited page. */
 export function SourceSheet({ source, onClose }: { source: OpenSource | null; onClose: () => void }) {
@@ -36,9 +20,7 @@ export function SourceSheet({ source, onClose }: { source: OpenSource | null; on
     staleTime: 60_000,
   });
 
-  const href = source
-    ? `/api/chat/documents/${source.documentId}${source.page ? `#page=${source.page}` : ""}`
-    : undefined;
+  const href = source ? documentHref(source) : undefined;
 
   return (
     <Sheet open={source !== null} onOpenChange={(open) => (open ? undefined : onClose())}>

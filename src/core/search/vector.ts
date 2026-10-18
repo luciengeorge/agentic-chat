@@ -1,10 +1,9 @@
 import { sql } from "drizzle-orm";
 
+import type { Hit } from "#learn/search/lexical";
 import type { Tx } from "@/db/tenant";
 
-import type { Hit } from "./lexical";
-
-import { uuidArray } from "./sql";
+import { uuidArray } from "#learn/search/sql";
 
 export interface VectorSearchOptions {
   documentIds: readonly string[];

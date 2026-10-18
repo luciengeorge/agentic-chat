@@ -6,17 +6,23 @@ import { countTokens } from "#learn/chunk/tokens";
 export const DEFAULT_TARGET_TOKENS = 512;
 export const DEFAULT_OVERLAP_TOKENS = 64;
 
+/** A table's header and separator lines, repeated wherever a chunk starts inside the table. */
+export interface TableHeader {
+  header: string;
+  tokens: number;
+}
+
 /** The smallest piece a chunk boundary can fall between: a heading, a sentence, or a table row. */
-interface Unit {
+export interface Unit {
   text: string;
   tokens: number;
   page: number | null;
+  /** The nearest heading above the unit. */
   section: string | null;
   /** Units from the same block join with a space (sentences) or a newline (rows). */
   block: number;
   heading: boolean;
-  /** A table row's header and separator lines, repeated wherever a chunk starts inside the table. */
-  table: { header: string; tokens: number } | null;
+  table: TableHeader | null;
 }
 
 /**
@@ -25,6 +31,9 @@ interface Unit {
  * runs long splits with `overlapTokens` of trailing sentences or rows carried into the next chunk.
  * A chunk exceeds the target only by the unit that wouldn't fit anywhere smaller: one long sentence
  * or one row (plus its table header).
+ *
+ * Section 04 of the course builds it in four functions: `pack` (sizing), `tail` (overlap),
+ * `sections` (headings) and `tableRows` (tables).
  */
 export function chunk(doc: ParsedDocument, options: ChunkOptions = {}): Chunk[] {
   const target = options.targetTokens ?? DEFAULT_TARGET_TOKENS;
@@ -34,34 +43,75 @@ export function chunk(doc: ParsedDocument, options: ChunkOptions = {}): Chunk[] 
   }
 
   const chunks: Chunk[] = [];
-  let current: Unit[] = [];
-  let tokens = 0;
-  let fresh = 0;
-  let freshContent = 0;
-  const emit = () => {
-    if (fresh > 0) chunks.push(build(current, chunks.length));
-  };
-
-  for (const unit of units(doc, target)) {
-    if (unit.heading && current.some((u) => !u.heading)) {
-      emit();
-      current = [];
-      tokens = fresh = freshContent = 0;
-    } else if (!unit.heading && freshContent > 0 && tokens + cost(unit, current.at(-1)) > target) {
-      emit();
-      current = tail(current, overlap);
-      tokens = current.reduce((sum, u, i) => sum + cost(u, current[i - 1]), 0);
-      fresh = freshContent = 0;
-    }
-    tokens += cost(unit, current.at(-1));
-    current.push(unit);
-    fresh++;
-    if (!unit.heading) freshContent++;
+  for (const section of sections(units(doc, target))) {
+    for (const window of pack(section, target, overlap)) chunks.push(build(window, chunks.length));
   }
-  emit();
   return chunks;
 }
 
+/**
+ * Packs one section's units into windows of at most `target` tokens. A window closes when the next
+ * unit wouldn't fit, and the next window starts with `tail` of it. A heading never closes a window,
+ * so it stays with the text it introduces.
+ */
+export function pack(units: Unit[], target: number, overlap: number): Unit[][] {
+  const windows: Unit[][] = [];
+  let current: Unit[] = [];
+  let tokens = 0;
+  /** Text units in `current` that aren't overlap: a window only closes once it has one. */
+  let added = 0;
+  for (const unit of units) {
+    if (!unit.heading && added > 0 && tokens + cost(unit, current.at(-1)) > target) {
+      windows.push(current);
+      current = tail(current, overlap);
+      tokens = current.reduce((sum, u, i) => sum + cost(u, current[i - 1]), 0);
+      added = 0;
+    }
+    tokens += cost(unit, current.at(-1));
+    current.push(unit);
+    if (!unit.heading) added++;
+  }
+  if (current.length > 0) windows.push(current);
+  return windows;
+}
+
+/** The trailing sentences or rows of a window, up to `overlap` tokens, to repeat at the start of the next. */
+export function tail(units: Unit[], overlap: number): Unit[] {
+  const out: Unit[] = [];
+  let tokens = 0;
+  for (let i = units.length - 1; i >= 0 && !units[i].heading; i--) {
+    tokens += units[i].tokens + 1;
+    if (tokens > overlap) break;
+    out.unshift(units[i]);
+  }
+  return out;
+}
+
+/**
+ * Splits the units into sections, each packed on its own. A heading starts a new section, unless the
+ * section so far holds only headings: `# Runbook` then `## 1. Pipeline` open one section together.
+ */
+export function sections(units: Unit[]): Unit[][] {
+  const out: Unit[][] = [];
+  for (const unit of units) {
+    const last = out.at(-1);
+    if (last && !(unit.heading && last.some((u) => !u.heading))) last.push(unit);
+    else out.push([unit]);
+  }
+  return out;
+}
+
+/** A markdown table's rows, each carrying its header. A table with no rows is its header alone. */
+export function tableRows(markdown: string): Pick<Unit, "text" | "tokens" | "table">[] {
+  const lines = markdown.split("\n");
+  const header = lines.slice(0, 2).join("\n");
+  const rows = lines.slice(2);
+  if (rows.length === 0) return [{ text: header, tokens: countTokens(header), table: null }];
+  const table = { header, tokens: countTokens(header) };
+  return rows.map((row) => ({ text: row, tokens: countTokens(row), table }));
+}
+
+/** Every block as units: a heading is one line, a text block its sentences, a table its rows. */
 function units(doc: ParsedDocument, target: number): Unit[] {
   const out: Unit[] = [];
   let section: string | null = null;
@@ -70,23 +120,15 @@ function units(doc: ParsedDocument, target: number): Unit[] {
   for (const page of pages) {
     for (const b of page.blocks) {
       block++;
-      const base = { page: page.number, block, heading: false, table: null };
+      if (b.kind === "heading") section = b.text;
+      const base = { page: page.number, block, section, heading: false, table: null };
       if (b.kind === "heading") {
-        section = b.text;
         const text = `${"#".repeat(b.level)} ${b.text}`;
-        out.push({ ...base, section, text, tokens: countTokens(text), heading: true });
+        out.push({ ...base, text, tokens: countTokens(text), heading: true });
       } else if (b.kind === "text") {
-        for (const text of pieces(b.text, target)) out.push({ ...base, section, text, tokens: countTokens(text) });
+        for (const text of pieces(b.text, target)) out.push({ ...base, text, tokens: countTokens(text) });
       } else {
-        const lines = b.markdown.split("\n");
-        const header = lines.slice(0, 2).join("\n");
-        const rows = lines.slice(2);
-        if (rows.length === 0) {
-          out.push({ ...base, section, text: header, tokens: countTokens(header) });
-          continue;
-        }
-        const table = { header, tokens: countTokens(header) };
-        for (const row of rows) out.push({ ...base, section, text: row, tokens: countTokens(row), table });
+        for (const row of tableRows(b.markdown)) out.push({ ...base, ...row });
       }
     }
   }
@@ -119,20 +161,8 @@ function pieces(text: string, target: number): string[] {
 }
 
 /** What `unit` adds to a chunk after `prev`: itself, a separator, and the table header if it opens a table. */
-function cost(unit: Unit, prev: Unit | undefined): number {
+export function cost(unit: Unit, prev: Unit | undefined): number {
   return unit.tokens + 1 + (unit.table && prev?.block !== unit.block ? unit.table.tokens : 0);
-}
-
-/** The trailing sentences or rows of a chunk, up to `overlap` tokens, to repeat at the start of the next. */
-function tail(units: Unit[], overlap: number): Unit[] {
-  const out: Unit[] = [];
-  let tokens = 0;
-  for (let i = units.length - 1; i >= 0 && !units[i].heading; i--) {
-    tokens += units[i].tokens + 1;
-    if (tokens > overlap) break;
-    out.unshift(units[i]);
-  }
-  return out;
 }
 
 function build(units: Unit[], ordinal: number): Chunk {

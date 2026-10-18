@@ -1,0 +1,46 @@
+{
+  "model": "gpt-6-luna",
+  "input": [
+    {
+      "role": "developer",
+      "content": "You turn a question to a company's internal search into search queries.\nWrite up to 3 short queries that would find the passages answering it:\n- a rephrasing in the words a policy, report or contract would use;\n- the key terms expanded (acronyms spelled out, synonyms);\n- any identifier in the question (a contract number like KPC-2026-0142, an error code like KP-4031, a SKU) kept exactly as written.\nDon't answer the question. Don't invent identifiers, names or numbers that aren't in it."
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "How much can I spend on a hotel in London?"
+        }
+      ]
+    }
+  ],
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "strict": true,
+      "name": "search_queries",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "queries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Search queries for the same need, each different from the question and from each other"
+          }
+        },
+        "required": [
+          "queries"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "reasoning": {
+    "effort": "low",
+    "summary": "detailed"
+  }
+}

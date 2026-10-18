@@ -1,6 +1,8 @@
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it } from "vitest";
 
+import { aiSdkChatModel } from "#learn/model/ai-sdk";
+
 import { cleanRewrites, MAX_REWRITES, modelRewriter, noRewriter } from "./rewrite";
 
 const usage = {
@@ -22,7 +24,7 @@ function scripted(json: unknown) {
 describe("modelRewriter", () => {
   it("asks for structured output and returns the cleaned queries", async () => {
     const model = scripted({ queries: ["hotel nightly limit London", "  ", "Hotel nightly limit London", "receipts"] });
-    const rewrite = modelRewriter(model, "medium");
+    const rewrite = modelRewriter(aiSdkChatModel(model), "medium");
 
     expect(await rewrite("How much can I spend on a London hotel?")).toEqual([
       "hotel nightly limit London",
@@ -37,7 +39,7 @@ describe("modelRewriter", () => {
   });
 
   it("fails when the model's output doesn't match the schema", async () => {
-    const rewrite = modelRewriter(scripted({ nope: true }), "low");
+    const rewrite = modelRewriter(aiSdkChatModel(scripted({ nope: true })), "low");
     await expect(rewrite("q")).rejects.toThrow();
   });
 });

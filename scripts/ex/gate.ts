@@ -55,7 +55,7 @@ export async function checkStep(root: string, step: Step): Promise<GateResult> {
 
 export async function runGate(root: string): Promise<GateResult[]> {
   const results: GateResult[] = [];
-  for (const section of loadCatalog(root)) {
+  for (const section of loadCatalog(root, { strict: true })) {
     for (const step of section.steps) {
       if (step.type === "graded") results.push(await checkStep(root, step));
       else {

@@ -1,23 +1,12 @@
 import { eq, inArray, sql } from "drizzle-orm";
 
-import type { Permission } from "#learn/connectors/graph";
 import type { Tx } from "@/db/tenant";
 
+import { recordDocumentAcl } from "#learn/acl/audit";
 import { documentAcl, documents, principals } from "@/db/schema";
 
-/**
- * The directory ids an item's effective permissions grant, own and inherited alike (Graph lists both). Read and
- * write both let a person find the document, so both become an `allow`. Sharing links and anything without a
- * user or group grant nobody.
- */
-export function grantedIds(permissions: readonly Permission[]): string[] {
-  const ids = new Set<string>();
-  for (const { grantedToV2 } of permissions) {
-    const id = grantedToV2.user?.id ?? grantedToV2.group?.id;
-    if (id) ids.add(id);
-  }
-  return [...ids].sort();
-}
+/** Graph's permissions as directory ids: the Graph connector's job, kept here for its callers. */
+export { grantedIds } from "#learn/connectors/graph";
 
 export interface StampResult {
   /** The document's acl_version after the stamp. */
@@ -30,8 +19,9 @@ export interface StampResult {
 /**
  * Makes the document's `document_acl` the given grants, as `allow` rows, mapped from directory ids to principals.
  * A change draws a new `acl_version` from `acl_version_seq` and stamps it on the document and on every row, so
- * versions order ACL changes across all documents. No change draws nothing. Postgres stays the only place the
- * decision is made: this only writes what the source says.
+ * versions order ACL changes across all documents, and writes the change to the audit log (`#learn/acl/audit`).
+ * No change draws nothing. Postgres stays the only place the decision is made: this only writes what the source
+ * says.
  */
 export async function stampAcl(tx: Tx, documentId: string, externalIds: readonly string[]): Promise<StampResult> {
   const found = externalIds.length
@@ -78,6 +68,7 @@ export async function stampAcl(tx: Tx, documentId: string, externalIds: readonly
     );
   }
   await tx.update(documents).set({ aclVersion }).where(eq(documents.id, documentId));
+  await recordDocumentAcl(tx, document.tenantId, { documentId, before: held, after: ids, aclVersion });
   return { aclVersion, changed: true, unknown };
 }
 

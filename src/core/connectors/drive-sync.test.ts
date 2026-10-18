@@ -9,7 +9,7 @@ import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/t
 
 import { type Client, setupFakeWorkspace } from "../../../servers/fake-workspace/testing";
 import { deltaSync, fullSync } from "./drive-sync";
-import { createGraphClient, ResyncRequiredError } from "./graph";
+import { createGraphClient, graphConnector, ResyncRequiredError } from "./graph";
 import { fetchFrom } from "./testing";
 
 const fw = setupFakeWorkspace();
@@ -28,8 +28,8 @@ describe.skipIf(!postgresAvailable)("drive sync", () => {
       pageSize: 3,
     });
   const inTenant = <T>(fn: Parameters<typeof withTenantOn<T>>[2]) => withTenantOn(t.appDb, tenant, fn);
-  const full = () => inTenant((tx) => fullSync(tx, tenant, graph()));
-  const delta = (link: string) => inTenant((tx) => deltaSync(tx, tenant, graph(), link));
+  const full = () => inTenant((tx) => fullSync(tx, tenant, graphConnector(graph())));
+  const delta = (cursor: string) => inTenant((tx) => deltaSync(tx, tenant, graphConnector(graph()), cursor));
 
   async function control(method: string, path: string, json?: unknown) {
     const response = await client.request(method, `/_control/sites/kestrel/items${path}`, { json });
@@ -82,7 +82,7 @@ describe.skipIf(!postgresAvailable)("drive sync", () => {
     const report = await full();
     expect(report).toMatchObject({ files: files().length, created: files().length, deleted: 0, unknownPrincipals: [] });
     expect(report.ingest).toHaveLength(files().length);
-    expect(report.deltaLink).toContain("/drive/root/delta?token=");
+    expect(report.cursor).toContain("/drive/root/delta?token=");
 
     const heron = await document("/Exec/Project Heron memo.pdf");
     expect(heron).toMatchObject({
@@ -122,7 +122,7 @@ describe.skipIf(!postgresAvailable)("drive sync", () => {
   });
 
   it("applies a rename, a move, a delete, a sharing change and new content from delta", async () => {
-    const { deltaLink } = await full();
+    const { cursor } = await full();
     const id = (path: string) => fw.corpus.id("kestrel", path);
     const before = await document("/Exec/Project Heron memo.pdf");
     const plan = await document("/Finance/FP&A/plan.md");
@@ -147,7 +147,7 @@ describe.skipIf(!postgresAvailable)("drive sync", () => {
       content_base64: Buffer.from("new words").toString("base64"),
     });
 
-    const report = await delta(deltaLink);
+    const report = await delta(cursor);
     expect(report).toMatchObject({ created: 0, deleted: 1, changed: 1 });
     expect(report.moved).toBe(2);
 
@@ -172,21 +172,21 @@ describe.skipIf(!postgresAvailable)("drive sync", () => {
     expect(charlie).toMatchObject({ version: 2, status: "pending" });
     expect(report.ingest).toEqual([{ documentId: charlie.id, version: 2 }]);
 
-    expect(await delta(report.deltaLink)).toMatchObject({ files: 0, deleted: 0, ingest: [] });
+    expect(await delta(report.cursor)).toMatchObject({ files: 0, deleted: 0, ingest: [] });
   });
 
   it("re-paths a renamed folder's files, which delta doesn't list", async () => {
-    const { deltaLink } = await full();
+    const { cursor } = await full();
     await control("POST", `/${fw.corpus.id("kestrel", "/Finance/Reports")}/rename`, { name: "Reporting" });
-    const report = await delta(deltaLink);
+    const report = await delta(cursor);
     expect((await document("/Finance/Reports/Q3 report.pdf")).path).toBe("/Finance/Reporting/Q3 report.pdf");
     expect(report.ingest).toEqual([]);
   });
 
   it("says to resync when the delta link has expired", async () => {
-    const { deltaLink } = await full();
+    const { cursor } = await full();
     expect((await client.request("POST", "/_control/reset")).status).toBe(200);
-    await expect(delta(deltaLink)).rejects.toBeInstanceOf(ResyncRequiredError);
+    await expect(delta(cursor)).rejects.toBeInstanceOf(ResyncRequiredError);
   });
 
   it("deletes documents a full sync no longer finds", async () => {
