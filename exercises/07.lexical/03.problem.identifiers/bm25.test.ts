@@ -65,7 +65,9 @@ describe("the worked example", () => {
     expect(parts.who, "'who' isn't on the MSA's first page: listed, with score 0").toBe(0);
 
     const byVector = rankByVector("kpc-2026-0142-owner");
-    expect(byVector.findIndex((r) => r.key === MSA) + 1).toBe(10);
+    const msa = byVector.findIndex((r) => r.key === MSA);
+    expect(msa + 1).toBe(10);
+    expect(byVector[msa].similarity).toBeCloseTo(0.503, 4);
     expect(byVector[0].key).toBe("/Legal/Contracts/Contract Register 2026-09-28.pdf#6");
   });
 

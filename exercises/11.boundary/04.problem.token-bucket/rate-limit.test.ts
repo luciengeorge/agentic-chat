@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { CHAT_BUCKET, takeToken, type Bucket } from "#learn/boundary/rate-limit";
+import { bucketResult, CHAT_BUCKET, takeToken, type Bucket } from "#learn/boundary/rate-limit";
 import { withTenantOn } from "@/db/tenant";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
 
@@ -10,6 +10,39 @@ const NORA = "55555555-5555-4555-8555-555555555555";
 const SMALL: Bucket = { name: "test", capacity: 3, refillPerSecond: 0.5 };
 const T0 = new Date("2026-10-18T09:00:00Z");
 const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
+
+describe("what a request is told", () => {
+  it("counts whole tokens left, rounded down, and no wait when allowed", () => {
+    expect(bucketResult({ tokens: 2.5, allowed: true }, SMALL), "2.5 tokens left is 2 whole ones").toEqual({
+      allowed: true,
+      remaining: 2,
+      retryAfterSeconds: 0,
+    });
+    expect(
+      bucketResult({ tokens: 2.9999999999, allowed: true }, SMALL).remaining,
+      "floating point leaves 2.9999999999 for 3: add 1e-9 before Math.floor",
+    ).toBe(3);
+  });
+
+  it("waits until the bucket has refilled to the cost, in whole seconds rounded up", () => {
+    expect(
+      bucketResult({ tokens: 0.5, allowed: false }, CHAT_BUCKET),
+      "half a token short at 1/6 a second is 3 s: (cost - tokens) / refillPerSecond",
+    ).toEqual({ allowed: false, remaining: 0, retryAfterSeconds: 3 });
+    expect(
+      bucketResult({ tokens: 0, allowed: false }, CHAT_BUCKET).retryAfterSeconds,
+      "a whole token short at 1/6 a second is 6 s, not 1/6 (divide by the rate, don't multiply)",
+    ).toBe(6);
+    expect(
+      bucketResult({ tokens: 0.25, allowed: false }, SMALL).retryAfterSeconds,
+      "1.5 s to go: round up to 2, or Leo comes back before the token is there",
+    ).toBe(2);
+    expect(
+      bucketResult({ tokens: 0.5, allowed: false }, SMALL, 2).retryAfterSeconds,
+      "a request that costs 2 waits for 2 tokens: 1.5 short at 0.5 a second is 3 s",
+    ).toBe(3);
+  });
+});
 
 describe.skipIf(!postgresAvailable)("the token bucket", () => {
   let t: TestDatabase;

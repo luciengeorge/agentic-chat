@@ -23,10 +23,10 @@ slots:
 
 Page 2 of the Ashgrove MSA at the defaults (512 and 64), before and after:
 
-|                                  | Chunks | Sizes in tokens                                 |
-| -------------------------------- | ------ | ----------------------------------------------- |
-| Step 2: cut by size only         | 2      | 494 (clauses 5.2 to 11), 185 (clauses 11 to 14) |
-| This step: one section per chunk | 10     | 86, 61, 42, 48, 66, 137, 54, 45, 61, 25         |
+|                                  | Chunks | Sizes in tokens                                                         |
+| -------------------------------- | ------ | ----------------------------------------------------------------------- |
+| Step 2: cut by size only         | 2      | 494 (clauses 5.2 to 11), 185 (131 plus 54 of overlap, clauses 11 to 14) |
+| This step: one section per chunk | 10     | 86, 61, 42, 48, 66, 137, 54, 45, 61, 25                                 |
 
 The 66-token chunk is `## 9. Liability` and its three sentences, labelled with the section "9. Liability". The first chunk, 86 tokens, is the end of clause 5, whose heading is on page 1; on this page alone it has no section. Smaller chunks mean more of them to store and search, which is the price of each one being about one thing.
 

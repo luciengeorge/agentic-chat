@@ -12,7 +12,7 @@ slots:
 ## Terms
 
 - **Stamping** turns one file's sharing in the drive (Graph's permissions, own and inherited) into `document_acl` rows. `stampAcl` does it; the drive sync (section 02) calls it for every file it sees.
-- An **ACL version** is a number from `acl_version_seq`, one sequence for every document. A stamp that changes something draws the next one, and writes it on the document and its rows.
+- An **ACL version** is a number from `acl_version_seq`, one sequence shared by every document. A stamp that changes something draws the next one, and writes it on the document and its rows.
 - The **audit log** (`acl_audit`) is append-only: one row per change, with the principals before and after, the version, and the **sync run** that made it. `setSyncRun` puts the run's id on the transaction, as `withTenant` puts the tenant.
 
 ## Do this

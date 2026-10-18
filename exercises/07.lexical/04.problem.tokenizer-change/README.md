@@ -18,7 +18,7 @@ slots:
 
 ## Do this
 
-🐨 In `playground/reindex.ts`, write `beginTokenizerChange` (the order of the moves that put a transition index in place) and `compareFields` (the dual read). The DDL, the concurrent build, the drop-and-rename and `finishTokenizerChange` are written. The tests need Postgres.
+🐨 In `playground/reindex.ts`, write `beginTokenizerChange` (the order of the moves that put a transition index in place) and `compareFields` (the dual read). The DDL (the `CREATE INDEX` and `DROP INDEX` statements that change the schema), the concurrent build, the drop-and-rename and `finishTokenizerChange` are written. The tests need Postgres.
 
 ## A worked example
 

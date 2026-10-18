@@ -12,14 +12,14 @@ slots:
 ## Terms
 
 - The **outbox** is a table of requests for work (`outbox`). A row is written in the same transaction as the change it stands for, so it exists exactly when the change committed.
-- The **relay** reads the outbox and starts a workflow run for each row, then marks the row **published**. It runs on every kick (a request that wrote a row kicks it after commit) and every two seconds.
+- The **relay** reads the outbox and starts a workflow run for each row, then marks the row **published**. It runs every two seconds, and also whenever it's kicked.
+- A **kick** is a signal inside the server process (`kickRelay()`, an event) that wakes the relay at once instead of at its next two-second poll. Code that wrote an outbox row (the webhook, the sync's drive step) sends one after its transaction commits, so the run starts within milliseconds. A lost kick costs nothing: the poll finds the row anyway.
 - A **partition** is a group of rows that must start in order: one document's ingests (`document:<id>`), or one tenant's syncs (`sync:<tenant>`).
-- An **advisory lock** is a lock on a number you choose, not on a row. `pg_try_advisory_xact_lock` takes one for the rest of the transaction, or says no if someone holds it.
 - **Workflow-first** is the other shape: start the run first, and let its first step write the record (`recordStart`). Use it when nothing else has to commit with the request.
 
 ## Do this
 
-🐨 Write `relayOnce` in `playground/outbox.ts`, one pass of the relay: lock a batch of unpublished rows, group them by partition, and deliver each partition's rows oldest first, stopping at the first failure; roll the whole batch back on an outage. The run's side is written: `claim`, which every run's first step calls, and `recordStart` for workflow-first.
+🐨 Write `relayBatch` in `playground/outbox.ts`, the body of one pass of the relay: lock a batch of unpublished rows, group them by partition, and deliver each partition's rows oldest first, stopping that partition at its first failure. `relayOnce` runs it in one transaction. The run's side is written: `claim`, which every run's first step calls, and `recordStart` for workflow-first. Step 4 then makes two relays and an outage safe.
 
 ## A worked example
 

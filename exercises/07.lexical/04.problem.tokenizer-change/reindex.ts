@@ -117,23 +117,21 @@ export const NEXT_BM25_INDEX = "chunks_bm25_next";
  */
 export async function beginTokenizerChange(db: Db, from: LexicalField, to: LexicalField): Promise<void> {
   // 🐨 Refuse (RangeError) a `to` with the same name as `from`: the new field needs a name of its own.
-  // 🐨 Build the transition index in the background under NEXT_BM25_INDEX, with both fields: `from` exactly as it
-  //    is, and `to`. Then put it in the live index's place.
+  // 🐨 Put a transition index in the live index's place. When this returns, `chunks_bm25_idx` must hold `to` as
+  //    well, and every search on `from` must answer exactly as it did before, scores included. Searches keep
+  //    running the whole time, so work out which fields the new index needs and the order of the moves that keep
+  //    lexical search answering at every moment.
   //
-  // 💰 `buildBm25IndexConcurrently(db, name, fields)`, `replaceBm25Index(db, oldName, newName)`, both below.
+  // 💰 The moves are written, above: `replaceBm25Index` and `buildBm25IndexConcurrently` (each one's doc comment
+  //    says what it takes). Build under `NEXT_BM25_INDEX`.
   //
   // 🦉 What pg_search allows (0.26.1). A table may have one ParadeDB index: a plain second `CREATE INDEX` fails
   //    with "a relation may only have one ParadeDB index". `CREATE INDEX CONCURRENTLY` is the exception, so an
   //    index can be rebuilt while the old one serves. The moment the new one is valid, every query on the table
-  //    uses it, the newest, at once. So you can't keep two indexes and choose between them per query.
-  // 🦉 Why both fields, the classic mistake. Since queries move to the new index the moment it's built, an index
-  //    with only the new tokenizer would change every search in the app at that moment, untested, with no way
-  //    back but another rebuild: a query on `text` gets whatever the newest index has for that column, even an
-  //    alias with another tokenizer. Keep the old field byte for byte (same name, same tokenizer) and nobody
-  //    notices the build. The new tokenizer rides along under its alias until you choose to read it.
-  // 🦉 Why build before you drop. Drop the old index first and, for as long as the build takes (minutes over the
-  //    filing), lexical search has no index at all: `|||` fails outright. Concurrently, then drop, then rename,
-  //    and there's always exactly one index serving.
+  //    uses it, the newest, at once. So you can't keep two indexes and choose between them per query. Walk through
+  //    what a search on `text` gets at each moment of your moves: while the build runs, the instant it's valid,
+  //    and after each of the others. A test runs searches all the way through and tells you if one fails or
+  //    changes; the solution README says why after you've tried.
   //
   // 📜 https://docs.paradedb.com/documentation/indexing/reindexing
   throw new Error(`beginTokenizerChange(${typeof db}, from ${from.name}, to ${to.name}) isn't written yet`);

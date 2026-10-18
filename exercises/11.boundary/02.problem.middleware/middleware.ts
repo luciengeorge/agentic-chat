@@ -42,8 +42,9 @@ export async function viewerFrom(
 //    browser. For the browser, TanStack Start's compiler cuts out everything inside `.server(...)`, then drops any
 //    code and import nothing uses any more. Keep `getViewer` inside, and the browser build forgets
 //    `@/lib/auth-server` and everything behind it. Leave one live reference outside, and the browser bundle imports
-//    better-auth, Drizzle and the `postgres` driver, which needs Node's `net` and `tls`. It broke hydration on this
-//    app once, found live.
+//    better-auth, Drizzle and the `postgres` driver, which needs Node's `net` and `tls`. It broke hydration (the
+//    browser's React taking over the HTML the server sent, so the page responds to clicks) on this app once, found
+//    live.
 // 🦉 Why the request's headers. A server route's handler gets the request; `getViewer()` with no argument reads
 //    the headers of whatever request is current. Passing the request you were given makes the middleware say which
 //    request it answered for, and lets a test call it.

@@ -94,6 +94,23 @@ describe("throttling and Retry-After", () => {
     expect(kestrel.statuses, "a missing item stays missing").toEqual([404]);
   });
 
+  it("leaves a 500 or a 502 to the sync step: no resend here, though the error is still retryable", async () => {
+    const mistake =
+      "a 500 or 502 says the server broke on this request, not 'come back in a moment': resend only a 429 or a 503 (RETRY_STATUSES), not every 5xx";
+    for (const status of [500, 502]) {
+      expect(retryDelay(new Response(null, { status }), 0, 5), `${status}: ${mistake}`).toBeNull();
+    }
+    const { graph, waits, statuses, fault } = start();
+    await fault({ kind: "error", status: 500, count: 1 });
+    const error = await failure(graph.children("root"));
+    expect(statuses, mistake).toEqual([500]);
+    expect(waits).toEqual([]);
+    expect(error, "the label stays broad: the sync step retries a 5xx later").toMatchObject({
+      status: 500,
+      retryable: true,
+    });
+  });
+
   it("crawls Kestrel at $top=5 through two 429s: 22 requests, two 3-second waits, all 40 files", async () => {
     const { graph, waits, statuses, fault } = start({ pageSize: 5 });
     await fault({ kind: "throttle", after_requests: 6, count: 2, retry_after_s: 3 });

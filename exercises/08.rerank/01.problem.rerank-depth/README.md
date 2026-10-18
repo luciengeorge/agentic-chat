@@ -12,7 +12,7 @@ slots:
 ## Terms
 
 - A **candidate** is a chunk search found and the viewer may read. **Fused order** is the order fusion (section 07) put them in.
-- A **reranker** scores each candidate against the question. Ours in the app is Cohere's `rerank-v4.0-fast`, a **cross-encoder**: a model that reads the question and the chunk together, instead of comparing two vectors made apart. In tests it's the **overlap reranker**: the share of the question's words a chunk holds.
+- A **reranker** scores each candidate against the question. Ours in the app is Cohere's `rerank-v4.0-fast`, a **cross-encoder**: a model that reads the question and the chunk together, instead of comparing two vectors made apart. The tests use two: the **overlap reranker** (the share of the question's words a chunk holds), for the depth and k checks, and Cohere's own replies, recorded once and replayed, for `aiSdkReranker` and the worked example.
 - The **depth** is how many candidates, from the top of the fused order, the reranker reads (30 by default). **k** is how many it hands back (8).
 - `rerank()` is the AI SDK's call for any reranking model. It returns a `ranking`: the best documents first, each with its `originalIndex` (its place in the list you sent) and its `score`.
 
@@ -34,4 +34,4 @@ Sofia's question, plus three rewrites, made 8 searches (BM25 and vector for each
 | 30    | #1 to #30         | #28 (score 0.962), then #27 (0.911) | yes, 1st and 2nd          |
 | 8     | #1 to #8          | #6, then #1: two register tables    | never                     |
 
-Run the tests with `pnpm ex test 08.1`. They replay Cohere's recorded answers, so nothing calls out.
+Run the tests with `pnpm ex test 08.1`. Nothing calls out: Cohere's answers are replayed.

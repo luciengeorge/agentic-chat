@@ -16,12 +16,13 @@ Ingesting a document takes seconds; the 3,000-page filing takes minutes. None of
 
 ## The steps
 
-All five work in `src/core/queue/`, which the app imports as `#learn/queue/<file>`.
+All six work in `src/core/queue/`, which the app imports as `#learn/queue/<file>`.
 
 1. **A job queue by hand** (`queue.ts`). Claim jobs so no two workers take the same one, a crash gives the job back, and a poison job ends up dead.
 2. **Retries** (`retry.ts`). Tell Workflow which failures to retry, when, and which to stop on.
 3. **The outbox and relay** (`outbox.ts`). Start a workflow for every write that asks for one, exactly when the write commits.
-4. **Fan-out over the filing** (`fanout.ts`). Cut the 3,000-page filing into page ranges and run them as child workflows, ten at a time.
-5. **Per-class limits** (`queue.ts`). Keep a backfill from starving the small, urgent work behind it.
+4. **One relay per partition, and outages** (`outbox.ts`). Keep two relays from delivering one document's rows out of order, and keep an outage from using up every row's attempts.
+5. **Fan-out over the filing** (`fanout.ts`). Cut the 3,000-page filing into page ranges and run them as child workflows, ten at a time.
+6. **Per-class limits** (`queue.ts`). Keep a backfill from starving the small, urgent work behind it.
 
-The lab, `/labs/background`, is a queue board: jobs by class and state, the outbox, and a link to Workflow's run viewer. Run the starvation demo there while you do step 5.
+The lab, `/labs/background`, is a queue board: jobs by class and state, the outbox, and a link to Workflow's run viewer. Run the starvation demo there while you do step 6.

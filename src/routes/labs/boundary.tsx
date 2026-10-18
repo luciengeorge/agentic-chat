@@ -15,7 +15,8 @@ import { scopeOf, viewerMiddleware } from "@/lib/middleware";
 /** The log holds who asked what, so the lab refuses to run anywhere but dev. */
 async function devOnly() {
   const { acEnv } = await import("@/lib/env");
-  if (acEnv() === "prod") throw new Error("The request log records who asked what, so it only runs in dev.");
+  if (acEnv() !== "dev")
+    throw new Error(`The request log records who asked what, so it only runs in dev (this is ${acEnv()}).`);
 }
 
 const getRequestLog = createServerFn({ method: "GET" })
@@ -83,8 +84,8 @@ function BoundaryLab() {
             <p className="text-sm text-muted-foreground">
               The last 50 requests through <code className="font-mono">viewerMiddleware</code> (your{" "}
               <code className="font-mono">#learn/boundary/middleware</code> while a section 11 step is active), newest
-              first: who asked, in which tenant, what came back, and their rate-limit buckets just after. Dev only: it
-              records who asked what, and keeps it in the dev server's memory.
+              first: who asked, in which tenant, what came back, and their rate-limit buckets just after. Dev only (it
+              refuses in test and prod): it records who asked what, and keeps it in the dev server's memory.
             </p>
           </div>
 

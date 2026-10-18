@@ -13,7 +13,7 @@
  *
  * Every job has a class (say `backfill` or `incremental`). A worker can cap how many jobs of a class run at once
  * (`claimWithinLimits`), so a full sync's thousands of jobs, queued first, can't hold every worker while a
- * webhook's small delta waits behind them (section 05.5).
+ * webhook's small delta waits behind them (section 05.6).
  *
  * Every function takes the executor to run on. Workers cross tenants, so they use the owner (`systemDb`); an app
  * request enqueues inside its tenant's transaction, so the job commits with the write it stands for.
@@ -130,10 +130,11 @@ export async function claim<P = Record<string, unknown>>(
   //    `locked_until` now plus the lease (`interval(leaseMs)`), `updated_at` now. Return the row as a Job with
   //    toJob, or null when no job was due.
   //
-  // 💰 `tx.execute<JobRow>(sql`...`)` runs SQL and gives back rows; `${value}` inside the template is a parameter,
-  //    and `${keyFree}` drops in a piece of SQL. Postgres can pick a row and change it in one statement:
-  //    `WITH next AS (SELECT j.id FROM jobs j WHERE ... ORDER BY ... LIMIT 1 FOR UPDATE SKIP LOCKED)
-  //    UPDATE jobs SET ... FROM next WHERE jobs.id = next.id RETURNING jobs.*`.
+  // 💰 `tx.execute<JobRow>(sql`...`)` runs raw SQL and gives back the rows. Inside the template, `${value}` becomes
+  //    a parameter, and `${keyFree}` drops in a ready-made piece of SQL; it names the table `j`, so alias `jobs` as
+  //    `j` where you use it. A CTE (a named subquery: `WITH name AS (SELECT ...)`) can feed an `UPDATE`, through
+  //    `UPDATE ... FROM name WHERE ...`, and `RETURNING` hands back the changed rows. `FOR UPDATE` and its
+  //    `SKIP LOCKED` go at the very end of a SELECT, after its LIMIT.
   //
   // 🦉 Why SKIP LOCKED. Two workers asking at the same moment both see the same oldest job. With a plain SELECT
   //    both take it, and the job runs twice. `FOR UPDATE` locks the row for the first; the second then waits until
@@ -150,7 +151,7 @@ export async function claim<P = Record<string, unknown>>(
   //    crashes, nobody renews it; once it runs out, `reclaimExpired` puts the job back. Without one, a crashed
   //    worker's job stays 'running' forever.
   // 🦉 New in this file, already written: `keyFree` (jobs that share a key run one at a time; section 15's agent
-  //    runs need it) and `interval`. `claimWithinLimits` ignores its caps for now: that's step 5.
+  //    runs need it) and `interval`. `claimWithinLimits` ignores its caps for now: that's step 6.
   //
   // 📜 https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE (SKIP LOCKED)
   //
@@ -162,7 +163,7 @@ export async function claim<P = Record<string, unknown>>(
   throw new Error(`claim(${typeof tx}, queue ${queue}, worker ${workerId}, lease ${leaseMs} ms) isn't written yet`);
 }
 
-/** `claim` with per-class caps: section 05.5 writes it. Until then it claims as `claim` does, whatever the caps. */
+/** `claim` with per-class caps: section 05.6 writes it. Until then it claims as `claim` does, whatever the caps. */
 export async function claimWithinLimits<P = Record<string, unknown>>(
   db: Transactor,
   queue: string,

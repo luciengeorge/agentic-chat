@@ -22,18 +22,18 @@ export async function withTenantOn<T>(db: Db, tenantId: string, fn: (tx: Tx) => 
   //
   // 💰 Add `import { sql } from "drizzle-orm"`. A uuid matches
   //    `/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i`. `db.transaction(async (tx) => ...)`
-  //    commits when the callback returns and rolls back when it throws. `SET LOCAL` can't take a bound parameter,
-  //    so set it with `SELECT set_config('app.tenant_id', ${tenantId}, true)`: the third argument, `true`, is
-  //    `SET LOCAL`.
+  //    commits when the callback returns and rolls back when it throws. `SET` and `SET LOCAL` can't take a bound
+  //    parameter, so set it with `SELECT set_config('app.tenant_id', ${tenantId}, ...)`. Its docs (below) say
+  //    what the third argument decides.
   //
   // 🦉 How RLS uses it. Each tenant table has one policy, for every command: `tenant_id =
   //    NULLIF(current_setting('app.tenant_id', true), '')::uuid`. Postgres adds it to every query on the table,
   //    whatever the query says, and checks it on the rows a write would leave too. With no setting the right side
   //    is NULL, nothing equals NULL, and the query sees no rows: a forgotten `withTenant` fails closed.
   // 🦉 Why LOCAL, and why it's the classic mistake. The app shares ten connections between every request. A
-  //    plain `SET` (or `set_config(..., false)`) stays on the connection after the transaction ends, so the next
-  //    request to borrow it, from any tenant, starts with Kestrel's tenant already set, and a missing
-  //    `withTenant` there would see Kestrel's rows. `SET LOCAL` ends with the transaction, commit or rollback.
+  //    plain `SET` stays on the connection after the transaction ends, so the next request to borrow it, from any
+  //    tenant, starts with Kestrel's tenant already set, and a missing `withTenant` there would see Kestrel's
+  //    rows. `SET LOCAL` ends with the transaction, commit or rollback.
   // 🦉 Why the role matters as much. A table's owner skips its RLS policies unless the table is FORCEd, and a
   //    superuser or a BYPASSRLS role always does. Run the app as the owner (the other classic mistake, because
   //    it's what `DATABASE_URL` is when you start) and every policy is a no-op. So the app connects as `ac_app`,
@@ -45,7 +45,8 @@ export async function withTenantOn<T>(db: Db, tenantId: string, fn: (tx: Tx) => 
   //    empty string or a slug would fail later as "no rows", which looks like an empty tenant, not a bug.
   //
   // 📜 https://www.postgresql.org/docs/current/ddl-rowsecurity.html
-  // 📜 https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADMIN-SET
+  // 📜 `set_config` (in "Configuration Settings Functions"):
+  //    https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADMIN-SET
   //
   // 🚨 The tests check each tenant's counts inside and none outside, that fn gets the transaction that set the
   //    tenant, that the tenant is gone from a pooled connection after the transaction, a rollback when fn throws,

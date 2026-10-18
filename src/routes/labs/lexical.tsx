@@ -29,7 +29,7 @@ const getRankings = createServerFn({ method: "GET" })
   .validator(z.object({ question: z.string().trim().min(1).max(500) }))
   .handler(async ({ context, data }): Promise<Rankings> => {
     const { acEnv } = await import("@/lib/env");
-    if (acEnv() === "prod") throw new Error("The lexical lab only runs in dev.");
+    if (acEnv() !== "dev") throw new Error(`The lexical lab only runs in dev (this is ${acEnv()}).`);
     const { rankings } = await import("@/components/labs/lexical-server");
     const { withTenant } = await import("@/db/tenant");
     const { embedderFromEnv } = await import("@/lib/retrieval.server");

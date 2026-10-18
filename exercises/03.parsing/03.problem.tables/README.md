@@ -11,6 +11,7 @@ slots:
 
 ## Terms
 
+- A **point** is how PDFs measure: 1/72 of an inch, about a third of a millimetre. An A4 page is 595 points wide, and **9pt** text is 9 points tall.
 - A **segment** is a run of text on one line, with where it starts (`x0`) and ends (`x1`), in points from the left edge.
 - A **gutter** is the empty strip between two columns. It's empty on every line of the table.
 - A **wrapped line** continues a cell that didn't fit on one line. It sits one line height under the line above.
@@ -22,7 +23,7 @@ slots:
 
 ## A worked example
 
-Page 1 of the error code catalogue. The table is 14 lines of 9pt text:
+Page 1 of the error code catalogue. The table is 14 lines of 9pt (9-point) text:
 
 | Gap down from the line above | Lines     | Means        |
 | ---------------------------- | --------- | ------------ |

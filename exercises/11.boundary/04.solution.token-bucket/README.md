@@ -7,7 +7,7 @@ slots:
 
 # A token bucket in Postgres: the solution
 
-`takeToken` inserts the row full (`ON CONFLICT ... DO NOTHING`), then runs one UPDATE. `available` is `LEAST(capacity, tokens + GREATEST(0, seconds since refilled_at) * refillPerSecond)`; `tokens` becomes `available - cost` when `available >= cost`, else `available`; `refilled_at` becomes `GREATEST(refilled_at, now)`. `RETURNING new.tokens, <available from old> >= cost` says what happened: `remaining` is the floor of the new tokens, and a refusal's `retryAfterSeconds` is `ceil((cost - tokens) / refillPerSecond)`.
+`takeToken` inserts the row full (`ON CONFLICT ... DO NOTHING`), then runs one UPDATE. `available` is `LEAST(capacity, tokens + GREATEST(0, seconds since refilled_at) * refillPerSecond)`; `tokens` becomes `available - cost` when `available >= cost`, else `available`; `refilled_at` becomes `GREATEST(refilled_at, now)`. `RETURNING new.tokens, <available from old> >= cost` says what happened, and `bucketResult` turns that into the answer: `remaining` is the floor of the new tokens, and a refusal's `retryAfterSeconds` is `ceil((cost - tokens) / refillPerSecond)`, the tokens still missing divided by the rate they come back at.
 
 ## Why it works
 

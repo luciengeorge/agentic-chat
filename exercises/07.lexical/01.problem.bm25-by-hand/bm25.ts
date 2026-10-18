@@ -61,14 +61,19 @@ export function termScore(
   { k1, b }: Bm25Params = { k1: DEFAULT_K1, b: DEFAULT_B },
 ): number {
   // 🐨 A term that isn't there (tf 0) adds 0.
-  // 🐨 Otherwise: lengthNorm = 1 - b + b × (length / averageLength), and the score is
-  //    idf × tf × (k1 + 1) / (tf + k1 × lengthNorm).
+  // 🐨 Otherwise build it from three pieces, and arrange them yourself:
+  //    - a length norm: this document's length over the average, weighted by b. With b 0 it's always 1, with b 1
+  //      it's the plain ratio, and in between it's that share of the ratio plus the rest of 1;
+  //    - tf saturated by k1: a fraction of tf that starts near 0, climbs fast and flattens toward 1, with k1 setting
+  //      how soon. Length goes in here: the length norm scales k1, so a long document needs more mentions to reach
+  //      the same fraction;
+  //    - a scale: idf, times the constant that makes one mention in a document of average length worth exactly idf.
+  //    Check yourself against the README: chunk 7's length norm is 2.07, and its 12 mentions of kpc give 4.9689.
   //
   // 🦉 Why tf saturates. A chunk that says "hotel" 6 times isn't 6 times more about hotels than one that says it
-  //    once. tf / (tf + k1) climbs fast, then flattens: with k1 = 1.2 one mention gives 0.45 of the most a term can
-  //    give, two 0.62, ten 0.89. The (k1 + 1) on top scales it so one mention in an average-length chunk is worth
-  //    exactly its idf. Leave it out and every score shrinks by the same factor, which ranks the same but no
-  //    longer matches pg_search.
+  //    once. The fraction climbs fast, then flattens: with k1 = 1.2, one mention in an average-length chunk gives
+  //    0.45 of the most a term can give, two 0.62, ten 0.89. The constant on top only rescales. Leave it out and
+  //    every score shrinks by the same factor, which ranks the same but no longer matches pg_search.
   // 🦉 Why length counts. A long chunk mentions more words just by being long. lengthNorm is 1 for a chunk of
   //    average length, above 1 for a longer one (which raises the denominator and lowers the score), below 1 for a
   //    shorter one. b says how much: 0 ignores length, 1 divides fully by it. Lucene's defaults are k1 1.2 and

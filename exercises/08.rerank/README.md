@@ -12,7 +12,7 @@ Two of the four techniques here don't win on Kestrel's corpus. You'll build them
 
 - A **candidate** is a chunk search found that the viewer may read. **Fused order** is the order RRF put them in (section 07).
 - A **reranker** scores each candidate against the question and reorders them. A **cross-encoder** reranker (Cohere's, here) reads the question and the chunk side by side, the librarian who opens each book instead of reading the spines. It's far more accurate than comparing vectors, and far too slow to run on the whole corpus.
-- **Depth** is how many candidates the reranker reads. **k** is how many come back (8 for the chat).
+- **Depth** is how many candidates the reranker reads. **k** is how many come back (8 for the chat). RRF's `k` in section 07 is another thing: 60, a constant inside the fusion formula, which says nothing about how many results come back.
 - **Query rewriting** asks a model for other wordings of the question; **expansion** searches all of them.
 - **HyDE** (hypothetical document embeddings) asks a model to write a made-up answer, and searches with that.
 - **Routing** picks the few documents a question is about, then searches only inside them.

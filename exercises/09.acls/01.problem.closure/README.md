@@ -11,7 +11,7 @@ slots:
 
 ## Terms
 
-- A **principal** is anyone an ACL can name: a user or a group. The **directory** (Entra, Okta; here fake-workspace's Graph-style API) lists them and who is a direct member of what.
+- A **principal** is anyone an ACL can name: a user or a group. The **directory** (Microsoft Entra ID or Okta, the services companies keep their staff accounts and groups in; here fake-workspace's Graph-style API) lists them and who is a direct member of what.
 - A **direct membership** (an **edge**) says one principal is in one group. Groups can be members of groups.
 - The **closure** is every (group, member) pair those edges imply, at any depth: a member of AP is in Finance at depth 2 and in Kestrel at depth 3. **Directory sync** stores it in `group_closure`.
 - `/transitiveMembers` is Graph's own answer to "who is in this group, at any depth". We build the closure ourselves and check it against that.

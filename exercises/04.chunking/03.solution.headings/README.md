@@ -18,4 +18,4 @@ slots:
 
 ## The worked example
 
-Page 2 of the Ashgrove MSA at the defaults goes from 2 chunks (494 and 185 tokens) to 10: 86, 61, 42, 48, 66, 137, 54, 45, 61 and 25. The 66-token chunk is clause 9, "Liability", all of it and nothing else, labelled "9. Liability". The first chunk, the end of clause 5, has no section on this page alone, because its heading is on page 1; ingestion chunks the whole document, where it gets one.
+Page 2 of the Ashgrove MSA at the defaults goes from 2 chunks (494 tokens, and 185: 131 plus 54 of overlap) to 10: 86, 61, 42, 48, 66, 137, 54, 45, 61 and 25. The 66-token chunk is clause 9, "Liability", all of it and nothing else, labelled "9. Liability". The first chunk, the end of clause 5, has no section on this page alone, because its heading is on page 1; ingestion chunks the whole document, where it gets one.

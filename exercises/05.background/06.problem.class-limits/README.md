@@ -31,4 +31,4 @@ Two workers, twelve backfill ranges queued first, then one delta:
 
 With no caps, the delta starts only once twelve ranges have been claimed ahead of it: six rounds of two. With backfill capped at one less than the workers, worker B passes over eleven older ranges and takes the delta. Once both are done, worker B takes range 2.
 
-Run the tests with `pnpm ex test 05.5`. They need Postgres (`pnpm ex up`). The lab, `/labs/background`, runs this same race on a queue board.
+Run the tests with `pnpm ex test 05.6`. They need Postgres (`pnpm ex up`). The lab, `/labs/background`, runs this same race on a queue board.

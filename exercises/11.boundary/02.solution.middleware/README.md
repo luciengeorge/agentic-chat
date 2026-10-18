@@ -18,6 +18,6 @@ slots:
 
 ## The worked example
 
-Compiled for the browser, the file imports only `@tanstack/react-start`. With `export const loadViewer = getViewer;` added, it also imports `@/lib/auth-server`; a production build with it warns 14 times about Node modules swapped out for the browser (8 of them `postgres`'s `net`, `tls`, `crypto`...) and fails on TanStack's import protection: `@tanstack/react-start/server` is denied in the client environment. M1 met the same mistake in dev, where it showed up as a page that wouldn't hydrate.
+Compiled for the browser, the file imports only `@tanstack/react-start`. With `export const loadViewer = getViewer;` added, it also imports `@/lib/auth-server`; a production build with it warns 14 times about Node modules swapped out for the browser (8 of them `postgres`'s `net`, `tls`, `crypto`...) and fails on TanStack's import protection: `@tanstack/react-start/server` is denied in the client environment. M1 met the same mistake in dev, where it showed up as a page that wouldn't hydrate: the server's HTML arrived, but React never took it over in the browser, so nothing on it responded to a click.
 
 `src/lib/middleware.ts` wraps yours with a dev-only request log (`/labs/boundary`) that runs just outside it, so it sees the 401s you return as well as the requests you let through.

@@ -137,6 +137,7 @@ describe.skipIf(!postgresAvailable)("Leo closes the tab on his London answer", (
 
   it("aborts the model call and stores the part he saw, marked stopped", async () => {
     const turn = recordedTurn("london-hotel");
+    expect(new TextEncoder().encode(turn.sse).byteLength, "the recorded reply's bytes, 512 at a time").toBe(56_339);
     const replay = replayModel("london-hotel", { readSize: 512, delayMs: 10 });
     const conversation = crypto.randomUUID();
     const response = await handleChat(

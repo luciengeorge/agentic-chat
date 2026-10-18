@@ -30,8 +30,9 @@ export async function vectorSearch(tx: Tx, embedding: number[], options: VectorS
   //    outside (by distance, then id). Return `{ id, score }` with score = 1 - distance.
   //
   // 💰 Add `import { sql } from "drizzle-orm"` and `import { uuidArray } from "#learn/search/sql"`.
-  //    tx.execute(sql.raw(`SET LOCAL hnsw.ef_search = ${n}`)) (SET takes no parameters, so check n first),
-  //    `SET LOCAL hnsw.iterative_scan = relaxed_order`. `embedding <=> ${JSON.stringify(v)}::vector` is the cosine
+  //    `tx.execute(sql.raw(text))` sends `text` as it is: Postgres's SET takes no parameters, so a number goes in
+  //    as text (check it's a whole number first). pgvector's settings are `hnsw.ef_search` and
+  //    `hnsw.iterative_scan` (its modes are in the 📜). `embedding <=> ${JSON.stringify(v)}::vector` is the cosine
   //    distance; `document_id = ANY(${uuidArray(ids)})` keeps to the list. pgvector returns distances as numbers
   //    or strings, so `Number(row.distance)`.
   //

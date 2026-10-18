@@ -9,7 +9,7 @@
  *
  * Every job has a class (say `backfill` or `incremental`). A worker can cap how many jobs of a class run at once
  * (`claimWithinLimits`), so a full sync's thousands of jobs, queued first, can't hold every worker while a
- * webhook's small delta waits behind them (section 05.5).
+ * webhook's small delta waits behind them (section 05.6).
  *
  * Every function takes the executor to run on. Workers cross tenants, so they use the owner (`systemDb`); an app
  * request enqueues inside its tenant's transaction, so the job commits with the write it stands for.
@@ -134,7 +134,7 @@ export async function claim<P = Record<string, unknown>>(
   return row ? toJob<P>(row) : null;
 }
 
-/** `claim` with per-class caps: section 05.5 writes it. Until then it claims as `claim` does, whatever the caps. */
+/** `claim` with per-class caps: section 05.6 writes it. Until then it claims as `claim` does, whatever the caps. */
 export async function claimWithinLimits<P = Record<string, unknown>>(
   db: Transactor,
   queue: string,

@@ -134,9 +134,16 @@ export function retryDelay(response: Response, attempt: number, maxRetries: numb
   //    fallback only when x is null or undefined (so a `Retry-After: 0` stays 0).
   //
   // 🦉 Why only 429 and 503. A 429 says "too many requests from you, slow down"; a 503 says "I'm busy or
-  //    down for a moment". Both pass with time. A 401 or 403 (wrong token, no access) and a 404 (no such
-  //    item) don't: the same request fails the same way every time, so retrying only wastes the wait and
-  //    hides the real error. Fail at once, and let the caller see it.
+  //    down for a moment". Both pass within seconds, so waiting and resending the same request works. A 401
+  //    or 403 (wrong token, no access) and a 404 (no such item) don't pass: the same request fails the same
+  //    way every time, so retrying only wastes the wait and hides the real error. Fail at once, and let the
+  //    caller see it.
+  // 🦉 Why not every 5xx, the classic mistake. A 500 or a 502 says the server broke on this request, with
+  //    no word on when it will work. Resending it five times in a few seconds rarely helps and adds load to a
+  //    server that's already failing. Its error is still `retryable` (ConnectorError's label covers any 5xx),
+  //    so the sync step (section 05.2) runs the whole step again a little later, a few times at most, each try
+  //    visible in the run viewer. Two levels: the client resends what promised to pass ("come back in a
+  //    moment"), the step reruns its work for what only might.
   // 🦉 Why the source's number wins. A throttling source knows when it will take you back; `Retry-After`
   //    is it telling you. Retry sooner and you're refused again, and SharePoint throttles a client that
   //    ignores it harder. The header can also be a date ("Wed, 21 Oct 2026 07:28:00 GMT"), which
@@ -155,7 +162,8 @@ export function retryDelay(response: Response, attempt: number, maxRetries: numb
   //
   // 🚨 The tests check that a 429 waits what Retry-After says and then succeeds, that a 503 without it
   //    waits 500, 1000, 2000 ms, that the wait stops growing at 30 s, that after maxRetries the error comes
-  //    back retryable with the source's Retry-After, and that a 403 or a 404 fails at once.
+  //    back retryable with the source's Retry-After, that a 403 or a 404 fails at once, and that a 500 or a 502
+  //    isn't resent, though its error is still marked retryable.
   throw new Error(`retryDelay(${response.status}, attempt ${attempt} of ${maxRetries}) isn't written yet`);
 }
 

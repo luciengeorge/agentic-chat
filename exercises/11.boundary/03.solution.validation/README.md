@@ -9,7 +9,7 @@ slots:
 
 `ChatRequestSchema` is `z.object({ id: z.uuid(), message: z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/), role: z.literal("user"), parts: z.array(z.object({ type: z.literal("text"), text: z.string() })).min(1).max(8) }) })`.
 
-`readChatTurn` refuses a `content-length` over `MAX_BODY_BYTES` with 413 before reading, reads `request.text()` and refuses it again if it's longer, parses JSON (400 `invalid_json`), `safeParse`s (400 `invalid_request` with the flattened field errors), joins the text parts with `\n` and trims, refuses empty (400 `empty_question`) or over 4,000 characters (400 `question_too_long`), and returns `{ scope, conversationId, messageKey, question }` with the `scope` it was given.
+`readChatTurn` refuses a `content-length` over `MAX_BODY_BYTES` with 413 before reading, reads the body's bytes (`request.arrayBuffer()`) and refuses it again if there are more than that, decodes them with `TextDecoder`, parses JSON (400 `invalid_json`), `safeParse`s (400 `invalid_request` with the flattened field errors), joins the text parts with `\n` and trims, refuses empty (400 `empty_question`) or over 4,000 characters (400 `question_too_long`), and returns `{ scope, conversationId, messageKey, question }` with the `scope` it was given.
 
 ## Why it works
 
@@ -22,4 +22,4 @@ slots:
 
 Leo's 177-byte body becomes `{ scope: Leo in Kestrel, conversationId, messageKey: "Xq3vL9tRk2PwN8sD", question }`. The same body plus `"tenantId": "<Harbour>"` is answered the same way and stored in Kestrel; Harbour has 0 conversations.
 
-One check to notice: `raw.length` counts characters, not bytes, so a body of 65,536 `£` signs (131,072 bytes) passes the second size check. The header check refuses it first in practice; a strict byte count would be `new TextEncoder().encode(raw).length`.
+One check to notice: the second size check counts bytes. A string's `length` counts characters (UTF-16 code units, to be exact), and `£` is one character but two bytes of UTF-8. A question of 33,000 `£` signs is about 33,170 characters of JSON and 66,170 bytes, so a `raw.length` check would let it through whenever the header lied or was missing. Counting `byteLength` before decoding measures what actually arrived.

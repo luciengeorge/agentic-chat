@@ -39,10 +39,12 @@ const json = (status: number, body: Record<string, unknown>) => Response.json(bo
  * middleware loaded; the turn is always theirs.
  */
 export async function readChatTurn(request: Request, scope: Viewer): Promise<ChatTurn | Response> {
-  // Content-length can be missing or wrong, so the body is measured again once read.
+  // Content-length can be missing or wrong, so the body is measured again once read, in bytes: a string's length
+  // counts characters, and "£" is one character but two bytes.
   if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return json(413, { error: "too_large" });
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return json(413, { error: "too_large" });
+  const bytes = await request.arrayBuffer();
+  if (bytes.byteLength > MAX_BODY_BYTES) return json(413, { error: "too_large" });
+  const raw = new TextDecoder().decode(bytes);
   let body: unknown;
   try {
     body = JSON.parse(raw);

@@ -31,7 +31,7 @@ Over the 434 recorded chunks the average length is 96.6 terms. The three pieces 
 | 2026 | 160 | ln(1 + 274.5 / 160.5) = 0.9971 |
 | 0142 |   9 |   ln(1 + 425.5 / 9.5) = 3.8241 |
 
-Chunk 7 of the contract register is 234 terms long and holds kpc 12 times, 2026 17 times and 0142 3 times. Its length norm is 0.25 + 0.75 × 234 / 96.6 = 2.07. So kpc gives 2.7254 × 12 × 2.2 / (12 + 1.2 × 2.07) = 4.9689, 2026 gives 1.9142, and 0142, with only 3 mentions, 4.6052. Total 11.4883, the best of the 162.
+Chunk 7 of the contract register is 234 terms long and holds kpc 12 times, 2026 17 times and 0142 3 times. At 2.4 times the average length, with b 0.75, its length norm is 2.07. So kpc gives 4.9689 (1.8 times its idf, for 12 mentions), 2026 gives 1.9142, and 0142, with only 3 mentions, 4.6052. Total 11.4883, the best of the 162.
 
 pg_search says 11.5122 for the same chunk. The difference is the length: it keeps 234 as 232.
 

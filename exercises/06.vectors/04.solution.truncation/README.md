@@ -18,6 +18,6 @@ slots:
 
 ## The worked example
 
-The hotel question's first 256 numbers have length 0.4719 and come back at length 1. Rescaled, 256 dimensions keep 77.0% of the true top 10 over the recorded chunks (87.2% at 512, 93.9% at 1,024). Skipping the rescale costs 3 more points at 256 (73.7%) and reorders 32 of 46 questions' top 10.
+The hotel question's first 256 numbers have length 0.4719 and come back at length 1. Rescaled, 256 dimensions keep 77.0% of the true top 10 over the recorded chunks (87.2% at 512, 93.9% at 1,024). Skipping the rescale costs 3 more points at 256 (73.7%) and gives 32 of 46 questions a different set of ten.
 
 Is it worth it? A sixth of the bytes for about a quarter of the true neighbours lost at 256 dimensions (a third, on the full corpus), and HNSW loses more on top. For Kestrel, no: the index fits in memory as it is. The next step shrinks it further and loses less, by keeping every dimension at lower precision.

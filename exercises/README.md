@@ -88,7 +88,7 @@ Other commands: `pnpm ex list` (every step, with your progress), `pnpm ex reset 
 
 ## The labs
 
-http://localhost:3000/labs lists them: one page per section, each running the app's own code, so it shows yours while a step of that section is active. Some are dev only: they show other people's access or drive the stand-in drive, so they refuse to run in production. Section 00's lab is Workflow's run viewer, at http://localhost:3000/_workflow, and section 12's is the app itself.
+http://localhost:3000/labs lists them: one page per section, each running the app's own code, so it shows yours while a step of that section is active. Some are dev only: they show other people's access or drive the stand-in drive, so they refuse to run anywhere but dev. Section 00's lab is Workflow's run viewer, at http://localhost:3000/_workflow, and section 12's is the app itself.
 
 ## When something's off
 

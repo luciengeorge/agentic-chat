@@ -96,7 +96,7 @@ describe("reading a chat request", () => {
     const request = post(body(), { "content-length": String(MAX_BODY_BYTES + 1) });
     const result = (await readChatTurn(request, KESTREL)) as Response;
     expect(result.status).toBe(413);
-    expect(request.bodyUsed, "check the header before request.text(): reading it is the cost you're refusing").toBe(
+    expect(request.bodyUsed, "check the header before you read the body: reading it is the cost you're refusing").toBe(
       false,
     );
   });
@@ -105,6 +105,17 @@ describe("reading a chat request", () => {
     expect(
       await refused(body("x".repeat(MAX_BODY_BYTES)), { "content-length": "10" }),
       "measure what you read",
+    ).toEqual({ status: 413, error: "too_large" });
+  });
+
+  it("measures the body in bytes, not characters", async () => {
+    // 33,000 "£" signs: about 33,170 characters of JSON, but 66,170 bytes of UTF-8.
+    const pounds = body("£".repeat(33_000));
+    expect(JSON.stringify(pounds).length).toBeLessThan(MAX_BODY_BYTES);
+    expect(new TextEncoder().encode(JSON.stringify(pounds)).byteLength).toBeGreaterThan(MAX_BODY_BYTES);
+    expect(
+      await refused(pounds, { "content-length": "10" }),
+      "£ is one character and two bytes: a string's length undercounts, so count the bytes you read",
     ).toEqual({ status: 413, error: "too_large" });
   });
 

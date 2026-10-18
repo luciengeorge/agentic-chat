@@ -99,8 +99,9 @@ export async function readPage(number: number, layer: TextLayer, scan: Scan): Pr
   // 📜 https://github.com/naptha/tesseract.js (the OCR behind scan)
   //
   // 🚨 The tests check that a page with a text layer is never OCR'd, that a page without one is OCR'd and keeps its
-  //    confidence, that spaces and a stamped page number don't count as a text layer while exactly 20 visible
-  //    characters do, that the MSA reads pages 1 and 2 from the text layer and OCRs page 3 at 44.8, and that across
+  //    confidence, that spaces and a stamped page number don't count as a text layer, nor the spaces inside a run
+  //    ("a b c d e f g h i j" is 10 characters, so `trim()` isn't enough), while exactly 20 visible characters do,
+  //    that the MSA reads pages 1 and 2 from the text layer and OCRs page 3 at 44.8, and that across
   //    the corpus exactly the 12 scanned pages go through OCR.
   throw new Error(`readPage(page ${number}, ${layer.items.length} items, ${typeof scan}) isn't written yet`);
 }

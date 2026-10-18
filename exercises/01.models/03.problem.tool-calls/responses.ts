@@ -250,16 +250,15 @@ async function httpError(response: Response): Promise<ResponsesApiError> {
  * calls go back as `function_call` items and their results as `function_call_output`, which is always a string.
  */
 export function toInputItems(messages: ChatMessage[]): ResponsesInputItem[] {
-  // 🐨 Turn each of our messages into the input items OpenAI wants, in order (one message can become
-  //    several items):
-  //    - a user turn: `{ role: "user", content }`.
-  //    - an assistant turn: its text as `{ role: "assistant", content }`, then one `function_call` item per
-  //      tool call it made: `{ type: "function_call", call_id, name, arguments }`. Leave the text item out
-  //      when the turn has calls and no text.
-  //    - a tool result: one `{ type: "function_call_output", call_id, output }`.
-  // 🐨 `arguments` and `output` are strings of JSON. A call's input that's already a string (arguments the
-  //    model wrote that didn't parse) goes as it is; anything else, JSON.stringify it. An error result
-  //    (`isError`) goes as `{"error": "<the message>"}`.
+  // 🐨 Turn each of our messages into the input items OpenAI wants, in order; one message can become
+  //    several. There are three kinds of item: a text message (a user's or an assistant's turn), a
+  //    `function_call` (one for each tool call an assistant turn made, after its text) and a
+  //    `function_call_output` (a tool's result). The `ResponsesInputItem` type and the second 📜 give
+  //    their fields.
+  // 🐨 Two rules the type won't tell you. Leave the assistant's text item out when the turn made calls
+  //    and has no text. And `arguments` and `output` are strings of JSON: a call's input that's already a
+  //    string (arguments the model wrote that didn't parse) goes as it is; anything else, JSON.stringify
+  //    it. An error result (`isError`) goes as `{"error": "<the message>"}`.
   //
   // 💰 `messages.flatMap((message) => [...])` lets one message make zero, one or many items.
   //    `switch (message.role)` narrows the type in each case. `typeof x === "string"`.

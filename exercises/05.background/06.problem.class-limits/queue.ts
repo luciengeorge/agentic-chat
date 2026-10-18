@@ -1,3 +1,7 @@
+// 👨‍💼 A full sync queues hundreds of jobs at once: every page range of every big document. A webhook says one file
+//    changed a moment later, and its delta waits behind all of them. Kestrel's people expect an edit to be
+//    searchable in seconds, not after the backfill. Per-class caps keep a worker free for it.
+
 /**
  * A job queue in Postgres, by hand (section 05.1). A worker claims the oldest due job with `FOR UPDATE SKIP LOCKED`,
  * so two workers never take the same one, and holds it under a lease it renews while it works. If the worker dies,
@@ -9,7 +13,7 @@
  *
  * Every job has a class (say `backfill` or `incremental`). A worker can cap how many jobs of a class run at once
  * (`claimWithinLimits`), so a full sync's thousands of jobs, queued first, can't hold every worker while a
- * webhook's small delta waits behind them (section 05.5).
+ * webhook's small delta waits behind them (section 05.6).
  *
  * Every function takes the executor to run on. Workers cross tenants, so they use the owner (`systemDb`); an app
  * request enqueues inside its tenant's transaction, so the job commits with the write it stands for.
@@ -158,18 +162,42 @@ export async function claimWithinLimits<P = Record<string, unknown>>(
   leaseMs: number,
   limits: ClassLimits,
 ): Promise<Job<P> | null> {
-  return db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`jobs:claim:${queue}`}, 0))`);
-    const running = await tx.execute<{ class: string; n: number }>(sql`
-      SELECT class, count(*)::int AS n FROM jobs
-      WHERE queue = ${queue} AND state = 'running' AND locked_until > now()
-      GROUP BY class`);
-    const counts = new Map(running.map((row) => [row.class, Number(row.n)]));
-    const full = Object.entries(limits)
-      .filter(([name, cap]) => (counts.get(name) ?? 0) >= cap)
-      .map(([name]) => name);
-    return claim<P>(tx, queue, workerId, leaseMs, full);
-  });
+  // 🐨 Open a transaction, and do everything below inside it.
+  // 🐨 First take the queue's claim lock, so no other worker counts or claims on this queue until you commit.
+  // 🐨 Count the jobs running on this queue now, by class. A job counts while its lease is live
+  //    (`locked_until > now()`).
+  // 🐨 A class is full when its running count has reached its cap in `limits`. A class with no cap is never full;
+  //    one with a cap of 0 always is. Then claim with `claim(tx, queue, workerId, leaseMs, full)`, which passes over
+  //    the full classes.
+  //
+  // 💰 `db.transaction(async (tx) => { ... })` commits when the callback returns. `pg_advisory_xact_lock(n)` waits
+  //    for the lock on the number `n`, then holds it until the transaction ends; `hashtextextended(text, 0)` turns
+  //    a name of your choosing (one per queue) into that number. `tx.execute<Row>(sql`...`)` runs raw SQL, with
+  //    `${value}` as a parameter. `count(*)` with `GROUP BY` counts each group (`::int` makes it a number, not a
+  //    string). `Object.entries(limits)` gives `[class, cap]` pairs.
+  //
+  // 🦉 Why caps at all. The queue hands out jobs oldest first, and a job holds its worker until it's done. A full
+  //    sync of the filing queues 12 page ranges at once; with two workers, both take ranges, and a webhook's delta
+  //    queued a moment later waits until all 12 are done. Cap `backfill` at one less than the workers, and one
+  //    worker is always free for incremental work, which then goes ahead of eleven older ranges.
+  // 🦉 Why the lock. The count and the claim are two statements. Two workers counting at once both see "0 running,
+  //    cap 1", and both claim a backfill job. The classic mistake is to count outside the lock, or to take a lock
+  //    that doesn't last until the claim commits (a statement on `db` instead of `tx`). A transaction-scoped
+  //    advisory lock makes the second worker wait until the first has committed its claim, so it counts it.
+  // 🦉 Why a live lease. A worker that crashed leaves its job 'running' until `reclaimExpired` puts it back.
+  //    Counting it would keep a slot taken by nobody.
+  // 🦉 New in this file, already written: `claim` takes a fifth argument, `skip`, the classes to pass over (the
+  //    `notIn` condition).
+  //
+  // 📜 https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS
+  //
+  // 🚨 The tests check that without caps the backfill takes both workers and the delta waits, that with backfill
+  //    capped at 1 a delta queued behind twelve page ranges gets the free worker, that eight workers claiming at
+  //    once never run more than the cap, that a cap of 0 holds a class back while a class with no cap runs, and
+  //    that a crashed worker's job doesn't hold a slot.
+  throw new Error(
+    `claimWithinLimits(${typeof db}, queue ${queue}, worker ${workerId}, lease ${leaseMs} ms, ${JSON.stringify(limits)}) isn't written yet`,
+  );
 }
 
 /** Renews the lease. False when the worker no longer holds the job (its lease ran out and someone took it back):
