@@ -7,6 +7,10 @@
  * Jobs that share a `key` (say, one agent run) run one at a time, and only one of them waits in `queued`: enqueue
  * the same key again and the waiting job is reused.
  *
+ * Every job has a class (say `backfill` or `incremental`). A worker can cap how many jobs of a class run at once
+ * (`claimWithinLimits`), so a full sync's thousands of jobs, queued first, can't hold every worker while a
+ * webhook's small delta waits behind them (section 05.6).
+ *
  * Every function takes the executor to run on. Workers cross tenants, so they use the owner (`systemDb`); an app
  * request enqueues inside its tenant's transaction, so the job commits with the write it stands for.
  */
@@ -16,6 +20,14 @@ import type { Tx } from "@/db/tenant";
 
 export type Exec = Pick<Tx, "execute">;
 
+/** A pool that can open a transaction: what `claimWithinLimits` needs to count and claim under one lock. */
+export type Transactor = { transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> };
+
+/** The most jobs of each named class that may run at once on a queue. A class not named has no cap. */
+export type ClassLimits = Record<string, number>;
+
+export const DEFAULT_CLASS = "default";
+
 export type JobState = "queued" | "running" | "done" | "dead";
 
 export interface Job<P = Record<string, unknown>> {
@@ -23,6 +35,7 @@ export interface Job<P = Record<string, unknown>> {
   tenantId: string;
   queue: string;
   key: string | null;
+  class: string;
   payload: P;
   state: JobState;
   attempts: number;
@@ -37,6 +50,8 @@ export interface EnqueueOptions {
   /** Not before this long from now. */
   delayMs?: number;
   maxAttempts?: number;
+  /** The kind of work, for per-class caps: `backfill`, `incremental`... (default `default`). */
+  class?: string;
 }
 
 interface JobRow extends Record<string, unknown> {
@@ -44,6 +59,7 @@ interface JobRow extends Record<string, unknown> {
   tenant_id: string;
   queue: string;
   key: string | null;
+  class: string;
   payload: unknown;
   state: JobState;
   attempts: number;
@@ -52,11 +68,12 @@ interface JobRow extends Record<string, unknown> {
   last_error: string | null;
 }
 
-const toJob = <P>(row: JobRow): Job<P> => ({
+export const toJob = <P>(row: JobRow): Job<P> => ({
   id: row.id,
   tenantId: row.tenant_id,
   queue: row.queue,
   key: row.key,
+  class: row.class,
   payload: row.payload as P,
   state: row.state,
   attempts: Number(row.attempts),
@@ -77,33 +94,46 @@ export async function enqueue(
   options: EnqueueOptions = {},
 ): Promise<string> {
   const [row] = await tx.execute<{ id: string }>(sql`
-    INSERT INTO jobs (tenant_id, queue, key, payload, run_at, max_attempts)
+    INSERT INTO jobs (tenant_id, queue, key, payload, run_at, max_attempts, class)
     VALUES (${tenantId}, ${queue}, ${options.key ?? null}, ${JSON.stringify(payload)}::jsonb,
-      now() + ${interval(options.delayMs ?? 0)}, ${options.maxAttempts ?? 5})
+      now() + ${interval(options.delayMs ?? 0)}, ${options.maxAttempts ?? 5}, ${options.class ?? DEFAULT_CLASS})
     ON CONFLICT (queue, key) WHERE state = 'queued' AND key IS NOT NULL
     DO UPDATE SET run_at = least(jobs.run_at, EXCLUDED.run_at), updated_at = now()
     RETURNING id`);
   return row.id;
 }
 
+/** A job whose key has another job running (with a live lease) waits its turn: one job per key at a time. */
+export const keyFree = sql`(j.key IS NULL OR NOT EXISTS (
+  SELECT 1 FROM jobs r
+  WHERE r.queue = j.queue AND r.key = j.key AND r.state = 'running' AND r.locked_until > now()))`;
+
+/** Jobs of these classes are passed over: `claimWithinLimits` names the classes at their cap. */
+const notIn = (classes: readonly string[]) =>
+  classes.length
+    ? sql`AND j.class <> ALL(ARRAY[${sql.join(
+        classes.map((name) => sql`${name}`),
+        sql`, `,
+      )}]::text[])`
+    : sql``;
+
 /**
  * Takes the oldest due job on `queue` for `workerId`, for `leaseMs`, and counts the attempt. `SKIP LOCKED` passes
  * over rows another worker is claiming at this moment instead of waiting on them, so concurrent claims each get a
- * different job. A job whose key has another job running (with a live lease) waits its turn.
+ * different job. A job whose key has another job running (with a live lease) waits its turn, and so does a job of
+ * a class in `skip`, so a younger job of another class goes first.
  */
 export async function claim<P = Record<string, unknown>>(
   tx: Exec,
   queue: string,
   workerId: string,
   leaseMs: number,
+  skip: readonly string[] = [],
 ): Promise<Job<P> | null> {
   const [row] = await tx.execute<JobRow>(sql`
     WITH next AS (
       SELECT j.id FROM jobs j
-      WHERE j.queue = ${queue} AND j.state = 'queued' AND j.run_at <= now()
-        AND (j.key IS NULL OR NOT EXISTS (
-          SELECT 1 FROM jobs r
-          WHERE r.queue = j.queue AND r.key = j.key AND r.state = 'running' AND r.locked_until > now()))
+      WHERE j.queue = ${queue} AND j.state = 'queued' AND j.run_at <= now() AND ${keyFree} ${notIn(skip)}
       ORDER BY j.run_at, j.created_at
       LIMIT 1
       FOR UPDATE SKIP LOCKED
@@ -113,6 +143,33 @@ export async function claim<P = Record<string, unknown>>(
     FROM next WHERE jobs.id = next.id
     RETURNING jobs.*`);
   return row ? toJob<P>(row) : null;
+}
+
+/**
+ * `claim` with per-class caps. It counts the running jobs (with a live lease) of each capped class, and passes over
+ * the classes at their cap. Two workers counting at once would both see a free slot and both take it, so each claim
+ * on the queue takes a transaction-scoped advisory lock first: claims queue up for a moment (a claim is one short
+ * statement), and each counts what the last one committed.
+ */
+export async function claimWithinLimits<P = Record<string, unknown>>(
+  db: Transactor,
+  queue: string,
+  workerId: string,
+  leaseMs: number,
+  limits: ClassLimits,
+): Promise<Job<P> | null> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`jobs:claim:${queue}`}, 0))`);
+    const running = await tx.execute<{ class: string; n: number }>(sql`
+      SELECT class, count(*)::int AS n FROM jobs
+      WHERE queue = ${queue} AND state = 'running' AND locked_until > now()
+      GROUP BY class`);
+    const counts = new Map(running.map((row) => [row.class, Number(row.n)]));
+    const full = Object.entries(limits)
+      .filter(([name, cap]) => (counts.get(name) ?? 0) >= cap)
+      .map(([name]) => name);
+    return claim<P>(tx, queue, workerId, leaseMs, full);
+  });
 }
 
 /** Renews the lease. False when the worker no longer holds the job (its lease ran out and someone took it back):

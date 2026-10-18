@@ -18,6 +18,18 @@ import { Route as MeRouteImport } from './routes/me'
 import { Route as ApiMeRouteImport } from './routes/api/me'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversationId'
+import { Route as LabsIndexRouteImport } from './routes/labs/index'
+import { Route as LabsAclsRouteImport } from './routes/labs/acls'
+import { Route as LabsBackgroundRouteImport } from './routes/labs/background'
+import { Route as LabsBoundaryRouteImport } from './routes/labs/boundary'
+import { Route as LabsChunkingRouteImport } from './routes/labs/chunking'
+import { Route as LabsConnectorsRouteImport } from './routes/labs/connectors'
+import { Route as LabsLexicalRouteImport } from './routes/labs/lexical'
+import { Route as LabsModelsRouteImport } from './routes/labs/models'
+import { Route as LabsParsingRouteImport } from './routes/labs/parsing'
+import { Route as LabsPromptRouteImport } from './routes/labs/prompt'
+import { Route as LabsRerankRouteImport } from './routes/labs/rerank'
+import { Route as LabsVectorsRouteImport } from './routes/labs/vectors'
 import { Route as ApiApprovalsIndexRouteImport } from './routes/api/approvals/index'
 import { Route as ApiApprovalsApprovalIdRouteImport } from './routes/api/approvals/$approvalId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -85,6 +97,66 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
   id: '/$conversationId',
   path: '/$conversationId',
   getParentRoute: () => ChatRouteRoute,
+} as any)
+const LabsIndexRoute = LabsIndexRouteImport.update({
+  id: '/labs/',
+  path: '/labs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsAclsRoute = LabsAclsRouteImport.update({
+  id: '/labs/acls',
+  path: '/labs/acls',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsBackgroundRoute = LabsBackgroundRouteImport.update({
+  id: '/labs/background',
+  path: '/labs/background',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsBoundaryRoute = LabsBoundaryRouteImport.update({
+  id: '/labs/boundary',
+  path: '/labs/boundary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsChunkingRoute = LabsChunkingRouteImport.update({
+  id: '/labs/chunking',
+  path: '/labs/chunking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsConnectorsRoute = LabsConnectorsRouteImport.update({
+  id: '/labs/connectors',
+  path: '/labs/connectors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsLexicalRoute = LabsLexicalRouteImport.update({
+  id: '/labs/lexical',
+  path: '/labs/lexical',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsModelsRoute = LabsModelsRouteImport.update({
+  id: '/labs/models',
+  path: '/labs/models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsParsingRoute = LabsParsingRouteImport.update({
+  id: '/labs/parsing',
+  path: '/labs/parsing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsPromptRoute = LabsPromptRouteImport.update({
+  id: '/labs/prompt',
+  path: '/labs/prompt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsRerankRoute = LabsRerankRouteImport.update({
+  id: '/labs/rerank',
+  path: '/labs/rerank',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsVectorsRoute = LabsVectorsRouteImport.update({
+  id: '/labs/vectors',
+  path: '/labs/vectors',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiApprovalsIndexRoute = ApiApprovalsIndexRouteImport.update({
   id: '/api/approvals/',
@@ -209,7 +281,19 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/labs/acls': typeof LabsAclsRoute
+  '/labs/background': typeof LabsBackgroundRoute
+  '/labs/boundary': typeof LabsBoundaryRoute
+  '/labs/chunking': typeof LabsChunkingRoute
+  '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/lexical': typeof LabsLexicalRoute
+  '/labs/models': typeof LabsModelsRoute
+  '/labs/parsing': typeof LabsParsingRoute
+  '/labs/prompt': typeof LabsPromptRoute
+  '/labs/rerank': typeof LabsRerankRoute
+  '/labs/vectors': typeof LabsVectorsRoute
   '/chat/': typeof ChatIndexRoute
+  '/labs/': typeof LabsIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -241,7 +325,19 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/labs/acls': typeof LabsAclsRoute
+  '/labs/background': typeof LabsBackgroundRoute
+  '/labs/boundary': typeof LabsBoundaryRoute
+  '/labs/chunking': typeof LabsChunkingRoute
+  '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/lexical': typeof LabsLexicalRoute
+  '/labs/models': typeof LabsModelsRoute
+  '/labs/parsing': typeof LabsParsingRoute
+  '/labs/prompt': typeof LabsPromptRoute
+  '/labs/rerank': typeof LabsRerankRoute
+  '/labs/vectors': typeof LabsVectorsRoute
   '/chat': typeof ChatIndexRoute
+  '/labs': typeof LabsIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -275,7 +371,19 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/labs/acls': typeof LabsAclsRoute
+  '/labs/background': typeof LabsBackgroundRoute
+  '/labs/boundary': typeof LabsBoundaryRoute
+  '/labs/chunking': typeof LabsChunkingRoute
+  '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/lexical': typeof LabsLexicalRoute
+  '/labs/models': typeof LabsModelsRoute
+  '/labs/parsing': typeof LabsParsingRoute
+  '/labs/prompt': typeof LabsPromptRoute
+  '/labs/rerank': typeof LabsRerankRoute
+  '/labs/vectors': typeof LabsVectorsRoute
   '/chat/': typeof ChatIndexRoute
+  '/labs/': typeof LabsIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -310,7 +418,19 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/chat/$conversationId'
+    | '/labs/acls'
+    | '/labs/background'
+    | '/labs/boundary'
+    | '/labs/chunking'
+    | '/labs/connectors'
+    | '/labs/lexical'
+    | '/labs/models'
+    | '/labs/parsing'
+    | '/labs/prompt'
+    | '/labs/rerank'
+    | '/labs/vectors'
     | '/chat/'
+    | '/labs/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -342,7 +462,19 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/chat/$conversationId'
+    | '/labs/acls'
+    | '/labs/background'
+    | '/labs/boundary'
+    | '/labs/chunking'
+    | '/labs/connectors'
+    | '/labs/lexical'
+    | '/labs/models'
+    | '/labs/parsing'
+    | '/labs/prompt'
+    | '/labs/rerank'
+    | '/labs/vectors'
     | '/chat'
+    | '/labs'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -375,7 +507,19 @@ export interface FileRouteTypes {
     | '/me'
     | '/api/me'
     | '/chat/$conversationId'
+    | '/labs/acls'
+    | '/labs/background'
+    | '/labs/boundary'
+    | '/labs/chunking'
+    | '/labs/connectors'
+    | '/labs/lexical'
+    | '/labs/models'
+    | '/labs/parsing'
+    | '/labs/prompt'
+    | '/labs/rerank'
+    | '/labs/vectors'
     | '/chat/'
+    | '/labs/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -408,6 +552,18 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   ApiMeRoute: typeof ApiMeRoute
+  LabsAclsRoute: typeof LabsAclsRoute
+  LabsBackgroundRoute: typeof LabsBackgroundRoute
+  LabsBoundaryRoute: typeof LabsBoundaryRoute
+  LabsChunkingRoute: typeof LabsChunkingRoute
+  LabsConnectorsRoute: typeof LabsConnectorsRoute
+  LabsLexicalRoute: typeof LabsLexicalRoute
+  LabsModelsRoute: typeof LabsModelsRoute
+  LabsParsingRoute: typeof LabsParsingRoute
+  LabsPromptRoute: typeof LabsPromptRoute
+  LabsRerankRoute: typeof LabsRerankRoute
+  LabsVectorsRoute: typeof LabsVectorsRoute
+  LabsIndexRoute: typeof LabsIndexRoute
   ApiApprovalsApprovalIdRoute: typeof ApiApprovalsApprovalIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutomationsAutomationIdRoute: typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -495,6 +651,90 @@ declare module '@tanstack/react-router' {
       fullPath: '/chat/$conversationId'
       preLoaderRoute: typeof ChatConversationIdRouteImport
       parentRoute: typeof ChatRouteRoute
+    }
+    '/labs/': {
+      id: '/labs/'
+      path: '/labs'
+      fullPath: '/labs/'
+      preLoaderRoute: typeof LabsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/acls': {
+      id: '/labs/acls'
+      path: '/labs/acls'
+      fullPath: '/labs/acls'
+      preLoaderRoute: typeof LabsAclsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/background': {
+      id: '/labs/background'
+      path: '/labs/background'
+      fullPath: '/labs/background'
+      preLoaderRoute: typeof LabsBackgroundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/boundary': {
+      id: '/labs/boundary'
+      path: '/labs/boundary'
+      fullPath: '/labs/boundary'
+      preLoaderRoute: typeof LabsBoundaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/chunking': {
+      id: '/labs/chunking'
+      path: '/labs/chunking'
+      fullPath: '/labs/chunking'
+      preLoaderRoute: typeof LabsChunkingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/connectors': {
+      id: '/labs/connectors'
+      path: '/labs/connectors'
+      fullPath: '/labs/connectors'
+      preLoaderRoute: typeof LabsConnectorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/lexical': {
+      id: '/labs/lexical'
+      path: '/labs/lexical'
+      fullPath: '/labs/lexical'
+      preLoaderRoute: typeof LabsLexicalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/models': {
+      id: '/labs/models'
+      path: '/labs/models'
+      fullPath: '/labs/models'
+      preLoaderRoute: typeof LabsModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/parsing': {
+      id: '/labs/parsing'
+      path: '/labs/parsing'
+      fullPath: '/labs/parsing'
+      preLoaderRoute: typeof LabsParsingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/prompt': {
+      id: '/labs/prompt'
+      path: '/labs/prompt'
+      fullPath: '/labs/prompt'
+      preLoaderRoute: typeof LabsPromptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/rerank': {
+      id: '/labs/rerank'
+      path: '/labs/rerank'
+      fullPath: '/labs/rerank'
+      preLoaderRoute: typeof LabsRerankRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/vectors': {
+      id: '/labs/vectors'
+      path: '/labs/vectors'
+      fullPath: '/labs/vectors'
+      preLoaderRoute: typeof LabsVectorsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/approvals/': {
       id: '/api/approvals/'
@@ -689,6 +929,18 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   ApiMeRoute: ApiMeRoute,
+  LabsAclsRoute: LabsAclsRoute,
+  LabsBackgroundRoute: LabsBackgroundRoute,
+  LabsBoundaryRoute: LabsBoundaryRoute,
+  LabsChunkingRoute: LabsChunkingRoute,
+  LabsConnectorsRoute: LabsConnectorsRoute,
+  LabsLexicalRoute: LabsLexicalRoute,
+  LabsModelsRoute: LabsModelsRoute,
+  LabsParsingRoute: LabsParsingRoute,
+  LabsPromptRoute: LabsPromptRoute,
+  LabsRerankRoute: LabsRerankRoute,
+  LabsVectorsRoute: LabsVectorsRoute,
+  LabsIndexRoute: LabsIndexRoute,
   ApiApprovalsApprovalIdRoute: ApiApprovalsApprovalIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutomationsAutomationIdRoute: ApiAutomationsAutomationIdRouteWithChildren,

@@ -4,14 +4,16 @@ import { FatalError, RetryableError } from "workflow";
 
 import { chunk } from "#learn/chunk/chunk";
 import { parse, PDF, pdfPageCount, UnsupportedDocumentError } from "#learn/parse/parse";
+import { queueOcrReviews } from "#learn/parse/review";
 import { embedPendingChunks } from "@/db/embeddings";
+import { documentPartition, recordIdFor, recordStart } from "@/db/outbox";
 import { chunks, documentBlobs, documents } from "@/db/schema";
 import { type Tx, withTenant } from "@/db/tenant";
 import { createLogger } from "@/lib/logger";
 import { embedderFromEnv } from "@/lib/retrieval.server";
 
-import { ORDINALS_PER_RANGE, PageRouteError, pageRouteDeps } from "./ingest-deps";
-import { asStep, graphFor } from "./sync-common";
+import { ocrReviewThreshold, ORDINALS_PER_RANGE, PageRouteError, pageRouteDeps } from "./ingest-deps";
+import { asStep, connectorFor } from "./sync-common";
 
 const logger = createLogger("workflows.ingest");
 
@@ -26,6 +28,25 @@ async function current(tx: Tx, documentId: string, version: number) {
   if (document.version !== version) return { skip: "superseded" as Skip };
   return { document };
 }
+
+/**
+ * Workflow-first's first step: this run was started directly, with no outbox row, so it writes its own record of
+ * the ingest, claimed by itself. False when another run already holds the record for this version: stop.
+ */
+export async function recordIngestStart(tenantId: string, documentId: string, version: number, runId: string) {
+  "use step";
+  return withTenant(tenantId, (tx) =>
+    recordStart(
+      tx,
+      tenantId,
+      { kind: "ingest", payload: { documentId, version } },
+      documentPartition(documentId),
+      recordIdFor(`ingest:${documentId}:${version}`),
+      runId,
+    ),
+  );
+}
+recordIngestStart.maxRetries = 3;
 
 /** Marks the document as being ingested, unless it's gone or a newer version replaced it. */
 export async function startIngest(tenantId: string, documentId: string, version: number) {
@@ -49,7 +70,7 @@ export async function storeBlob(tenantId: string, documentId: string, version: n
     const found = await withTenant(tenantId, (tx) => current(tx, documentId, version));
     if (found.skip) return { skip: found.skip, pages: null };
     const { externalId, mimeType } = found.document!;
-    const { bytes } = await (await graphFor(tenantId)).content(externalId);
+    const { bytes } = await (await connectorFor(tenantId)).content(externalId);
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     let pages: number | null = null;
     if (mimeType === PDF) {
@@ -140,11 +161,20 @@ export async function parseAndChunk(
         })),
       );
     }
-    return pieces.length;
+    // Low-confidence OCR pages go to the review queue; they stay searchable meanwhile.
+    const queued = await queueOcrReviews(tx, { tenantId, documentId, version }, parsed.pages, ocrReviewThreshold());
+    return { chunks: pieces.length, queued };
   });
   const ocrPages = parsed.pages?.filter((page) => page.method === "ocr").length ?? 0;
-  logger.info("parsed and chunked", { documentId, version, range, chunks: written, ocrPages });
-  return { chunks: written ?? 0, skipped: written === null, ocrPages };
+  logger.info("parsed and chunked", {
+    documentId,
+    version,
+    range,
+    chunks: written?.chunks,
+    ocrPages,
+    reviewQueued: written?.queued,
+  });
+  return { chunks: written?.chunks ?? 0, skipped: written === null, ocrPages };
 }
 parseAndChunk.maxRetries = 3;
 

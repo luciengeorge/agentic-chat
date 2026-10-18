@@ -1,0 +1,336 @@
+data: {"type":"start","messageId":"a9f950bb-09a3-4720-a6dd-8837ab4a9f4a"}
+
+data: {"type":"data-sources","id":"sources","data":{"sources":[{"label":"S1","chunkId":"933f96db-c6d4-4576-9958-eef54e3b2e13","documentId":"b2ffc5a0-d066-4c2f-a194-4104ec12601a","title":"Travel and Expenses Policy.pdf","path":"/HR/Policies/Travel and Expenses Policy.pdf","pageStart":2,"pageEnd":2},{"label":"S2","chunkId":"1c1a7f94-f2c6-4793-a485-77c60483b536","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","pageStart":2,"pageEnd":2},{"label":"S3","chunkId":"00bee228-30c0-41ec-984e-18d8b822dfdc","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","pageStart":4,"pageEnd":4},{"label":"S4","chunkId":"e6c4f93b-58de-4508-91c2-28a7211efac6","documentId":"b2ffc5a0-d066-4c2f-a194-4104ec12601a","title":"Travel and Expenses Policy.pdf","path":"/HR/Policies/Travel and Expenses Policy.pdf","pageStart":2,"pageEnd":2},{"label":"S5","chunkId":"9fcb2ec3-d9f3-44dc-8031-92974337d2fe","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","pageStart":2,"pageEnd":2},{"label":"S6","chunkId":"05103b2a-ea30-45e3-86c0-256d95d40ce9","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","pageStart":2,"pageEnd":2},{"label":"S7","chunkId":"efb5a30d-2050-415c-b94f-0b4573a782bf","documentId":"b2ffc5a0-d066-4c2f-a194-4104ec12601a","title":"Travel and Expenses Policy.pdf","path":"/HR/Policies/Travel and Expenses Policy.pdf","pageStart":2,"pageEnd":2},{"label":"S8","chunkId":"2e4f37cc-3ccd-414c-96f3-b6d4b479d450","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","pageStart":1,"pageEnd":1}]}}
+
+data: {"type":"text-start","id":"text"}
+
+data: {"type":"text-delta","id":"text","delta":"For"}
+
+data: {"type":"text-delta","id":"text","delta":" costs"}
+
+data: {"type":"text-delta","id":"text","delta":" incurred"}
+
+data: {"type":"text-delta","id":"text","delta":" on"}
+
+data: {"type":"text-delta","id":"text","delta":" or"}
+
+data: {"type":"text-delta","id":"text","delta":" after"}
+
+data: {"type":"text-delta","id":"text","delta":" "}
+
+data: {"type":"text-delta","id":"text","delta":"1"}
+
+data: {"type":"text-delta","id":"text","delta":" July"}
+
+data: {"type":"text-delta","id":"text","delta":" "}
+
+data: {"type":"text-delta","id":"text","delta":"202"}
+
+data: {"type":"text-delta","id":"text","delta":"6"}
+
+data: {"type":"text-delta","id":"text","delta":","}
+
+data: {"type":"text-delta","id":"text","delta":" the"}
+
+data: {"type":"text-delta","id":"text","delta":" daily"}
+
+data: {"type":"text-delta","id":"text","delta":" meal"}
+
+data: {"type":"text-delta","id":"text","delta":" allowance"}
+
+data: {"type":"text-delta","id":"text","delta":" is"}
+
+data: {"type":"text-delta","id":"text","delta":" **"}
+
+data: {"type":"text-delta","id":"text","delta":"£"}
+
+data: {"type":"text-delta","id":"text","delta":"40"}
+
+data: {"type":"text-delta","id":"text","delta":"**"}
+
+data: {"type":"text-delta","id":"text","delta":"."}
+
+data: {"type":"text-delta","id":"text","delta":" [["}
+
+data: {"type":"text-delta","id":"text","delta":"S"}
+
+data: {"type":"text-delta","id":"text","delta":"5"}
+
+data: {"type":"text-delta","id":"text","delta":":"}
+
+data: {"type":"text-delta","id":"text","delta":" \""}
+
+data: {"type":"text-delta","id":"text","delta":"Meals"}
+
+data: {"type":"text-delta","id":"text","delta":" and"}
+
+data: {"type":"text-delta","id":"text","delta":" subs"}
+
+data: {"type":"text-delta","id":"text","delta":"istence"}
+
+data: {"type":"text-delta","id":"text","delta":" |"}
+
+data: {"type":"text-delta","id":"text","delta":" £"}
+
+data: {"type":"text-delta","id":"text","delta":"40"}
+
+data: {"type":"text-delta","id":"text","delta":" a"}
+
+data: {"type":"text-delta","id":"text","delta":" day"}
+
+data: {"type":"text-delta","id":"text","delta":"\"]]"}
+
+data: {"type":"text-delta","id":"text","delta":" [["}
+
+data: {"type":"text-delta","id":"text","delta":"S"}
+
+data: {"type":"text-delta","id":"text","delta":"8"}
+
+data: {"type":"text-delta","id":"text","delta":":"}
+
+data: {"type":"text-delta","id":"text","delta":" \""}
+
+data: {"type":"text-delta","id":"text","delta":"cost"}
+
+data: {"type":"text-delta","id":"text","delta":" incurred"}
+
+data: {"type":"text-delta","id":"text","delta":" on"}
+
+data: {"type":"text-delta","id":"text","delta":" or"}
+
+data: {"type":"text-delta","id":"text","delta":" after"}
+
+data: {"type":"text-delta","id":"text","delta":" "}
+
+data: {"type":"text-delta","id":"text","delta":"1"}
+
+data: {"type":"text-delta","id":"text","delta":" July"}
+
+data: {"type":"text-delta","id":"text","delta":" "}
+
+data: {"type":"text-delta","id":"text","delta":"202"}
+
+data: {"type":"text-delta","id":"text","delta":"6"}
+
+data: {"type":"text-delta","id":"text","delta":"\"]"}
+
+data: {"type":"text-delta","id":"text","delta":"]\n\n"}
+
+data: {"type":"text-delta","id":"text","delta":"For"}
+
+data: {"type":"text-delta","id":"text","delta":" costs"}
+
+data: {"type":"text-delta","id":"text","delta":" incurred"}
+
+data: {"type":"text-delta","id":"text","delta":" before"}
+
+data: {"type":"text-delta","id":"text","delta":" that"}
+
+data: {"type":"text-delta","id":"text","delta":" date"}
+
+data: {"type":"text-delta","id":"text","delta":","}
+
+data: {"type":"text-delta","id":"text","delta":" the"}
+
+data: {"type":"text-delta","id":"text","delta":" previous"}
+
+data: {"type":"text-delta","id":"text","delta":" allowance"}
+
+data: {"type":"text-delta","id":"text","delta":" was"}
+
+data: {"type":"text-delta","id":"text","delta":" **"}
+
+data: {"type":"text-delta","id":"text","delta":"£"}
+
+data: {"type":"text-delta","id":"text","delta":"35"}
+
+data: {"type":"text-delta","id":"text","delta":" a"}
+
+data: {"type":"text-delta","id":"text","delta":" day"}
+
+data: {"type":"text-delta","id":"text","delta":"**"}
+
+data: {"type":"text-delta","id":"text","delta":"."}
+
+data: {"type":"text-delta","id":"text","delta":" [["}
+
+data: {"type":"text-delta","id":"text","delta":"S"}
+
+data: {"type":"text-delta","id":"text","delta":"4"}
+
+data: {"type":"text-delta","id":"text","delta":":"}
+
+data: {"type":"text-delta","id":"text","delta":" \""}
+
+data: {"type":"text-delta","id":"text","delta":"Meals"}
+
+data: {"type":"text-delta","id":"text","delta":" and"}
+
+data: {"type":"text-delta","id":"text","delta":" subs"}
+
+data: {"type":"text-delta","id":"text","delta":"istence"}
+
+data: {"type":"text-delta","id":"text","delta":" |"}
+
+data: {"type":"text-delta","id":"text","delta":" £"}
+
+data: {"type":"text-delta","id":"text","delta":"35"}
+
+data: {"type":"text-delta","id":"text","delta":" a"}
+
+data: {"type":"text-delta","id":"text","delta":" day"}
+
+data: {"type":"text-delta","id":"text","delta":"\"]]"}
+
+data: {"type":"text-delta","id":"text","delta":" [["}
+
+data: {"type":"text-delta","id":"text","delta":"S"}
+
+data: {"type":"text-delta","id":"text","delta":"8"}
+
+data: {"type":"text-delta","id":"text","delta":":"}
+
+data: {"type":"text-delta","id":"text","delta":" \""}
+
+data: {"type":"text-delta","id":"text","delta":"Costs"}
+
+data: {"type":"text-delta","id":"text","delta":" incurred"}
+
+data: {"type":"text-delta","id":"text","delta":" before"}
+
+data: {"type":"text-delta","id":"text","delta":" that"}
+
+data: {"type":"text-delta","id":"text","delta":" date"}
+
+data: {"type":"text-delta","id":"text","delta":" are"}
+
+data: {"type":"text-delta","id":"text","delta":" claimed"}
+
+data: {"type":"text-delta","id":"text","delta":" under"}
+
+data: {"type":"text-delta","id":"text","delta":" version"}
+
+data: {"type":"text-delta","id":"text","delta":" "}
+
+data: {"type":"text-delta","id":"text","delta":"1"}
+
+data: {"type":"text-delta","id":"text","delta":"."}
+
+data: {"type":"text-delta","id":"text","delta":"0"}
+
+data: {"type":"text-delta","id":"text","delta":"\"]"}
+
+data: {"type":"text-delta","id":"text","delta":"]\n\n"}
+
+data: {"type":"text-delta","id":"text","delta":"You"}
+
+data: {"type":"text-delta","id":"text","delta":" can"}
+
+data: {"type":"text-delta","id":"text","delta":" claim"}
+
+data: {"type":"text-delta","id":"text","delta":" meals"}
+
+data: {"type":"text-delta","id":"text","delta":" when"}
+
+data: {"type":"text-delta","id":"text","delta":" travelling"}
+
+data: {"type":"text-delta","id":"text","delta":" overnight"}
+
+data: {"type":"text-delta","id":"text","delta":" for"}
+
+data: {"type":"text-delta","id":"text","delta":" business"}
+
+data: {"type":"text-delta","id":"text","delta":" or"}
+
+data: {"type":"text-delta","id":"text","delta":" when"}
+
+data: {"type":"text-delta","id":"text","delta":" working"}
+
+data: {"type":"text-delta","id":"text","delta":" away"}
+
+data: {"type":"text-delta","id":"text","delta":" from"}
+
+data: {"type":"text-delta","id":"text","delta":" your"}
+
+data: {"type":"text-delta","id":"text","delta":" usual"}
+
+data: {"type":"text-delta","id":"text","delta":" office"}
+
+data: {"type":"text-delta","id":"text","delta":" for"}
+
+data: {"type":"text-delta","id":"text","delta":" more"}
+
+data: {"type":"text-delta","id":"text","delta":" than"}
+
+data: {"type":"text-delta","id":"text","delta":" "}
+
+data: {"type":"text-delta","id":"text","delta":"10"}
+
+data: {"type":"text-delta","id":"text","delta":" hours"}
+
+data: {"type":"text-delta","id":"text","delta":" in"}
+
+data: {"type":"text-delta","id":"text","delta":" a"}
+
+data: {"type":"text-delta","id":"text","delta":" day"}
+
+data: {"type":"text-delta","id":"text","delta":"."}
+
+data: {"type":"text-delta","id":"text","delta":" [["}
+
+data: {"type":"text-delta","id":"text","delta":"S"}
+
+data: {"type":"text-delta","id":"text","delta":"2"}
+
+data: {"type":"text-delta","id":"text","delta":":"}
+
+data: {"type":"text-delta","id":"text","delta":" \""}
+
+data: {"type":"text-delta","id":"text","delta":"travel"}
+
+data: {"type":"text-delta","id":"text","delta":" overnight"}
+
+data: {"type":"text-delta","id":"text","delta":" on"}
+
+data: {"type":"text-delta","id":"text","delta":" business"}
+
+data: {"type":"text-delta","id":"text","delta":"\"]"}
+
+data: {"type":"text-delta","id":"text","delta":"]["}
+
+data: {"type":"text-delta","id":"text","delta":"["}
+
+data: {"type":"text-delta","id":"text","delta":"S"}
+
+data: {"type":"text-delta","id":"text","delta":"2"}
+
+data: {"type":"text-delta","id":"text","delta":":"}
+
+data: {"type":"text-delta","id":"text","delta":" \""}
+
+data: {"type":"text-delta","id":"text","delta":"more"}
+
+data: {"type":"text-delta","id":"text","delta":" than"}
+
+data: {"type":"text-delta","id":"text","delta":" "}
+
+data: {"type":"text-delta","id":"text","delta":"10"}
+
+data: {"type":"text-delta","id":"text","delta":" hours"}
+
+data: {"type":"text-delta","id":"text","delta":" in"}
+
+data: {"type":"text-delta","id":"text","delta":" a"}
+
+data: {"type":"text-delta","id":"text","delta":" day"}
+
+data: {"type":"text-delta","id":"text","delta":"\"]]"}
+
+data: {"type":"text-end","id":"text"}
+
+data: {"type":"data-verdict","id":"verdict","data":{"citations":[{"marker":"[[S5: \"Meals and subsistence | £40 a day\"]]","label":"S5","quote":"Meals and subsistence | £40 a day","chunkId":"9fcb2ec3-d9f3-44dc-8031-92974337d2fe","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","page":2},{"marker":"[[S8: \"cost incurred on or after 1 July 2026\"]]","label":"S8","quote":"cost incurred on or after 1 July 2026","chunkId":"2e4f37cc-3ccd-414c-96f3-b6d4b479d450","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","page":1},{"marker":"[[S4: \"Meals and subsistence | £35 a day\"]]","label":"S4","quote":"Meals and subsistence | £35 a day","chunkId":"e6c4f93b-58de-4508-91c2-28a7211efac6","documentId":"b2ffc5a0-d066-4c2f-a194-4104ec12601a","title":"Travel and Expenses Policy.pdf","path":"/HR/Policies/Travel and Expenses Policy.pdf","page":2},{"marker":"[[S8: \"Costs incurred before that date are claimed under version 1.0\"]]","label":"S8","quote":"Costs incurred before that date are claimed under version 1.0","chunkId":"2e4f37cc-3ccd-414c-96f3-b6d4b479d450","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","page":1},{"marker":"[[S2: \"travel overnight on business\"]]","label":"S2","quote":"travel overnight on business","chunkId":"1c1a7f94-f2c6-4793-a485-77c60483b536","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","page":2},{"marker":"[[S2: \"more than 10 hours in a day\"]]","label":"S2","quote":"more than 10 hours in a day","chunkId":"1c1a7f94-f2c6-4793-a485-77c60483b536","documentId":"d60a5e6b-7614-4c46-94d6-0bbb4de2477f","title":"Travel and Expenses Policy v2.pdf","path":"/HR/Policies/Travel and Expenses Policy v2.pdf","page":2}],"dropped":[],"abstained":false,"flagged":false}}
+
+data: {"type":"finish","finishReason":"stop"}
+
+data: [DONE]
+

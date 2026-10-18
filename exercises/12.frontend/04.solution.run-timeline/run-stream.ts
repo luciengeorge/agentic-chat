@@ -2,12 +2,27 @@ import { useCallback, useSyncExternalStore } from "react";
 
 import type { RunEvent } from "#learn/agent/types";
 
-import { FINAL } from "./timeline";
+import { FINAL } from "@/components/agent/timeline";
 
-interface RunState {
+export interface RunState {
   events: RunEvent[];
   /** The text of the turn in progress, from token lines. */
   streaming: string;
+}
+
+/**
+ * The state after one event from the stream. An event it already holds (the same `seq`) changes nothing, and the
+ * same state comes back. An `assistant_turn` holds its turn's whole text, so the streamed tokens give way to it.
+ */
+export function receive(state: RunState, event: RunEvent): RunState {
+  if (state.events.some((e) => e.seq === event.seq)) return state;
+  return { events: [...state.events, event], streaming: event.data.type === "assistant_turn" ? "" : state.streaming };
+}
+
+/** Where this tab's stream starts: after the last event it already holds, or at the top. */
+export function streamUrl(runId: string, events: readonly RunEvent[]): string {
+  const after = events.at(-1)?.seq;
+  return `/api/runs/${runId}/stream${after ? `?after=${after}` : ""}`;
 }
 
 const EMPTY: RunState = { events: [], streaming: "" };
@@ -59,17 +74,14 @@ function subscribe(runId: string, listener: () => void): () => void {
   const store = storeFor(runId);
   store.listeners.add(listener);
   if (!store.source && !finished(store.state.events)) {
-    const after = store.state.events.at(-1)?.seq;
-    const source = new EventSource(`/api/runs/${runId}/stream${after ? `?after=${after}` : ""}`);
+    const source = new EventSource(streamUrl(runId, store.state.events));
     store.source = source;
     source.onmessage = (message: MessageEvent<string>) => {
-      const event = JSON.parse(message.data) as RunEvent;
-      const { events, streaming } = store.state;
-      if (events.some((e) => e.seq === event.seq)) return;
-      const next = [...events, event];
-      keep(runId, next);
-      set(store, { events: next, streaming: event.data.type === "assistant_turn" ? "" : streaming });
-      if (finished(next)) {
+      const next = receive(store.state, JSON.parse(message.data) as RunEvent);
+      if (next === store.state) return;
+      keep(runId, next.events);
+      set(store, next);
+      if (finished(next.events)) {
         source.close();
         store.source = null;
       }
@@ -86,6 +98,13 @@ function subscribe(runId: string, listener: () => void): () => void {
       store.source = null;
     }
   };
+}
+
+/** What a reload does to this module: the streams and what they held in memory go, the tab's sessionStorage
+ * stays. Tests call it. */
+export function forgetRunStreams() {
+  for (const store of stores.values()) store.source?.close();
+  stores.clear();
 }
 
 /**

@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { Embedder } from "#learn/embed/embed";
+import type { Reranker } from "#learn/rerank/rerank";
 
 import { hashingEmbedder } from "#learn/embed/fake";
 import { noRewriter } from "#learn/query/rewrite";
@@ -17,7 +18,7 @@ import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/t
 
 import type { Viewer } from "./types";
 
-import { canRead, UnknownViewerError } from "./acl";
+import { canRead, readable, UnknownViewerError } from "./acl";
 import { createRetrieve, queryHash, type RetrieveDeps } from "./retrieve";
 
 const DIMENSIONS = 1536;
@@ -372,6 +373,16 @@ describe.skipIf(!postgresAvailable)("retrieve", () => {
       expect(documentsOf(retrieval).has(D.draft)).toBe(false);
       await withTenantOn(t.appDb, P.kestrel, async (tx) => expect(await canRead(tx, P.leo, D.draft)).toBe(false));
     });
+
+    it("decides the same whatever alias the calling query gives its tables", async () => {
+      // A caller that names documents `d` or the ACL `a` must not capture readable()'s own subqueries.
+      const rows = await withTenantOn(t.appDb, P.kestrel, (tx) =>
+        tx.execute<{ id: string; allowed: boolean }>(
+          sql`SELECT d.id, ${readable(P.leo, sql`d.id`)} AS allowed FROM documents d WHERE d.id IN (${D.draft}, ${D.heron})`,
+        ),
+      );
+      expect(rows.map((r) => r.allowed)).toEqual([false, false]);
+    });
   });
 
   describe("the audit", () => {
@@ -418,6 +429,71 @@ describe.skipIf(!postgresAvailable)("retrieve", () => {
       const retrieval = await retrieve(viewer(P.leo), "Which data processing agreement do we have with Sorrel?");
       expect(retrieval.rewritten).toEqual(["KPC-2025-0231"]);
       expect(retrieval.chunks.some((chunk) => chunk.text.includes("KPC-2025-0231"))).toBe(true);
+    });
+  });
+
+  describe("options, off by default", () => {
+    // Keeps the fused order, so a test can see what fusion did.
+    const identity: Reranker = {
+      name: "identity",
+      rerank: async (_query, documents, topN) =>
+        documents.map((_, index) => ({ index, score: 1 - index / 100 })).slice(0, topN),
+    };
+
+    it("adds nothing to the result when they're off", async () => {
+      const retrieval = await createRetrieve(deps)(viewer(P.leo), "London hotel limit per night");
+      expect(retrieval).not.toHaveProperty("hypothetical");
+      expect(retrieval).not.toHaveProperty("routedDocumentIds");
+    });
+
+    it("HyDE searches the model's passage too: a question in other words finds the policy first", async () => {
+      const asked: string[] = [];
+      const passage = "Expenses: meals are allowed up to £40 a day and London hotels up to £200 a night.";
+      const retrieve = createRetrieve(
+        {
+          ...deps,
+          reranker: identity,
+          hyde: async (question) => {
+            asked.push(question);
+            return passage;
+          },
+        },
+        { k: 50 },
+      );
+      const retrieval = await retrieve(viewer(P.leo), "How generous is the subsistence allowance?");
+      expect(asked).toEqual(["How generous is the subsistence allowance?"]);
+      expect(retrieval.hypothetical).toBe(passage);
+      expect(retrieval.chunks[0].text).toBe(passage);
+    });
+
+    it("routing searches chunks of the routed documents only", async () => {
+      const retrieval = await createRetrieve(deps, { k: 50, routeDocuments: 1 })(
+        viewer(P.leo),
+        "Travel and expenses policy: London hotel limit per night",
+      );
+      expect(retrieval.routedDocumentIds).toEqual([D.expenses]);
+      expect([...documentsOf(retrieval)]).toEqual([D.expenses]);
+    });
+
+    it("routing never considers a document the viewer can't read", async () => {
+      const retrieval = await createRetrieve(deps, { k: 50, routeDocuments: 20 })(
+        viewer(P.leo),
+        "Project Heron memo, legacy expenses notes, AP expenses exceptions",
+      );
+      const routed = new Set(retrieval.routedDocumentIds);
+      // The pre-filter lets the legacy notes (a disabled group's grant) and the exceptions (a deny row) through;
+      // routing applies the decision itself.
+      for (const hidden of [D.heron, D.legacy, D.denied, D.draft, D.harbourExpenses])
+        expect(routed.has(hidden)).toBe(false);
+      expect(routed.has(D.expenses)).toBe(true);
+    });
+
+    it("searches the lexical field it's given, and refuses a name that isn't one", async () => {
+      const retrieval = await createRetrieve(deps, { lexicalField: "text" })(viewer(P.leo), "London hotel limit");
+      expect(retrieval.chunks.length).toBeGreaterThan(0);
+      await expect(createRetrieve(deps, { lexicalField: "text; --" })(viewer(P.leo), "hotel")).rejects.toThrow(
+        RangeError,
+      );
     });
   });
 

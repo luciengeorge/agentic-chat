@@ -1,4 +1,4 @@
-import type { Embedder } from "./embed";
+import type { Embedder } from "#learn/embed/embed";
 
 /** Lowercased words: letters and digits, split on anything else. */
 export function words(text: string): string[] {

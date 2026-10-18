@@ -21,6 +21,10 @@ export interface Retrieval {
   rewritten: string[];
   chunks: RetrievedChunk[];
   auditId: string;
+  /** With HyDE on: the passage the model wrote and search embedded. */
+  hypothetical?: string;
+  /** With routing on: the documents search was narrowed to, best first. */
+  routedDocumentIds?: string[];
 }
 
 export interface RetrieveOptions {

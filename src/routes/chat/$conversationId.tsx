@@ -1,19 +1,10 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { z } from "zod";
+import { createFileRoute } from "@tanstack/react-router";
 
+import { loadConversationPage } from "#learn/frontend/queries";
 import { ChatView } from "@/components/chat/chat-view";
 
-import { getConversation, getConversationRuns } from "./-functions";
-
 export const Route = createFileRoute("/chat/$conversationId")({
-  loader: async ({ params }) => {
-    if (!z.uuid().safeParse(params.conversationId).success) throw notFound();
-    const [conversation, runs] = await Promise.all([
-      getConversation({ data: { id: params.conversationId } }),
-      getConversationRuns({ data: { conversationId: params.conversationId } }),
-    ]);
-    return { ...conversation, runs };
-  },
+  loader: ({ params }) => loadConversationPage(params.conversationId),
   head: ({ loaderData }) => ({
     meta: [{ title: loaderData?.title ? `${loaderData.title} · Kestrel Assistant` : "New chat · Kestrel Assistant" }],
   }),

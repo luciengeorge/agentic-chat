@@ -2,7 +2,13 @@
  * A client for a Microsoft Graph-style drive and directory (fake-workspace plays SharePoint and Entra ID). It
  * pages with `@odata.nextLink`, backs off on 429 as `Retry-After` says, reads changes with delta, and lists
  * permissions, content and the directory. It holds no state: the caller keeps the delta link (in `sync_state`).
+ * `graphConnector` (`#learn/connectors/graph-connector`) wraps it as a `Connector`, which is all drive sync sees.
  */
+import { ConnectorError, ResyncRequiredError } from "#learn/connectors/types";
+
+export { ResyncRequiredError };
+// The Graph client as a `Connector` lives on its own (section 02, step 1), and is exported from here too.
+export { grantedIds, graphConnector, toSourceFile } from "#learn/connectors/graph-connector";
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -21,29 +27,10 @@ export interface GraphClientOptions {
   pageSize?: number;
 }
 
-/** A Graph error answer, or a request that never got one (`status` 0). */
-export class GraphRequestError extends Error {
+/** A Graph error answer, or a request that never got one (`status` 0). A 410 on a delta link is a
+ * `ResyncRequiredError` instead: enumerate everything again. */
+export class GraphRequestError extends ConnectorError {
   override name = "GraphRequestError";
-
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-    /** From `Retry-After`, when the answer had one. */
-    readonly retryAfterMs: number | null = null,
-  ) {
-    super(message);
-  }
-
-  /** Worth trying again later: throttling, an outage, or no answer at all. */
-  get retryable(): boolean {
-    return this.status === 0 || this.status === 429 || this.status >= 500;
-  }
-}
-
-/** The delta link is no longer valid (410): enumerate everything again. */
-export class ResyncRequiredError extends GraphRequestError {
-  override name = "ResyncRequiredError";
 }
 
 export interface DriveItem {
@@ -99,7 +86,7 @@ export interface CrawledFile {
   path: string;
 }
 
-const RETRY_STATUSES = new Set([429, 503]);
+export const RETRY_STATUSES = new Set([429, 503]);
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -126,6 +113,16 @@ export function retryAfterMs(response: Response): number | null {
   return Number.isNaN(date) ? null : Math.max(0, date - Date.now());
 }
 
+/**
+ * How long to wait before trying `response`'s request again, or null to give up: only a throttle (429) or an
+ * outage (503) is worth another try, and only `maxRetries` times. The wait is what `Retry-After` says, or without
+ * one 500 ms doubling each attempt, at most 30 s.
+ */
+export function retryDelay(response: Response, attempt: number, maxRetries: number): number | null {
+  if (!RETRY_STATUSES.has(response.status) || attempt >= maxRetries) return null;
+  return retryAfterMs(response) ?? Math.min(500 * 2 ** attempt, 30_000);
+}
+
 export function createGraphClient(options: GraphClientOptions) {
   const { site, token, maxRetries = 5, pageSize = 100 } = options;
   const fetch = options.fetch ?? globalThis.fetch;
@@ -147,13 +144,14 @@ export function createGraphClient(options: GraphClientOptions) {
         throw new GraphRequestError(0, "networkError", `${init.method ?? "GET"} ${path}: ${(error as Error).message}`);
       }
       if (response.ok) return response;
-      const wait = retryAfterMs(response);
-      if (RETRY_STATUSES.has(response.status) && attempt < maxRetries) {
+      const wait = retryDelay(response, attempt, maxRetries);
+      if (wait !== null) {
+        // Free the connection: an unread body holds it open.
         await response.body?.cancel();
-        await sleep(wait ?? Math.min(500 * 2 ** attempt, 30_000));
+        await sleep(wait);
         continue;
       }
-      throw await errorFrom(response, path, wait);
+      throw await errorFrom(response, path, retryAfterMs(response));
     }
   }
 
@@ -161,17 +159,24 @@ export function createGraphClient(options: GraphClientOptions) {
     return (await (await send(path, init)).json()) as T;
   }
 
-  /** Every entry of a paged listing, following `@odata.nextLink`; and the `@odata.deltaLink` it ends on, if any. */
+  type Page<T> = { value: T[]; "@odata.nextLink"?: string; "@odata.deltaLink"?: string };
+
+  /** Each page of a listing in turn, following `@odata.nextLink` until a page has none. */
+  async function* pages<T>(path: string, headers?: Record<string, string>): AsyncGenerator<Page<T>> {
+    let next: string | undefined = path;
+    while (next) {
+      const page: Page<T> = await json(next, { headers });
+      yield page;
+      next = page["@odata.nextLink"];
+    }
+  }
+
+  /** Every entry of a paged listing; and the `@odata.deltaLink` it ends on, if any. */
   async function all<T>(path: string, headers?: Record<string, string>) {
     const value: T[] = [];
-    let next: string | undefined = path;
     let deltaLink: string | undefined;
-    while (next) {
-      const page: { value: T[]; "@odata.nextLink"?: string; "@odata.deltaLink"?: string } = await json(next, {
-        headers,
-      });
+    for await (const page of pages<T>(path, headers)) {
       value.push(...page.value);
-      next = page["@odata.nextLink"];
       deltaLink = page["@odata.deltaLink"];
     }
     return { value, deltaLink };
@@ -206,6 +211,30 @@ export function createGraphClient(options: GraphClientOptions) {
           seen.add(item.id);
           if (item.folder) queue.push(item.id);
           else yield { item, path: itemPath(item) };
+        }
+      }
+    },
+
+    /**
+     * The files under `folderId` a listing page at a time, walking folders breadth first: what a crawl of a big
+     * drive looks like, so a caller can commit or report progress per page. Each file comes once.
+     */
+    async *crawlPages(folderId = "root"): AsyncGenerator<CrawledFile[]> {
+      const seen = new Set<string>();
+      const queue = [folderId];
+      while (queue.length) {
+        const folder = queue.shift()!;
+        for await (const page of pages<DriveItem>(
+          `${sitePath}/drive/items/${encodeURIComponent(folder)}/children?${top}`,
+        )) {
+          const files: CrawledFile[] = [];
+          for (const item of page.value) {
+            if (seen.has(item.id)) continue;
+            seen.add(item.id);
+            if (item.folder) queue.push(item.id);
+            else files.push({ item, path: itemPath(item) });
+          }
+          if (files.length) yield files;
         }
       }
     },

@@ -1,0 +1,280 @@
+{
+  "date": "2026-10-14",
+  "rows": 5637,
+  "chunks": 5708,
+  "queries": 46,
+  "embeddingTokens": 0,
+  "k": 10,
+  "appEfSearch": 100,
+  "exact": {
+    "recall": 0.9999999999999994,
+    "medianMs": 18.087999999999738,
+    "p95Ms": 18.924292000000605
+  },
+  "grid": [
+    {
+      "knobs": {
+        "m": 4,
+        "efConstruction": 16
+      },
+      "buildMs": 253.30662500000108,
+      "bytes": 46186496,
+      "byEf": [
+        {
+          "efSearch": 10,
+          "recall": 0.21086956521739128,
+          "medianMs": 1.091167000000496,
+          "p95Ms": 1.8377499999987776
+        },
+        {
+          "efSearch": 20,
+          "recall": 0.30652173913043473,
+          "medianMs": 1.2659999999996217,
+          "p95Ms": 2.701874999998836
+        },
+        {
+          "efSearch": 40,
+          "recall": 0.358695652173913,
+          "medianMs": 1.360208000000057,
+          "p95Ms": 2.084082999999737
+        },
+        {
+          "efSearch": 100,
+          "recall": 0.4456521739130434,
+          "medianMs": 1.358250000001135,
+          "p95Ms": 1.5388329999987036
+        },
+        {
+          "efSearch": 200,
+          "recall": 0.5021739130434782,
+          "medianMs": 1.5615839999991294,
+          "p95Ms": 2.0855830000000424
+        }
+      ]
+    },
+    {
+      "knobs": {
+        "m": 8,
+        "efConstruction": 32
+      },
+      "buildMs": 340.476666999999,
+      "bytes": 46186496,
+      "byEf": [
+        {
+          "efSearch": 10,
+          "recall": 0.46086956521739136,
+          "medianMs": 1.124166999999943,
+          "p95Ms": 4.225542000000132
+        },
+        {
+          "efSearch": 20,
+          "recall": 0.5586956521739131,
+          "medianMs": 1.106166999999914,
+          "p95Ms": 1.4284999999999854
+        },
+        {
+          "efSearch": 40,
+          "recall": 0.6652173913043479,
+          "medianMs": 1.1384170000001177,
+          "p95Ms": 1.4344579999997222
+        },
+        {
+          "efSearch": 100,
+          "recall": 0.717391304347826,
+          "medianMs": 1.5287499999994907,
+          "p95Ms": 2.0326249999998254
+        },
+        {
+          "efSearch": 200,
+          "recall": 0.8152173913043477,
+          "medianMs": 1.7599590000008902,
+          "p95Ms": 2.3008329999993293
+        }
+      ]
+    },
+    {
+      "knobs": {
+        "m": 16,
+        "efConstruction": 64
+      },
+      "buildMs": 638.667958,
+      "bytes": 46186496,
+      "byEf": [
+        {
+          "efSearch": 10,
+          "recall": 0.6978260869565214,
+          "medianMs": 1.141458000000057,
+          "p95Ms": 1.4224579999990965
+        },
+        {
+          "efSearch": 20,
+          "recall": 0.7543478260869562,
+          "medianMs": 1.342625000001135,
+          "p95Ms": 2.6317500000004657
+        },
+        {
+          "efSearch": 40,
+          "recall": 0.7586956521739128,
+          "medianMs": 1.6305830000001151,
+          "p95Ms": 2.8492500000011205
+        },
+        {
+          "efSearch": 100,
+          "recall": 0.8673913043478257,
+          "medianMs": 1.748541999999361,
+          "p95Ms": 2.622624999999971
+        },
+        {
+          "efSearch": 200,
+          "recall": 0.9347826086956518,
+          "medianMs": 2.2299159999984113,
+          "p95Ms": 3.3415829999994457
+        }
+      ]
+    },
+    {
+      "knobs": {
+        "m": 32,
+        "efConstruction": 128
+      },
+      "buildMs": 1110.578625,
+      "bytes": 46186496,
+      "byEf": [
+        {
+          "efSearch": 10,
+          "recall": 0.8065217391304346,
+          "medianMs": 1.276625000000422,
+          "p95Ms": 1.5733749999999418
+        },
+        {
+          "efSearch": 20,
+          "recall": 0.8478260869565214,
+          "medianMs": 1.5044589999997697,
+          "p95Ms": 2.563000000000102
+        },
+        {
+          "efSearch": 40,
+          "recall": 0.8739130434782605,
+          "medianMs": 1.5750420000003942,
+          "p95Ms": 1.9333750000005239
+        },
+        {
+          "efSearch": 100,
+          "recall": 0.8956521739130431,
+          "medianMs": 1.9547499999989668,
+          "p95Ms": 2.612916000000041
+        },
+        {
+          "efSearch": 200,
+          "recall": 0.9739130434782604,
+          "medianMs": 2.422082999999475,
+          "p95Ms": 7.772708000000421
+        }
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "name": "vector(1536), exact scan",
+      "bytesPerVector": 6152,
+      "indexBytes": null,
+      "buildMs": null,
+      "exactRecall": 1,
+      "recall": 0.9999999999999994,
+      "medianMs": 18.087999999999738,
+      "p95Ms": 18.924292000000605
+    },
+    {
+      "name": "vector(1536), HNSW",
+      "bytesPerVector": 6152,
+      "indexBytes": 46186496,
+      "buildMs": 638.667958,
+      "exactRecall": 1,
+      "efSearch": 100,
+      "recall": 0.8673913043478257,
+      "medianMs": 1.748541999999361,
+      "p95Ms": 2.622624999999971
+    },
+    {
+      "name": "vector(256), truncated, HNSW",
+      "bytesPerVector": 1032,
+      "indexBytes": 7708672,
+      "buildMs": 240.53641699999935,
+      "exactRecall": 0.6760869565217393,
+      "recall": 0.6369565217391304,
+      "medianMs": 0.9549169999991136,
+      "p95Ms": 1.0354999999999563
+    },
+    {
+      "name": "vector(512), truncated, HNSW",
+      "bytesPerVector": 2056,
+      "indexBytes": 15400960,
+      "buildMs": 303.6751660000009,
+      "exactRecall": 0.7891304347826088,
+      "recall": 0.6608695652173915,
+      "medianMs": 1.1924589999998716,
+      "p95Ms": 1.5903749999997672
+    },
+    {
+      "name": "vector(1024), truncated, HNSW",
+      "bytesPerVector": 4104,
+      "indexBytes": 46186496,
+      "buildMs": 539.9609999999993,
+      "exactRecall": 0.9021739130434782,
+      "recall": 0.8304347826086955,
+      "medianMs": 1.463207999997394,
+      "p95Ms": 2.1254580000022543
+    },
+    {
+      "name": "halfvec(1536), HNSW",
+      "bytesPerVector": 3080,
+      "indexBytes": 23101440,
+      "buildMs": 487.95829100000265,
+      "exactRecall": 0.9999999999999994,
+      "recall": 0.9130434782608693,
+      "medianMs": 2.157791999998153,
+      "p95Ms": 4.56720900000073
+    },
+    {
+      "name": "bit(1536), HNSW (Hamming only)",
+      "bytesPerVector": 200,
+      "indexBytes": 2842624,
+      "buildMs": 258.21879199999967,
+      "exactRecall": null,
+      "recall": 0.682608695652174,
+      "medianMs": 1.301792000002024,
+      "p95Ms": 3.8809590000018943
+    },
+    {
+      "name": "bit(1536), HNSW, 40 rescored with vector(1536)",
+      "bytesPerVector": 200,
+      "indexBytes": 2842624,
+      "buildMs": 258.21879199999967,
+      "exactRecall": null,
+      "recall": 0.8543478260869561,
+      "medianMs": 2.2190000000009604,
+      "p95Ms": 4.310624999998254
+    },
+    {
+      "name": "bit(1536), HNSW, 100 rescored with vector(1536)",
+      "bytesPerVector": 200,
+      "indexBytes": 2842624,
+      "buildMs": 258.21879199999967,
+      "exactRecall": null,
+      "recall": 0.8891304347826083,
+      "medianMs": 2.16754199999923,
+      "p95Ms": 5.53229199999987
+    },
+    {
+      "name": "bit(1536), HNSW, 200 rescored with vector(1536)",
+      "bytesPerVector": 200,
+      "indexBytes": 2842624,
+      "buildMs": 258.21879199999967,
+      "exactRecall": null,
+      "recall": 0.9173913043478257,
+      "medianMs": 3.003958999997849,
+      "p95Ms": 5.5034579999992275
+    }
+  ],
+  "tableBytes": 118489088
+}

@@ -2,8 +2,13 @@ import type { ChatModel, FinishReason, ReasoningEffort, TextMessage, Usage } fro
 import type { Retrieval } from "#learn/retrieve/types";
 
 import { validateCitations, type CitableSource, type CitationReport } from "#learn/cite/citations";
-
-import { ABSTAIN_TEXT, buildPrompt, DEFAULT_BUDGET, normalizeAbstention, type PromptBudget } from "./prompt";
+import {
+  ABSTAIN_TEXT,
+  buildPrompt,
+  DEFAULT_BUDGET,
+  normalizeAbstention,
+  type PromptBudget,
+} from "#learn/generate/prompt";
 
 export type AnswerEvent =
   | { type: "sources"; sources: CitableSource[] }

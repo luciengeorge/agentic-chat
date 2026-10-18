@@ -56,7 +56,7 @@ export const MIN_QUOTE_CHARS = 8;
 
 const MARKER = /\[\[(.+?)\]\]/gs;
 const BODY = /^\s*(S\d+)\s*(?::\s*["“](.+)["”])?\s*$/s;
-const ELLIPSIS = /\s*(?:\.\.\.|…)\s*/;
+export const ELLIPSIS = /\s*(?:\.\.\.|…)\s*/;
 
 export function parseCitations(text: string): ParsedCitation[] {
   return [...text.matchAll(MARKER)].map((match) => {
@@ -85,7 +85,7 @@ export function normalizeForMatch(text: string): string {
 }
 
 /** Each piece of an elided quote must appear, in order. */
-function quoteInText(quote: string, text: string): boolean {
+export function quoteInText(quote: string, text: string): boolean {
   const haystack = normalizeForMatch(text);
   let from = 0;
   for (const piece of quote.split(ELLIPSIS).map(normalizeForMatch).filter(Boolean)) {

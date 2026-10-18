@@ -2,8 +2,16 @@
 import { describe, expect, it } from "vitest";
 
 import { type Client, setupFakeWorkspace } from "../../../servers/fake-workspace/testing";
-import { createGraphClient, type DeltaEntry, GraphRequestError, itemPath, ResyncRequiredError } from "./graph";
+import {
+  createGraphClient,
+  type DeltaEntry,
+  graphConnector,
+  GraphRequestError,
+  itemPath,
+  ResyncRequiredError,
+} from "./graph";
 import { fetchFrom } from "./testing";
+import { ConnectorError, type SourceFile } from "./types";
 
 const fw = setupFakeWorkspace();
 
@@ -181,6 +189,70 @@ describe("the graph connector", () => {
       "/Kestrel/Finance/FP&A",
       "Daniel Reyes",
       "Tom Whitfield",
+    ]);
+  });
+});
+
+describe("the graph client as a Connector", () => {
+  it("crawls a listing page at a time, each file once, as source files", async () => {
+    const client = fw.client();
+    const source = graphConnector(connector(client, { pageSize: 2 }).graph);
+    const pages: SourceFile[][] = [];
+    for await (const page of source.crawl()) pages.push(page);
+
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.every((page) => page.length >= 1 && page.length <= 2)).toBe(true);
+    const all = pages.flat();
+    expect(all.map((file) => file.path).sort()).toEqual(files(fw.corpus.paths("kestrel")));
+    expect(new Set(all.map((file) => file.id)).size).toBe(all.length);
+    const heron = all.find((file) => file.path === "/Exec/Project Heron memo.pdf")!;
+    expect(heron).toMatchObject({
+      id: fw.corpus.id("kestrel", "/Exec/Project Heron memo.pdf"),
+      name: "Project Heron memo.pdf",
+      mimeType: "application/pdf",
+    });
+    expect(heron.contentHash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("turns a delta into files with their paths and deletes: a renamed folder re-paths its files", async () => {
+    const client = fw.client();
+    const source = graphConnector(connector(client, { pageSize: 2 }).graph);
+    const cursor = await source.latestCursor();
+    const { corpus } = fw;
+    const alpha = corpus.id("kestrel", "/Company/alpha.md");
+    const plan = corpus.id("kestrel", "/Finance/FP&A/plan.md");
+    const heron = corpus.id("kestrel", "/Exec/Project Heron memo.pdf");
+
+    await control(client, "POST", `/sites/kestrel/items/${alpha}/rename`, { name: "alpha renamed.md" });
+    await control(client, "POST", `/sites/kestrel/items/${corpus.id("kestrel", "/Finance/FP&A")}/rename`, {
+      name: "Planning",
+    });
+    await control(client, "DELETE", `/sites/kestrel/items/${heron}`);
+
+    const { changes, cursor: next } = await source.delta(cursor);
+    const fileAt = (id: string) =>
+      changes.flatMap((change) => (change.type === "file" && change.file.id === id ? [change.file.path] : []));
+    expect(fileAt(alpha)).toEqual(["/Company/alpha renamed.md"]);
+    expect(fileAt(plan)).toEqual(["/Finance/Planning/plan.md"]);
+    expect(changes).toContainEqual({ type: "deleted", id: heron });
+    expect((await source.delta(next)).changes).toEqual([]);
+  });
+
+  it("throws the interface's ResyncRequiredError for an expired cursor", async () => {
+    const client = fw.client();
+    const source = graphConnector(connector(client).graph);
+    const cursor = await source.latestCursor();
+    await control(client, "POST", "/reset");
+    const error = await source.delta(cursor).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ResyncRequiredError);
+    expect(error).toBeInstanceOf(ConnectorError);
+  });
+
+  it("lists who may read a file as directory ids", async () => {
+    const client = fw.client();
+    const source = graphConnector(connector(client).graph);
+    expect(await source.permissions(fw.corpus.id("kestrel", "/Exec/Project Heron memo.pdf"))).toEqual([
+      fw.corpus.group("kestrel", "/Kestrel/Exec"),
     ]);
   });
 });

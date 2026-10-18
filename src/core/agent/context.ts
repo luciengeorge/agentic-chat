@@ -1,7 +1,7 @@
-import { countTokens as count } from "gpt-tokenizer/encoding/o200k_base";
-
 import type { RunEvent, ToolCall } from "#learn/agent/types";
 import type { ChatMessage } from "#learn/model/types";
+
+import { countMessageTokens, countTokens } from "#learn/model/tokens";
 
 import { AGENT_INSTRUCTIONS, PLANNING_NOTE } from "./prompt";
 
@@ -20,19 +20,10 @@ export const DEFAULT_CONTEXT_TOKENS = 24_000;
 
 export { AGENT_INSTRUCTIONS };
 
-const NO_SPECIAL = { disallowedSpecial: new Set<string>() };
-export const countTokens = (text: string) => count(text, NO_SPECIAL);
+export { countTokens };
 
 /** Tokens a message costs, roughly as the model sees it. */
-export function messageTokens(message: ChatMessage): number {
-  if (message.role === "tool") return countTokens(`${message.toolName} ${JSON.stringify(message.output) ?? ""}`) + 4;
-  const calls = message.role === "assistant" ? (message.toolCalls ?? []) : [];
-  return (
-    countTokens(message.content) +
-    calls.reduce((sum, c) => sum + countTokens(`${c.name} ${JSON.stringify(c.input) ?? ""}`), 0) +
-    4
-  );
-}
+export const messageTokens = countMessageTokens;
 
 /** The notes block that goes after the instructions on a normal turn (never the planning turn). Notes came from
  * earlier runs, so they're data to weigh, not orders. */

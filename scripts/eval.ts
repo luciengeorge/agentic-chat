@@ -5,6 +5,8 @@
  *   pnpm eval                    retrieval and answers (the committed baseline)
  *   pnpm eval --retrieval-only   retrieval only: no answer calls, so cheap to rerun
  *   pnpm eval --only a,b         just these questions; prints, writes no report
+ *   pnpm eval --hyde             also search a model-written answer passage (HyDE); the report's mode says so
+ *   pnpm eval --route N          search chunks of only the N documents routing picks first
  *
  * It runs `retrieve()` and `answer()` in-process against the database `pnpm dev` uses, as the app role, the way
  * `POST /api/chat` does: retrieval at k = 10 for the metrics, and the first 8 of those (the app's k) to the model.
@@ -25,6 +27,7 @@ import { BAR, summarize, type Scores, type Summary } from "#learn/eval/summary";
 import { answer, type AnswerResult } from "#learn/generate/answer";
 import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
+import { modelHypothesis } from "#learn/query/hyde";
 import { modelRewriter } from "#learn/query/rewrite";
 import { createRetrieve, DEFAULT_SETTINGS } from "#learn/retrieve/retrieve";
 import { closeDb, dbFor } from "@/db/pool";
@@ -47,9 +50,18 @@ const COHERE_INTERVAL_MS = 6500;
 /** USD per million tokens (OpenAI's list prices, October 2026). Answer usage has no cache split, so it's priced uncached. */
 const PRICES = { chatInput: 0.1, chatCachedInput: 0.01, chatOutput: 0.5, embedding: 0.02 };
 
+interface ModelUsage {
+  calls: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+}
+
 interface Usage {
   embeddingTokens: number;
-  rewrite: { calls: number; inputTokens: number; cachedInputTokens: number; outputTokens: number };
+  rewrite: ModelUsage;
+  /** HyDE's passages, when `--hyde` is on. */
+  hyde: ModelUsage;
   answer: { calls: number; inputTokens: number; outputTokens: number; reasoningTokens: number };
   rerankCalls: number;
 }
@@ -83,14 +95,19 @@ interface QuestionReport {
 function parseArgs(argv: string[]) {
   let retrievalOnly = false;
   let only: string[] | null = null;
+  let hyde = false;
+  let route = 0;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--retrieval-only") retrievalOnly = true;
     else if (arg === "--only") only = (argv[++i] ?? "").split(",").filter(Boolean);
     else if (arg.startsWith("--only=")) only = arg.slice("--only=".length).split(",").filter(Boolean);
-    else throw new Error(`unknown argument ${arg}; try --retrieval-only or --only id,id`);
+    else if (arg === "--hyde") hyde = true;
+    else if (arg === "--route") route = Number(argv[++i]);
+    else throw new Error(`unknown argument ${arg}; try --retrieval-only, --only id,id, --hyde or --route N`);
   }
-  return { retrievalOnly, only };
+  if (!Number.isInteger(route) || route < 0) throw new Error("--route takes a whole number of documents");
+  return { retrievalOnly, only, hyde, route };
 }
 
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
@@ -120,20 +137,21 @@ const pages = (chunk: Pick<RetrievedChunk, "pageStart" | "pageEnd">) =>
       : String(chunk.pageStart);
 
 function cost(usage: Usage) {
-  const r = usage.rewrite;
-  const a = usage.answer;
-  const rewrite =
+  const chat = (r: ModelUsage) =>
     ((r.inputTokens - r.cachedInputTokens) * PRICES.chatInput +
       r.cachedInputTokens * PRICES.chatCachedInput +
       r.outputTokens * PRICES.chatOutput) /
     1e6;
+  const a = usage.answer;
+  const rewrite = chat(usage.rewrite);
+  const hyde = chat(usage.hyde);
   const answers = (a.inputTokens * PRICES.chatInput + a.outputTokens * PRICES.chatOutput) / 1e6;
   const embeddings = (usage.embeddingTokens * PRICES.embedding) / 1e6;
-  return { rewrite, answers, embeddings, total: rewrite + answers + embeddings };
+  return { rewrite, hyde, answers, embeddings, total: rewrite + hyde + answers + embeddings };
 }
 
 async function main() {
-  const { retrievalOnly, only } = parseArgs(process.argv.slice(2));
+  const { retrievalOnly, only, hyde, route } = parseArgs(process.argv.slice(2));
   if (acEnv() !== "dev") throw new Error(`pnpm eval runs against the dev stack; AC_ENV is ${acEnv()}`);
   if (!process.env.OPENAI_API_KEY)
     throw new Error("pnpm eval needs OPENAI_API_KEY: fake models would score nothing real");
@@ -154,6 +172,7 @@ async function main() {
   const usage: Usage = {
     embeddingTokens: 0,
     rewrite: { calls: 0, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0 },
+    hyde: { calls: 0, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0 },
     answer: { calls: 0, inputTokens: 0, outputTokens: 0, reasoningTokens: 0 },
     rerankCalls: 0,
   };
@@ -162,6 +181,7 @@ async function main() {
   const models: Record<string, string | null> = {
     rewriter: `${CHAT_MODEL} (${CHAT_REASONING_EFFORT})`,
     answer: retrievalOnly ? null : `${CHAT_MODEL} (${CHAT_REASONING_EFFORT})`,
+    hyde: hyde ? `${CHAT_MODEL} (${CHAT_REASONING_EFFORT})` : null,
   };
   try {
     const tenantIds = new Map(
@@ -179,31 +199,34 @@ async function main() {
     );
 
     const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const countRewrites: LanguageModelMiddleware = {
+    const countInto = (bucket: ModelUsage): LanguageModelMiddleware => ({
       wrapGenerate: async ({ doGenerate }) => {
         const result = await doGenerate();
-        usage.rewrite.calls += 1;
-        usage.rewrite.inputTokens += result.usage.inputTokens.total ?? 0;
-        usage.rewrite.cachedInputTokens += result.usage.inputTokens.cacheRead ?? 0;
-        usage.rewrite.outputTokens += result.usage.outputTokens.total ?? 0;
+        bucket.calls += 1;
+        bucket.inputTokens += result.usage.inputTokens.total ?? 0;
+        bucket.cachedInputTokens += result.usage.inputTokens.cacheRead ?? 0;
+        bucket.outputTokens += result.usage.outputTokens.total ?? 0;
         return result;
       },
-    };
+    });
+    const countedModel = (bucket: ModelUsage) =>
+      wrapLanguageModel({ model: openai(CHAT_MODEL), middleware: countInto(bucket) });
     // The same rewriter `rewriterFromEnv` builds, with its usage counted.
-    const rewriter = modelRewriter(
-      wrapLanguageModel({ model: openai(CHAT_MODEL), middleware: countRewrites }),
-      CHAT_REASONING_EFFORT,
-    );
+    const rewriter = modelRewriter(aiSdkChatModel(countedModel(usage.rewrite)), CHAT_REASONING_EFFORT);
     const embedder = embedderFromEnv(process.env, { onUsage: (tokens) => (usage.embeddingTokens += tokens) });
     const reranker = counted(rerankerFromEnv(), usage);
     models.embedder = embedder.version;
     models.reranker = reranker.name;
-    const retrieve = createRetrieve({
-      withTenant: (tenantId, fn) => withTenantOn(db, tenantId, fn),
-      embedder,
-      reranker,
-      rewriter,
-    });
+    const retrieve = createRetrieve(
+      {
+        withTenant: (tenantId, fn) => withTenantOn(db, tenantId, fn),
+        embedder,
+        reranker,
+        rewriter,
+        ...(hyde && { hyde: modelHypothesis(countedModel(usage.hyde), CHAT_REASONING_EFFORT) }),
+      },
+      { routeDocuments: route },
+    );
     const model = aiSdkChatModel(openai(CHAT_MODEL));
 
     for (const [n, q] of questions.entries()) {
@@ -326,9 +349,9 @@ async function main() {
   const run = {
     date: started.toISOString().slice(0, 10),
     startedAt: started.toISOString(),
-    mode: retrievalOnly ? "retrieval-only" : "full",
+    mode: (retrievalOnly ? "retrieval-only" : "full") + (hyde ? "-hyde" : "") + (route ? `-route${route}` : ""),
     models,
-    settings: { ...DEFAULT_SETTINGS, k: K, answerK: ANSWER_K },
+    settings: { ...DEFAULT_SETTINGS, k: K, answerK: ANSWER_K, routeDocuments: route },
     bar: BAR,
     usage,
     costUsd: cost(usage),
@@ -350,7 +373,7 @@ type Run = {
   startedAt: string;
   mode: string;
   models: Record<string, string | null>;
-  settings: Record<string, number>;
+  settings: Record<string, number | string>;
   bar: typeof BAR;
   usage: Usage;
   costUsd: ReturnType<typeof cost>;
@@ -385,7 +408,11 @@ function renderMarkdown(run: Run, summary: Summary, reports: QuestionReport[]): 
     `Started ${run.startedAt}. Embeddings \`${run.models.embedder}\`, reranker \`${run.models.reranker}\`, rewriter ` +
       `\`${run.models.rewriter}\`, answers \`${run.models.answer ?? "not run"}\`. Retrieval at k = ${run.settings.k} ` +
       `(${run.settings.perList} per list, ${run.settings.candidates} candidates, ${run.settings.rerankDepth} reranked); ` +
-      `answers from the first ${run.settings.answerK}.`,
+      `answers from the first ${run.settings.answerK}.` +
+      (run.models.hyde ? ` HyDE passages from \`${run.models.hyde}\`.` : "") +
+      (run.settings.routeDocuments
+        ? ` Chunks searched in the first ${run.settings.routeDocuments} routed documents.`
+        : ""),
     "",
   );
   lines.push("```", headline(run, summary), "```", "");
@@ -472,6 +499,11 @@ function renderMarkdown(run: Run, summary: Summary, reports: QuestionReport[]): 
     "",
     `- Embeddings: ${run.usage.embeddingTokens} tokens ($${run.costUsd.embeddings.toFixed(5)})`,
     `- Query rewrites: ${run.usage.rewrite.calls} calls, ${run.usage.rewrite.inputTokens} input (${run.usage.rewrite.cachedInputTokens} cached) and ${run.usage.rewrite.outputTokens} output tokens ($${run.costUsd.rewrite.toFixed(5)})`,
+    ...(run.usage.hyde.calls
+      ? [
+          `- HyDE passages: ${run.usage.hyde.calls} calls, ${run.usage.hyde.inputTokens} input and ${run.usage.hyde.outputTokens} output tokens ($${run.costUsd.hyde.toFixed(5)})`,
+        ]
+      : []),
     `- Answers: ${run.usage.answer.calls} calls, ${run.usage.answer.inputTokens} input and ${run.usage.answer.outputTokens} output tokens, ${run.usage.answer.reasoningTokens} of them reasoning ($${run.costUsd.answers.toFixed(5)}, priced uncached)`,
     `- Rerank: ${run.usage.rerankCalls} calls (a Cohere trial key bills nothing)`,
     `- Total: $${run.costUsd.total.toFixed(4)}`,
