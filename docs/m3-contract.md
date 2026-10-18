@@ -130,6 +130,42 @@ Shared files (`src/routes/labs/index.tsx` and `-functions.ts`, the contract's Se
 - **03:** steps for text layer vs OCR, OCR confidences and the review queue, tables to markdown, page mapping. Docling compared is `guided`. Lab: a parsed-page viewer showing blocks, method and confidence, plus the review queue.
 - **05:** steps for the job queue by hand, ingestion as Workflow steps with `RetryableError`, `FatalError` and limits, the outbox and relay (plus workflow-first), fan-out over the filing, and per-class limits against starvation. Lab: a queue board (jobs by class and state) plus a link to Workflow's run viewer.
 
+## What wave 2 taught (applies to waves 3 and 4)
+
+- **A step folder appears with its README.** Create a step's problem and solution folders only when its README is written. `ex` now skips unfinished steps outside the gate, but don't lean on it.
+- **Problem files import `#learn/...`,** never a relative `./types`, so the solution can match the reference byte for byte.
+- **Wrong-answer copies live inside the repo's tsconfig scope** (a scratch folder under the repo, deleted after), never under `node_modules`, where the `@/` alias doesn't resolve.
+- **Record once, replay in tests.** Real bytes make the best worked examples: model calls as cassettes (`fixtures/cassettes/`), OCR as `src/core/parse/ocr-recording.json`. Plan the recordings a section needs before writing its steps, record each once, and keep live calls out of tests.
+- **A stub that runs inside a workflow step throws `FatalError`,** so its test fails at once instead of retrying.
+- **When a stub leaves an import unused,** the problem file imports less, and a 💰 hint says what to add.
+- **Two stubs in one step are fine** when each function is too small to be a step alone.
+
+## Wave 3 ownership
+
+| Lane | Owns |
+|---|---|
+| A. Sections 06 + 07 | `exercises/06.*/**`, `exercises/07.*/**`, `src/routes/labs/{vectors,lexical}*`, `src/components/labs/{vectors,lexical}*`, the reference splits those sections need in `src/core/{embed,vectors,search}/**` |
+| B. Sections 08 + 09 | `exercises/08.*/**`, `exercises/09.*/**`, `src/routes/labs/{rerank,acls}*`, `src/components/labs/{rerank,acls}*`, the reference splits those sections need in `src/core/{rerank,query,directory,acl}/**` and `src/core/retrieve/acl.ts` (splits only: `readable()` stays the one decision, and its `acl_` aliases stay) |
+
+Shared files: as in wave 2.
+
+**Section notes:**
+- **06:**
+  - **Steps:** batch embedding; pgvector and HNSW (`m`, `ef_construction`, `ef_search`, iterative scan); exact vs approximate recall; dimension truncation; `halfvec` and `bit` with rescoring, plus sizing.
+  - **Reference:** "Wave 1 lane A", and `pnpm vectors:bench`'s report for the real numbers (bits plus a 200-row rescore at 92% and 2.7 MB; one 1536-dimension vector fills an 8 KB page).
+  - **Lab:** a recall vs latency chart over the bench variants, run on the learner's code.
+- **07:**
+  - **Steps:** BM25 by hand; the pg_search index, its tokenizers and scoring; contract numbers and error codes, where BM25 beats vectors; changing a tokenizer without downtime (the transition index the bench found); RRF.
+  - **Lab:** rankings side by side (BM25, vector, fused) for one query.
+- **08:**
+  - **Steps:** Cohere rerank through `rerank()` and rerank depth (the overlap reranker in tests, never a live call); query rewriting and expansion; HyDE; document-level routing.
+  - **Lab:** rankings before and after the reranker, with each chunk's move.
+  - **Honest results:** HyDE and routing don't beat the default on this corpus (recall 0.988 and 0.950 against 1.000). Teach that as a result: why, and when they would win.
+- **09:**
+  - **Steps:** directory sync with the closure; the principal cache and its invalidation; ACL stamping, with Postgres as the decision point; the over-fetch filter; the ACL sync loop and the audit log; tenant isolation through RLS.
+  - **Lab:** a user and tenant switcher. Pick a user, run a query, and see the chunks they get, the ones denied, and the audit row. The Heron memo for `leo.martin` versus `daniel.reyes` is the example.
+  - **The `readable()` alias bug is a teaching moment:** a caller's `d.id` captured by the subquery. Use it in a 🦉.
+
 ## Settled during the build
 
 (Lanes add what they decided here: one bullet per decision, plain words.)
