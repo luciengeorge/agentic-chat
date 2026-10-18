@@ -66,6 +66,9 @@ export function aiSdkEmbedder(
       //    each batch's vectors as it arrives puts them in the order the calls finish, and every chunk after the
       //    first slow batch gets a neighbour's meaning. Search then returns confident, wrong chunks, and no error
       //    ever says so.
+      // 🦉 Why one batch at a time. One request in flight stays inside the provider's rate limit (requests and
+      //    tokens a minute); 21 at once for the filing can earn a 429. And a failure stops the loop, so the batches
+      //    after it are never sent or paid for.
       // 🦉 Why check the length. A model asked for 1,536 numbers that returns 3,072 (a different model, a missing
       //    `dimensions`) would be refused by `vector(1536)` only at write time, after you've paid. A vector of the
       //    wrong size from a fake or a proxy might never be refused at all. Failing here, loudly, is cheapest.

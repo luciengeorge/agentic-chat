@@ -1,6 +1,6 @@
 /**
  * The background lab's server side (section 05): a board of the viewer's tenant's jobs and outbox rows, and a
- * demo of section 05.5's race on a queue of its own. The demo enqueues as the app does, in the tenant, and claims
+ * demo of section 05.6's race on a queue of its own. The demo enqueues as the app does, in the tenant, and claims
  * through `#learn/queue/queue` (the learner's code while a queue step is active) on the owner's pool, as workers do.
  * Server only: the route's server functions import it.
  */
@@ -17,7 +17,7 @@ export interface BackgroundLabDeps {
   owner: Exec & Transactor;
 }
 
-/** Two workers, as the dev server runs them, and section 05.5's cap: backfill may take one of them. */
+/** Two workers, as the dev server runs them, and section 05.6's cap: backfill may take one of them. */
 export const LAB_WORKERS = ["worker-a", "worker-b"] as const;
 export const LAB_LIMITS = { backfill: 1 };
 /** Long enough that a claimed job stays running until the lab finishes it. */

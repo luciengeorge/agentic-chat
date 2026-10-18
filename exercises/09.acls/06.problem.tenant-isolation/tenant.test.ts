@@ -36,7 +36,11 @@ describe.skipIf(!postgresAvailable)("tenant isolation", () => {
     const { t, tenants } = world.get();
     expect(await counts(t.appDb, tenants.kestrel)).toEqual({ documents: 40, chunks: 375, principals: 42 });
     expect(await counts(t.appDb, tenants.harbour)).toEqual({ documents: 6, chunks: 59, principals: 10 });
-    expect(await untenanted(t.appDb), "outside withTenant the policies match no tenant: no rows").toEqual({
+    expect(
+      await untenanted(t.appDb),
+      "outside withTenant the policies match no tenant: no rows. Seeing a tenant's rows here means an earlier " +
+        "transaction's setting stayed on this pooled connection",
+    ).toEqual({
       documents: 0,
       principals: 0,
     });
@@ -63,8 +67,9 @@ describe.skipIf(!postgresAvailable)("tenant isolation", () => {
       expect((await counts(single, tenants.kestrel)).documents).toBe(40);
       expect(
         (await untenanted(single)).documents,
-        "the next query on this connection saw Kestrel's 40 documents: a plain SET (or set_config(..., false)) " +
-          "outlives the transaction. Use SET LOCAL, set_config(..., true)",
+        "the next query on this connection saw Kestrel's 40 documents: the setting outlived the transaction. " +
+          "set_config's third argument is is_local: false (like a plain SET) keeps it for the connection's life, " +
+          "true (like SET LOCAL) ends it with the transaction",
       ).toBe(0);
     } finally {
       await client.end();

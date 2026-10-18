@@ -14,7 +14,8 @@ slots:
 - A **step**'s `maxRetries` is how many times Workflow tries it again after a throw: 3 by default, 5 for the download.
 - A **`RetryableError`** asks for another try after a wait (`retryAfter`, in milliseconds). A **`FatalError`** asks for none: the step fails, and the run sees the error at once. Any other error is tried again straight away.
 - **`Retry-After`** is a header a busy service sends with a 429 or a 503: the seconds to wait before asking again. The Graph client turns it into `retryAfterMs`.
-- A **`ConnectorError`** is the drive's answer as an error: its `status` (0 when nothing answered), and `retryable` when that's 0, 429 or 5xx.
+- A **`ConnectorError`** is the drive's answer as an error: its `status` (0 when nothing answered), and `retryable` when that's 0, 429 or 5xx. By the time one reaches a step, the Graph client has already resent a 429 or a 503 a few times (section 02.3); a step retry is the next level up: the whole step again, after the wait the error names.
+- **`asStep`** (in `src/workflows/sync-common.ts`) wraps a step's work: it runs it, and if it throws, it throws `stepError(error)` instead. So whatever your function returns is what Workflow sees.
 
 ## Do this
 

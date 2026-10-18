@@ -7,15 +7,15 @@ slots:
 
 # The outbox and relay: the solution
 
-`relayOnce` opens one transaction. It selects the oldest `batchSize` rows that are neither published nor failed, `FOR UPDATE SKIP LOCKED`, and groups them by partition in a `Map`, which keeps their order. For each partition it asks `ownPartition`; a partition it can't own goes in `skippedPartitions`. Otherwise it hands the rows to `deliverRow` one at a time, and stops at the first that didn't go out. An `OutageError` escapes the transaction, which rolls the batch back; outside, `relayOnce` catches it and reports `outage: true`.
+`relayOnce` opens one transaction and runs `relayBatch` in it. `relayBatch` selects the oldest `batchSize` rows that are neither published nor failed, `FOR UPDATE SKIP LOCKED`, and groups them by partition in a `Map`, which keeps their order. For each partition it hands the rows to `deliverRow` one at a time, and stops that partition at the first row that didn't go out; the next partition carries on.
 
 ## Why it works
 
 - **No change without its request, and no request without its change.** The row commits with the version, in one transaction, so either both exist or neither does. The relay only ever sees committed rows.
 - **At least once, made safe.** A row is marked published after `start()` returns. If the relay dies in between, the next pass starts the run again. Every run's first step claims its row by id; the second run finds it claimed and stops. The relay can repeat itself; the run can't.
 - **In order within a partition.** Stopping at the first failure keeps a document's later ingest from starting before an earlier one. Other partitions don't wait for it.
-- **One owner per partition.** Two relays lock different rows with `SKIP LOCKED`, so both could hold part of one partition. The advisory lock (and the check for an older row locked elsewhere) gives each partition to one relay at a time.
-- **An outage costs nothing.** If the world can't be reached, every start would fail and burn through every row's five attempts. Rolling back leaves them as they were.
+- **Two relays never take the same row.** `FOR UPDATE` locks the batch until the transaction ends, and `SKIP LOCKED` sends a second relay (the kicked one beside the two-second poll, or another server) past those rows to the next ones, without waiting.
+- **Two gaps left for step 4.** That second relay can still take a later row of a partition the first holds, and start version 2 while version 1 is still going out. And an outage, where every start fails, counts an attempt on every row it touches.
 
 ## The worked example
 

@@ -621,7 +621,7 @@ export const jobs = pgTable(
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastError: text("last_error"),
     /** What kind of work it is, so a worker can cap a class: a backfill can't then hold every slot while
-     * incremental work waits (section 05.5). */
+     * incremental work waits (section 05.6). */
     class: text("class").notNull().default("default"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

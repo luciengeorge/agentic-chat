@@ -33,4 +33,4 @@ slots:
 
 The whole filing makes 5,274 chunks. The note on change CHG-2026-0612 is on page 2,417, in range 9: its chunk is the range's 334th (ordinal 333), so it's stored as 900,333, cited at page 2,417.
 
-Run the tests with `pnpm ex test 05.4`. They need Postgres (`pnpm ex up`).
+Run the tests with `pnpm ex test 05.5`. They need Postgres (`pnpm ex up`).

@@ -26,7 +26,7 @@ const runVectors = createServerFn({ method: "POST" })
   .validator(z.object({ source: z.enum(["corpus", "recording"]) }))
   .handler(async ({ data }): Promise<VectorLabRun> => {
     const { acEnv } = await import("@/lib/env");
-    if (acEnv() !== "dev") throw new Error("The vectors lab only runs in dev.");
+    if (acEnv() !== "dev") throw new Error(`The vectors lab only runs in dev (this is ${acEnv()}).`);
     const adminUrl = process.env.DATABASE_ADMIN_URL;
     if (!adminUrl) throw new Error("DATABASE_ADMIN_URL must be set (.env.local).");
     const { runVectorLab } = await import("@/components/labs/vectors-server");

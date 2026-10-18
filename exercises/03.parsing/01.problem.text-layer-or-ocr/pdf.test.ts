@@ -66,6 +66,17 @@ describe("text layer or OCR", () => {
     }
   });
 
+  it("drops the spaces inside a run too, not just at its ends: spaced-out letters are few characters", async () => {
+    const spaced = [run("a b c d e f g h i j"), run("k l m n o", 686)];
+    const trimmed = spaced.reduce((n, item) => n + item.str.trim().length, 0);
+    expect([trimmed, visible(spaced)]).toEqual([28, 15]);
+    const page = await readPage(4, layer(...spaced), scanned("Approved", 72.5));
+    expect(
+      page.method,
+      "28 characters once trimmed, but 15 visible: trim() only cuts whitespace at the ends of a string. Remove every whitespace character, inside the run too",
+    ).toBe("ocr");
+  });
+
   it("takes exactly MIN_TEXT_LAYER_CHARS (20) visible characters as a text layer, and 19 as a picture", async () => {
     const twenty = [run("KPC-2026-0142"), run(" "), run("signed.", 686)];
     const nineteen = [run("KPC-2026-0142"), run(" "), run("signed", 686)];

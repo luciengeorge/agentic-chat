@@ -43,8 +43,8 @@ export interface ChatTurn {
  */
 export async function readChatTurn(request: Request, scope: Viewer): Promise<ChatTurn | Response> {
   // 🐨 Refuse a body that's too big before reading it: a `content-length` header over `MAX_BODY_BYTES` is a 413
-  //    `too_large`. Then read the body as text, and refuse it again if it's longer than that (the header can be
-  //    missing, or lie).
+  //    `too_large`. Then read the body, and refuse it again if it's more than `MAX_BODY_BYTES` bytes (the header
+  //    can be missing, or lie). Bytes, not characters: count them before you turn the body into a string.
   // 🐨 Parse it as JSON (not JSON: 400 `invalid_json`), then with `ChatRequestSchema.safeParse` (a failure: 400
   //    `invalid_request`, with `issues` from `z.flattenError(error).fieldErrors`).
   // 🐨 The question is the text parts joined with a newline, trimmed. Empty: 400 `empty_question`. Longer than
@@ -53,7 +53,9 @@ export async function readChatTurn(request: Request, scope: Viewer): Promise<Cha
   //    the question.
   // 🐨 The classic mistake: reading the tenant (or the user) from the body. The body is the client's to write.
   //
-  // 💰 `request.headers.get("content-length")` is a string or null; `Number(null)` is 0. `await request.text()`.
+  // 💰 `request.headers.get("content-length")` is a string or null; `Number(null)` is 0.
+  //    `await request.arrayBuffer()` gives the bytes, and `.byteLength` counts them; `new TextDecoder().decode(bytes)`
+  //    turns UTF-8 bytes into a string.
   //    `Response.json({ error: "invalid_json" }, { status: 400 })` is an answer.
   //
   // 🦉 Why the tenant never comes from here. Leo can send any bytes he likes: curl doesn't care what the page
@@ -62,6 +64,9 @@ export async function readChatTurn(request: Request, scope: Viewer): Promise<Cha
   //    drops keys it doesn't name, so a `tenantId` he slips in never reaches you.
   // 🦉 Why check the size twice. Reading a body costs memory, so a header saying 10 MB is refused unread. But the
   //    header is optional and is just another thing the client wrote, so the body is measured again once read.
+  // 🦉 Why bytes. A string's `length` counts UTF-16 code units, roughly characters. "£" is one of those and two
+  //    bytes of UTF-8, "€" three, and an emoji is two code units and four bytes. So 33,000 "£" signs are 66,000 bytes, over the limit,
+  //    and a `.length` check says 33,000 and lets them through.
   // 🦉 Why this order. Each check is cheaper than the next, and none of them costs a token of the rate limit, a
   //    retrieval or a model call: the route does those only once a turn comes back.
   //

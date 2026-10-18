@@ -57,10 +57,10 @@ describe("termScore", () => {
     const short = termScore(1, cardIdf, 2, 8 / 3);
     const long = termScore(1, cardIdf, 20, 8 / 3);
     expect(long, "a longer document should score less for the same tf").toBeLessThan(short);
-    expect(termScore(1, cardIdf, 20, 8 / 3, { k1: 1.2, b: 0 })).toBeCloseTo(
-      termScore(1, cardIdf, 2, 8 / 3, { k1: 1.2, b: 0 }),
-      12,
-    );
+    expect(
+      termScore(1, cardIdf, 20, 8 / 3, { k1: 1.2, b: 0 }),
+      "with b 0 length must not count: lengthNorm = 1 - b + b × length / averageLength",
+    ).toBeCloseTo(termScore(1, cardIdf, 2, 8 / 3, { k1: 1.2, b: 0 }), 12);
   });
 
   it("is zero when the term is absent", () => {

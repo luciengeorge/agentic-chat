@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 /** The viewer's own site on fake-workspace. The lab is a dev tool: it drives the control API with the dev token. */
 async function workspaceOf(viewer: Viewer): Promise<Workspace> {
   const { acEnv } = await import("@/lib/env");
-  if (acEnv() === "prod") throw new Error("The connectors lab only runs in dev.");
+  if (acEnv() !== "dev") throw new Error(`The connectors lab only runs in dev (this is ${acEnv()}).`);
   const { workspaceToken, workspaceUrl } = await import("@/workflows/sync-common");
   const slug = viewer.tenant.slug;
   return {

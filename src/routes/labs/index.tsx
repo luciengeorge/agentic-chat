@@ -23,7 +23,7 @@ interface Lab {
   /** The app's own page, or an outside one (`href`) such as Workflow's run viewer. */
   to?: LinkProps["to"];
   href?: string;
-  /** Refuses to run when the app runs as prod: it shows other people's access, or drives dev-only services. */
+  /** Refuses to run anywhere but dev (test and prod alike): it shows other people's access, or drives dev-only services. */
   devOnly?: boolean;
 }
 
@@ -156,7 +156,7 @@ function LabsPage() {
             <h1 className="text-xl font-semibold tracking-tight">Labs</h1>
             <p className="text-sm text-muted-foreground">
               One page per section of the course. Each runs the app's own code, yours while a step of its section is
-              active. Pages marked dev only refuse to run in production.
+              active. Pages marked dev only refuse to run outside dev, in test as in production.
             </p>
           </div>
           <ul className="flex flex-col gap-2">

@@ -19,7 +19,8 @@ import { viewerMiddleware } from "@/lib/middleware";
 /** The lab shows other people's access, so it refuses to run anywhere but dev. */
 async function devOnly() {
   const { acEnv } = await import("@/lib/env");
-  if (acEnv() === "prod") throw new Error("The ACL lab shows other people's access, so it only runs in dev.");
+  if (acEnv() !== "dev")
+    throw new Error(`The ACL lab shows other people's access, so it only runs in dev (this is ${acEnv()}).`);
 }
 
 async function labDeps() {
@@ -103,8 +104,9 @@ function AclLab() {
             <h1 className="text-xl font-semibold tracking-tight">Identity and ACLs</h1>
             <p className="text-sm text-muted-foreground">
               Search as anyone, in either tenant, and see what decided it: their groups, the chunks they got, the ones
-              the decision refused, and the audit row. Dev only: it shows other people's access. Runs{" "}
-              <code className="font-mono">#learn/retrieve/acl</code> and the rest of section 09 through retrieval.
+              the decision refused, and the audit row. Dev only (it refuses in test and prod): it shows other people's
+              access. Runs <code className="font-mono">#learn/retrieve/acl</code> and the rest of section 09 through
+              retrieval.
             </p>
           </div>
 

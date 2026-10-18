@@ -19,7 +19,7 @@ None of that is the model's work. It's the browser's: what it asks the server fo
 
 ## The steps
 
-Each step has its own small module behind a `#learn/frontend/...` import, which the components use. The components themselves stay as they are.
+Each step has its own small module behind a `#learn/frontend/...` import, which the components use. The components themselves stay as they are. That's because of how a step swaps your code in: a `#learn/...` import can only point at a `.ts` file, and a component lives in a `.tsx` one. So the part worth learning (the hook, the loader, the pure function that reads the stream) moves into `src/core/frontend/`, and the component calls it.
 
 1. **Server functions in components.** Load the conversation page in its route's loader, and the sidebar's list with a query.
 2. **Streaming chat with `useChat`.** Wire `useChat` to the chat's stream, and read the reply's parts as they arrive.

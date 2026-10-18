@@ -5,7 +5,6 @@ import {
   type Deliver,
   documentPartition,
   enqueue,
-  OutageError,
   type OutboxRow,
   relayOnce,
   UndeliverableError,
@@ -56,6 +55,17 @@ describe.skipIf(!postgresAvailable)("the relay", () => {
   const state = () =>
     t.sql`SELECT id, attempts, published_at IS NOT NULL AS published, failed_at IS NOT NULL AS failed, last_error
           FROM outbox ORDER BY created_at, id`;
+
+  /** `promise`, or a failure with `message` once `ms` have passed. */
+  async function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(message)), ms)));
+    try {
+      return await Promise.race([promise, late]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
   const DOC_A = "00000000-0000-4000-8000-00000000000a";
   const DOC_B = "00000000-0000-4000-8000-00000000000b";
@@ -122,26 +132,20 @@ describe.skipIf(!postgresAvailable)("the relay", () => {
     ]);
   });
 
-  it("rolls the batch back on an outage, without counting attempts", async () => {
-    await ingest(kestrel, DOC_A, 1);
+  it("takes at most batchSize rows a pass, the oldest", async () => {
+    const [a1, a2] = await ingest(kestrel, DOC_A, 1, 2);
     await ingest(kestrel, DOC_B, 1);
-    let calls = 0;
-    const result = await relayOnce(t.db, async () => {
-      calls += 1;
-      if (calls === 2) throw new OutageError("world unreachable");
-    });
-    expect(result.outage, "catch the OutageError outside the transaction and report it").toBe(true);
+    const { seen, deliver } = recorder();
+    const result = await relayOnce(t.db, deliver, { batchSize: 2 });
     expect(
-      (await state()).map((row) => [row.attempts, row.published]),
-      "an outage rolls the whole batch back: let the OutageError escape the transaction",
-    ).toEqual([
-      [0, false],
-      [0, false],
-    ]);
+      seen.map((row) => row.id),
+      "a pass takes at most batchSize rows: limit the batch",
+    ).toEqual([a1, a2]);
+    expect(result.published).toEqual([a1, a2]);
   });
 
-  it("lets one relay own a partition: a second skips it, even for rows the first didn't lock", async () => {
-    const [a1, a2] = await ingest(kestrel, DOC_A, 1, 2);
+  it("lets a second relay pass over the rows the first holds, without waiting for them", async () => {
+    const [a1] = await ingest(kestrel, DOC_A, 1);
     const [b1] = await ingest(kestrel, DOC_B, 1);
     let release = () => {};
     const held = new Promise<void>((resolve) => (release = resolve));
@@ -156,23 +160,26 @@ describe.skipIf(!postgresAvailable)("the relay", () => {
       },
       { batchSize: 1 },
     );
-    await Promise.race([
-      inFirst,
-      first.then(() => {
-        throw new Error("the first relay returned without delivering a row");
-      }),
-    ]);
-    const { seen, deliver } = recorder();
-    const second = await relayOnce(t.db, deliver);
-    release();
-
+    try {
+      await Promise.race([
+        inFirst,
+        first.then(() => {
+          throw new Error("the first relay returned without delivering a row");
+        }),
+      ]);
+      const { seen, deliver } = recorder();
+      await within(
+        relayOnce(t.db, deliver),
+        2_000,
+        "the second relay waited for the row the first holds: pass over locked rows with SKIP LOCKED",
+      );
+      expect(
+        seen.map((row) => row.id),
+        "the second relay took a row the first holds: lock the batch FOR UPDATE, so it's delivered once",
+      ).toEqual([b1]);
+    } finally {
+      release();
+    }
     expect((await first).published).toEqual([a1]);
-    // a2 sits behind a1, which the first relay holds, so the second leaves the partition alone.
-    expect(
-      seen.map((row) => row.id),
-      "the first relay holds DOC_A's partition: ask ownPartition first",
-    ).toEqual([b1]);
-    expect(second.skippedPartitions).toEqual([documentPartition(DOC_A)]);
-    expect((await relayOnce(t.db, deliver)).published).toEqual([a2]);
   });
 });

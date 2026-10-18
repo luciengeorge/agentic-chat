@@ -22,6 +22,6 @@ slots:
 
 ## The worked example
 
-Nina's question at Harbour: a plain scan at ef_search 40 returns 0 chunks, because the 158 nearest are all Kestrel's. With the iterative scan: 10 Harbour chunks, the best Harbour's procurement process at 0.2718 against Kestrel's price list at 0.6861, so the model sees that nothing Harbour has is about KC-PRO-12 and says it can't find it. Rachel's hotel question at Kestrel: the hotels clause of the expenses policy v2 first, at 0.6885.
+Nina's question at Harbour: a plain scan at ef_search 40 returns 0 chunks (sometimes 1: the build is random), because the 158 nearest are all Kestrel's. With the iterative scan: 10 Harbour chunks, the best Harbour's procurement process at 0.2718 against Kestrel's price list at 0.6861, so the model sees that nothing Harbour has is about KC-PRO-12 and says it can't find it. Rachel's hotel question at Kestrel: the hotels clause of the expenses policy v2 first, at 0.6885.
 
 Postgres does the filtering in the same statement as the search, inside the tenant's transaction. That's the point of keeping vectors next to the rows: no separate vector store has to be told what each user may see.

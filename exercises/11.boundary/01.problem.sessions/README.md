@@ -23,7 +23,7 @@ slots:
 
 ## A worked example
 
-Leo signs in with his password. better-auth answers with one cookie: `better-auth.session_token=<token>.<signature>; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax`. 604,800 seconds is 7 days. His session row caches Kestrel as its active organization, and he has one `member` row: Kestrel's. So his viewer is `leo.martin` in Kestrel.
+Leo signs in with his password. better-auth answers with one cookie: `better-auth.session_token=<token>.<signature>; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax`. 604,800 seconds is 7 days. `HttpOnly` keeps the page's JavaScript from reading it, and `SameSite=Lax` keeps the browser from sending it with a form another site posts here. His session row caches Kestrel as its active organization, and he has one `member` row: Kestrel's. So his viewer is `leo.martin` in Kestrel.
 
 Now write Harbour's id into that cached field by hand. The session says Harbour; the membership still says Kestrel; the viewer must still say Kestrel. And when sync disables Sam Patel, his 7-day cookie keeps working for better-auth: only your check, on his principal, inside Kestrel's tenant, answers 403 `disabled`. Peter Hall, disabled in `world.yaml` from the start, can't even sign in: 403 `BANNED_USER`.
 

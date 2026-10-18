@@ -1,5 +1,5 @@
 /**
- * The outbox and its relay (section 05.3). Workflow's `start()` can't commit with our own writes, so a write that
+ * The outbox and its relay (sections 05.3 and 05.5). Workflow's `start()` can't commit with our own writes, so a write that
  * asks for a run commits an outbox row beside it, in one transaction. The relay drains the rows and starts the runs;
  * it delivers at least once, so each run's first step claims its row by id, and a second run for the same row stops.
  * `src/db/outbox.ts` re-exports this module, so the app imports it from there.
@@ -178,72 +178,55 @@ export interface RelayResult {
 }
 
 /**
- * One pass of the relay, on the owner's pool since it crosses tenants. It locks a batch of unpublished rows
- * (`FOR UPDATE SKIP LOCKED`), takes each partition with a transaction-scoped advisory lock so one relay owns a
- * partition at a time, and delivers the partition's rows oldest first, stopping at the first failure so they
- * stay in order. A row is published once `deliver` returns; a failure counts an attempt, and the last attempt
- * (or an undeliverable row) marks it failed. An outage rolls the whole batch back, attempts uncounted.
+ * One pass of the relay, on the owner's pool since it crosses tenants: `relayBatch` in one transaction. Section
+ * 05.4 makes it survive an outage.
  */
 export async function relayOnce(db: Db, deliver: Deliver, options: RelayOptions = {}): Promise<RelayResult> {
   const { batchSize = 20, maxAttempts = 5 } = options;
+  return db.transaction((tx) => relayBatch(tx, deliver, batchSize, maxAttempts));
+}
+
+/**
+ * Locks a batch of unpublished rows (`FOR UPDATE SKIP LOCKED`), groups them by partition, and delivers each
+ * partition's rows oldest first, stopping at the first failure so they stay in order. A row is published once
+ * `deliver` returns; a failure counts an attempt, and the last attempt (or an undeliverable row) marks it failed.
+ */
+export async function relayBatch(
+  tx: Locked,
+  deliver: Deliver,
+  batchSize: number,
+  maxAttempts: number,
+): Promise<RelayResult> {
   const result: RelayResult = { published: [], retried: [], failed: [], skippedPartitions: [], outage: false };
-  try {
-    await db.transaction(async (tx) => {
-      const rows = await tx
-        .select({
-          id: outbox.id,
-          tenantId: outbox.tenantId,
-          kind: outbox.kind,
-          payload: outbox.payload,
-          partitionKey: outbox.partitionKey,
-          attempts: outbox.attempts,
-          createdAt: outbox.createdAt,
-        })
-        .from(outbox)
-        .where(and(isNull(outbox.publishedAt), isNull(outbox.failedAt)))
-        .orderBy(asc(outbox.createdAt), asc(outbox.id))
-        .limit(batchSize)
-        .for("update", { skipLocked: true });
+  const rows = await tx
+    .select({
+      id: outbox.id,
+      tenantId: outbox.tenantId,
+      kind: outbox.kind,
+      payload: outbox.payload,
+      partitionKey: outbox.partitionKey,
+      attempts: outbox.attempts,
+      createdAt: outbox.createdAt,
+    })
+    .from(outbox)
+    .where(and(isNull(outbox.publishedAt), isNull(outbox.failedAt)))
+    .orderBy(asc(outbox.createdAt), asc(outbox.id))
+    .limit(batchSize)
+    .for("update", { skipLocked: true });
 
-      const partitions = new Map<string, typeof rows>();
-      for (const row of rows) partitions.set(row.partitionKey, [...(partitions.get(row.partitionKey) ?? []), row]);
+  const partitions = new Map<string, typeof rows>();
+  for (const row of rows) partitions.set(row.partitionKey, [...(partitions.get(row.partitionKey) ?? []), row]);
 
-      for (const [partitionKey, members] of partitions) {
-        if (!(await ownPartition(tx, partitionKey, members[0]))) {
-          result.skippedPartitions.push(partitionKey);
-          continue;
-        }
-        for (const row of members) {
-          const delivered = await deliverRow(tx, row, deliver, maxAttempts, result);
-          if (!delivered) break;
-        }
-      }
-    });
-  } catch (error) {
-    if (!(error instanceof OutageError)) throw error;
-    return { published: [], retried: [], failed: [], skippedPartitions: [], outage: true };
+  for (const members of partitions.values()) {
+    for (const row of members) {
+      const delivered = await deliverRow(tx, row, deliver, maxAttempts, result);
+      if (!delivered) break;
+    }
   }
   return result;
 }
 
 export type Locked = Tx;
-
-/**
- * The partition's advisory lock, and no older pending row outside the batch: that one is locked by another
- * relay (which skipped us) or beyond the batch, and must go first.
- */
-export async function ownPartition(tx: Locked, partitionKey: string, first: { id: string; createdAt: Date }) {
-  const [lock] = await tx.execute<{ locked: boolean }>(
-    sql`SELECT pg_try_advisory_xact_lock(hashtextextended(${partitionKey}, 0)) AS locked`,
-  );
-  if (!lock.locked) return false;
-  const older = await tx.execute(sql`
-    SELECT 1 FROM ${outbox}
-    WHERE ${outbox.partitionKey} = ${partitionKey} AND ${outbox.publishedAt} IS NULL AND ${outbox.failedAt} IS NULL
-      AND (${outbox.createdAt}, ${outbox.id}) < (${first.createdAt.toISOString()}::timestamptz, ${first.id}::uuid)
-    LIMIT 1`);
-  return older.length === 0;
-}
 
 export async function deliverRow(
   tx: Locked,

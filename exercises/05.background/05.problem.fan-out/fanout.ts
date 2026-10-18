@@ -3,7 +3,7 @@
 //    and ingests them as child runs, side by side, a batch at a time.
 
 /**
- * Fan-out over a long PDF (section 05.4). The ingest workflow cuts a long document into page ranges and starts one
+ * Fan-out over a long PDF (section 05.5). The ingest workflow cuts a long document into page ranges and starts one
  * child run per range, a batch at a time. Nothing here touches the database or the network: the ingest workflow
  * calls it from its own body, so it must stay pure and deterministic.
  */

@@ -22,6 +22,22 @@ export interface RateLimitResult {
 }
 
 /**
+ * What the caller is told, from the bucket after the UPDATE: `tokens` it now holds and whether this request took
+ * `cost`. Floating point leaves 2.9999999 for 3, hence the 1e-9 either way.
+ */
+export function bucketResult(
+  { tokens, allowed }: { tokens: number; allowed: boolean },
+  bucket: Bucket,
+  cost = 1,
+): RateLimitResult {
+  return {
+    allowed,
+    remaining: Math.floor(tokens + 1e-9),
+    retryAfterSeconds: allowed ? 0 : Math.ceil((cost - tokens) / bucket.refillPerSecond - 1e-9),
+  };
+}
+
+/**
  * Takes one token from a user's bucket, inside the caller's tenant transaction. The bucket is a row:
  * the first statement makes it full if it's missing, and the second refills it by the time since `refilled_at`
  * and takes a token if one is there. The UPDATE locks the row, so concurrent requests take turns. `now` comes from
@@ -53,9 +69,5 @@ export async function takeToken(
     WHERE tenant_id = ${viewer.tenantId} AND user_id = ${viewer.userId} AND bucket = ${bucket.name}
     RETURNING new.tokens AS tokens, ${available("old")} >= ${cost} AS allowed`);
   const [row] = rows as unknown as Array<{ tokens: number; allowed: boolean }>;
-  return {
-    allowed: row.allowed,
-    remaining: Math.floor(row.tokens + 1e-9),
-    retryAfterSeconds: row.allowed ? 0 : Math.ceil((cost - row.tokens) / bucket.refillPerSecond - 1e-9),
-  };
+  return bucketResult(row, bucket, cost);
 }

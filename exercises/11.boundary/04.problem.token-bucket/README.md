@@ -18,7 +18,9 @@ slots:
 
 ## Do this
 
-🐨 Write `takeToken` in `playground/rate-limit.ts`: two statements, inside the caller's tenant transaction. Make the bucket row if it's missing, then one UPDATE that refills it, takes a token if there is one, and says which. `handleChat` calls it before any retrieval and answers 429 when you refuse.
+🐨 In `playground/rate-limit.ts`, write `bucketResult` first: the arithmetic that turns the bucket's tokens into `remaining` and `Retry-After`. Its tests run without the database, so you see it work before any SQL.
+
+🐨 Then write `takeToken`: two statements, inside the caller's tenant transaction. Make the bucket row if it's missing, then one UPDATE that refills it, takes a token if there is one, and says which. `handleChat` calls it before any retrieval and answers 429 when you refuse.
 
 ## A worked example
 

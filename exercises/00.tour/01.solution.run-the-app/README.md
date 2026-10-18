@@ -10,7 +10,7 @@ type: guided
 ## Terms
 
 - **Docker Compose** runs containers from one file, `compose.yaml`. A **container** is a program packaged with everything it needs to run.
-- **ParadeDB** is Postgres with two extensions: `pg_search` adds keyword search (BM25), and `pgvector` stores embeddings (lists of numbers that stand for a text's meaning). It's the only database the app uses.
+- **ParadeDB** is Postgres with two extensions: `pg_search` adds keyword search (BM25, a formula that scores a text by how often it holds the question's words and how rare those words are; section 07 builds it by hand), and `pgvector` stores embeddings (lists of numbers that stand for a text's meaning). It's the only database the app uses.
 - A **migration** is a SQL file that changes the database's tables. `pnpm db:migrate` applies the ones that haven't run yet.
 - A **tenant** is one customer organisation. There are two here, Kestrel Pay and Harbour Health, and neither may see the other's data.
 - **Seeding** fills an empty database with the tenants and people from `fixtures/world.yaml`.

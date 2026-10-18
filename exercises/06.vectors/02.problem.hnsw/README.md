@@ -26,7 +26,7 @@ slots:
 
 The test loads the 434 recorded chunks, 375 of Kestrel's and 59 of Harbour's, into one `chunks` table with the app's index (m 16, ef_construction 64). Nina's question is nearest to Kestrel's price list (cosine similarity 0.6861). The 158 nearest chunks are all Kestrel's; Harbour's first is 159th.
 
-A plain HNSW scan at `ef_search` 40 walks the graph and returns its 40 nearest. Then RLS removes every Kestrel row: 0 chunks. With the iterative scan the walk carries on until 10 Harbour chunks pass. The best of them is Harbour's procurement process at 0.2718 (the walk is approximate, so on some builds it's the next one, the delegated financial authority at 0.2552). That low number is the real answer: nothing Harbour has is about KC-PRO-12.
+A plain HNSW scan at `ef_search` 40 walks the graph and returns its 40 nearest. Then RLS removes every Kestrel row: 0 chunks (sometimes 1, since the build is random). With the iterative scan the walk carries on until 10 Harbour chunks pass. The best of them is Harbour's procurement process at 0.2718 (the walk is approximate, so on some builds it's the next one, the delegated financial authority at 0.2552). That low number is the real answer: nothing Harbour has is about KC-PRO-12.
 
 For Rachel Obi at Kestrel, "What is the nightly limit for a hotel in London?" finds the hotels clause of the expenses policy v2 first, at 0.6885.
 

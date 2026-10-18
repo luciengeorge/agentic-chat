@@ -11,7 +11,8 @@ slots:
 
 ## Why it works
 
-- **It retries only what time can fix.** Throttling and a busy server pass; a wrong token, a missing permission or a missing item don't. Retrying those only adds waits before the same error, and hides it from whoever has to fix it.
+- **It retries only what a short wait can fix.** Throttling (429) and a busy server (503) pass within seconds; a wrong token, a missing permission or a missing item don't. Retrying those only adds waits before the same error, and hides it from whoever has to fix it.
+- **Other 5xx go up a level.** A 500 or a 502 says the server broke on this request, and says nothing about when it will work. Resending it in a tight loop rarely helps and loads a failing server. So the client throws at once, and `ConnectorError.retryable`, which covers any 5xx and no answer at all, tells the sync step (section 05.2) to run again a little later, a few times at most, each try visible in the run viewer. The client resends what promised to pass; the step reruns its work for what only might.
 - **It does as it's told.** SharePoint knows when it will take you back. Waiting exactly that long gets you in on the next try; retrying sooner earns another 429, and SharePoint blocks clients that keep ignoring it.
 - **Without a hint, it backs off.** Doubling tries quickly while the trouble might be a blip, then spaces the tries out, so a sick server gets fewer and fewer requests. The cap stops one wait from becoming minutes.
 - **It knows when to stop.** After `maxRetries` the error goes up, still `retryable` and still carrying `retryAfterMs`. One request shouldn't sleep for an hour inside a sync; the sync step fails, and the workflow (section 05) schedules it again when the source said.

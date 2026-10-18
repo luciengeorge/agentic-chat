@@ -3,7 +3,7 @@
 //    transaction. Kestrel needs a way to make "save the version" and "ingest it" happen together.
 
 /**
- * The outbox and its relay (section 05.3). Workflow's `start()` can't commit with our own writes, so a write that
+ * The outbox and its relay (sections 05.3 and 05.5). Workflow's `start()` can't commit with our own writes, so a write that
  * asks for a run commits an outbox row beside it, in one transaction. The relay drains the rows and starts the runs;
  * it delivers at least once, so each run's first step claims its row by id, and a second run for the same row stops.
  * `src/db/outbox.ts` re-exports this module, so the app imports it from there.
@@ -182,29 +182,40 @@ export interface RelayResult {
 }
 
 /**
- * One pass of the relay, on the owner's pool since it crosses tenants. It locks a batch of unpublished rows
- * (`FOR UPDATE SKIP LOCKED`), takes each partition with a transaction-scoped advisory lock so one relay owns a
- * partition at a time, and delivers the partition's rows oldest first, stopping at the first failure so they
- * stay in order. A row is published once `deliver` returns; a failure counts an attempt, and the last attempt
- * (or an undeliverable row) marks it failed. An outage rolls the whole batch back, attempts uncounted.
+ * One pass of the relay, on the owner's pool since it crosses tenants: `relayBatch` in one transaction. Section
+ * 05.4 makes it survive an outage.
  */
 export async function relayOnce(db: Db, deliver: Deliver, options: RelayOptions = {}): Promise<RelayResult> {
   const { batchSize = 20, maxAttempts = 5 } = options;
+  return db.transaction((tx) => relayBatch(tx, deliver, batchSize, maxAttempts));
+}
+
+/**
+ * Locks a batch of unpublished rows (`FOR UPDATE SKIP LOCKED`), groups them by partition, and delivers each
+ * partition's rows oldest first, stopping at the first failure so they stay in order. A row is published once
+ * `deliver` returns; a failure counts an attempt, and the last attempt (or an undeliverable row) marks it failed.
+ */
+export async function relayBatch(
+  tx: Locked,
+  deliver: Deliver,
+  batchSize: number,
+  maxAttempts: number,
+): Promise<RelayResult> {
   const result: RelayResult = { published: [], retried: [], failed: [], skippedPartitions: [], outage: false };
-  // 🐨 In one transaction on `db`, lock a batch: the oldest `batchSize` rows that are neither published nor failed
-  //    (by `createdAt`, then `id`), passing over rows another relay has locked. Select the fields an OutboxRow has,
-  //    plus `createdAt`, which ownPartition needs.
+  // 🐨 Lock a batch: the oldest `batchSize` rows that are neither published nor failed (by `createdAt`, then `id`),
+  //    passing over rows another relay has locked. Select the fields an OutboxRow has, plus `createdAt` (step 4
+  //    needs it).
   // 🐨 Group the rows by `partitionKey`, keeping them oldest first within each partition.
-  // 🐨 For each partition: when ownPartition(tx, key, its first row) says no, add the key to
-  //    `result.skippedPartitions` and leave the partition alone. Otherwise deliver its rows in order with
-  //    deliverRow, and stop at the first one that didn't go out: the rows behind it wait for the next pass.
-  // 🐨 An OutageError from `deliver` means the world is down. Let it escape the transaction, so the whole batch
-  //    rolls back (attempts included); catch it outside, and return a result with `outage: true` and empty lists.
-  //    Rethrow any other error.
+  // 🐨 Deliver each partition's rows in order with deliverRow (it returns false when a row didn't go out), and
+  //    stop that partition at its first failure: the rows behind it wait for the next pass. Then return `result`,
+  //    which deliverRow fills in.
+  // 🐨 The classic mistake is the wrong `break`. Stop the partition's loop, not the batch's: one document's failed
+  //    start must not hold back another document's ingest. And don't skip the failed row to deliver the next one.
   //
-  // 💰 `tx.select({ id: outbox.id, ... }).from(outbox).where(and(isNull(outbox.publishedAt), ...))
-  //    .orderBy(asc(outbox.createdAt), asc(outbox.id)).limit(n).for("update", { skipLocked: true })`. Import `asc`
-  //    from "drizzle-orm" next to `and`. A `Map` keeps keys in the order you first set them.
+  // 💰 Drizzle chains a query: `tx.select({ id: outbox.id, ... }).from(outbox).where(...).orderBy(...).limit(n)`.
+  //    `and(a, b)`, `isNull(column)` and `asc(column)` build its pieces; import `asc` from "drizzle-orm" next to
+  //    `and`. `.for("update", { skipLocked: true })` at the end of the chain adds `FOR UPDATE SKIP LOCKED`. A `Map`
+  //    keeps its keys in the order you first set them, and `map.values()` walks them in that order.
   //
   // 🦉 Why an outbox at all. start() can't commit with our writes. Write the version, then call start(), and a crash
   //    between the two leaves a version nobody ingests: the next sync sees nothing new, so it never asks again.
@@ -213,52 +224,33 @@ export async function relayOnce(db: Db, deliver: Deliver, options: RelayOptions 
   //    committed rows.
   // 🦉 Why at least once, and why that's safe. deliverRow marks a row published after `deliver` returns. Crash in
   //    between and the next pass delivers it again: a second run for the same row. So every run's first step
-  //    claims its row by id (`claim`, below): the second run finds it claimed by the first, and stops as a
-  //    duplicate. The relay never has to be exactly-once; the run is idempotent.
+  //    claims its row by id (`claim`, above): the second run finds it claimed by the first, and stops as a
+  //    duplicate. The relay never has to be exactly once; the run is idempotent (doing it twice changes nothing).
   // 🦉 Why partitions, and stopping at the first failure. A partition is one document (`document:<id>`) or one
   //    tenant's syncs (`sync:<tenant>`). Its rows must start in the order they were written. Deliver version 2's
-  //    ingest while version 1's failed start waits for a retry, and version 1 runs last. So a failure holds back
-  //    the rows behind it, in its partition only.
-  // 🦉 Why ownPartition. Two relays (the kicked one and the two-second safety net, or two servers) lock different
-  //    rows with SKIP LOCKED and could each deliver part of one partition. ownPartition takes the partition's
-  //    advisory lock for this transaction, and also says no while an older row of it is locked elsewhere.
-  // 🦉 Why roll back on an outage. When the world is unreachable, every start fails. Counting those as attempts
-  //    would use up every row's five in a few seconds and mark good rows failed. The rollback leaves them exactly
-  //    as they were.
-  // 🦉 New in this file, already written: `claim` and `recordStart` (the run's side, and workflow-first),
-  //    `ownPartition` and `deliverRow` (which counts the attempt, and marks the row published, retried or failed).
+  //    ingest while version 1's failed start waits for a retry, and version 1 runs last, over the newer one. So a
+  //    failure holds back the rows behind it, in its partition only.
+  // 🦉 Why lock the batch. The relay runs on every kick and every two seconds, and on every server. FOR UPDATE
+  //    keeps a second relay from taking the rows this one holds until its transaction ends; SKIP LOCKED lets that
+  //    second relay pass over them to other rows instead of waiting. (It can still take a later row of a partition
+  //    this one holds: step 4 closes that gap.)
+  // 🦉 New in this file, already written: `claim` and `recordStart` (the run's side, and workflow-first), and
+  //    `deliverRow` (which counts the attempt, and marks the row published, retried or failed). relayOnce runs your
+  //    relayBatch in one transaction.
   //
   // 📜 https://microservices.io/patterns/data/transactional-outbox.html
   // 📜 https://workflow-sdk.dev/docs/foundations/idempotency
   //
   // 🚨 The tests check that every tenant's rows go out oldest first and are marked published, that a failure holds
   //    back its own partition and not the others, that a row fails after its last attempt and an undeliverable one
-  //    at once, that an outage rolls the batch back with no attempts counted, that a second relay leaves a
-  //    partition the first holds alone, and, in real runs, that a full sync's 40 rows go out 20 at a time and a
-  //    row delivered twice starts one ingest and one duplicate.
+  //    at once, that a second relay passes over the rows the first holds without waiting, and, in real runs, that a
+  //    full sync's 40 rows go out 20 at a time and a row delivered twice starts one ingest and one duplicate.
   throw new Error(
-    `relayOnce(${typeof db}, ${typeof deliver}, batch ${batchSize}, ${maxAttempts} attempts, ${result.outage}) isn't written yet`,
+    `relayBatch(${typeof tx}, ${typeof deliver}, batch ${batchSize}, ${maxAttempts} attempts, ${result.outage}) isn't written yet`,
   );
 }
 
 export type Locked = Tx;
-
-/**
- * The partition's advisory lock, and no older pending row outside the batch: that one is locked by another
- * relay (which skipped us) or beyond the batch, and must go first.
- */
-export async function ownPartition(tx: Locked, partitionKey: string, first: { id: string; createdAt: Date }) {
-  const [lock] = await tx.execute<{ locked: boolean }>(
-    sql`SELECT pg_try_advisory_xact_lock(hashtextextended(${partitionKey}, 0)) AS locked`,
-  );
-  if (!lock.locked) return false;
-  const older = await tx.execute(sql`
-    SELECT 1 FROM ${outbox}
-    WHERE ${outbox.partitionKey} = ${partitionKey} AND ${outbox.publishedAt} IS NULL AND ${outbox.failedAt} IS NULL
-      AND (${outbox.createdAt}, ${outbox.id}) < (${first.createdAt.toISOString()}::timestamptz, ${first.id}::uuid)
-    LIMIT 1`);
-  return older.length === 0;
-}
 
 export async function deliverRow(
   tx: Locked,

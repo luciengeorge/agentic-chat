@@ -16,6 +16,7 @@ The model is the one part of the app that makes things up. So every step here is
 - **Grounding** is keeping the answer to what the sources say. **Abstaining** is the assistant saying "I couldn't find an answer to that in the documents you can access." instead of guessing.
 - A **prompt injection** is text inside a document that tries to give the model orders. The Brightwell onboarding pack has one, hidden in the file.
 - A **citation** is `[[S1: "a quote"]]` in the answer: the label of the source a claim came from, and a short span copied from it. The **validator** keeps a citation only when its label is a source the model saw and its quote is in that source.
+- **Server-sent events** (met in section 01) are a plain-text way to send events down one HTTP response as they happen, each event ended by a blank line.
 - The **UI message stream** is the AI SDK's format for sending an answer to `useChat` in the browser: typed parts (the sources, the text in pieces, the verdict), as server-sent events.
 
 ## The steps

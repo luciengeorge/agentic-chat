@@ -13,7 +13,8 @@ slots:
 
 ## Why it works
 
-- **Position is the only label.** Nothing inside a vector says which text it came from. `embedMany` returns `embeddings[i]` for `values[i]`, and awaiting the batches one after another appends them in input order, so vector i always lands on chunk i. Run the batches at once and push each as it finishes, and the order is the network's.
+- **Position is the only label.** Nothing inside a vector says which text it came from. `embedMany` returns `embeddings[i]` for `values[i]`, so the batches' vectors have to be appended in batch order for vector i to land on chunk i. Push each batch's vectors as its call finishes, and the order is the network's. (`Promise.all` over the batches would keep the order too: it resolves in input order.)
+- **One batch at a time, for the provider and the bill.** Awaiting each call before the next keeps one request in flight. The filing's 21 batches then reach OpenAI as a steady stream that stays inside the account's rate limit (requests and tokens a minute), instead of 21 requests at once that can earn a 429. And a failure stops the loop where it happened: the batches after it are never sent, so nothing is paid for vectors that would be thrown away.
 - **Nothing is left over.** Slicing up to `i + size` and letting the last slice run short keeps the remainder. Stopping at full runs would leave the last 178 of 434 chunks with no vector and no error.
 - **The limits can't be hit.** 256 chunks of at most 512 tokens can't pass 131,072 tokens, under the 300,000 cap, and 256 is far under 2,048 inputs. Bigger batches would save a few round trips and risk a refused request; smaller ones would cost more round trips for nothing.
 - **A wrong vector fails before it's stored.** A model that returns another length (another model, a missing `dimensions`) is stopped here, with the version in the message, before anything is written next to the wrong chunk.
