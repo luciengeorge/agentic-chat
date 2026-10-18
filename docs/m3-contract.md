@@ -96,6 +96,40 @@ exercises/04.chunking/
   - 00.2's "most recent run" should point at an agent run (the "Run as agent" toggle) or a sync, since a plain chat question starts no workflow.
 - The gate must pass for 04.1 to 04.4, and `pnpm ex start 04.1` must work from a clean checkout.
 
+## What the pilot taught (applies to every later section)
+
+From building section 04 and from Lucien doing 04.1:
+
+- **Listed plumbing is fine.** Step N's problem file may hold plumbing the new piece needs, written already, as long as a 🦉 "new in this file" hint lists it. "Previous solution plus one stub" alone was too tight.
+- **The worked example is a test.** Each step's last test reproduces the README's worked example on the real page or document, with the README's numbers.
+- **Wrong answers.** Before a step ships, run its tests against 3 or 4 plausible wrong answers (the mistakes a learner would make) and check each one fails with a message that points at the mistake. Name them in the lane's report.
+- **The classic mistake gets its own hint.** Lucien's first 04.1 attempt closed a full window and dropped the unit that didn't fit, counted `unit.tokens` instead of `cost(unit)`, and pushed an empty window. The hints said all three, but in passing. So when a step has a well-known way to go wrong, a 🐨 or 🚨 hint names it outright ("on both paths, then add the unit"), and a test's failure message says what was likely missed.
+- **Stubs use their parameters** (in the "not written yet" message), because `noUnusedParameters` covers `exercises/`.
+- **Pick the story's user by access.** Choose a user who can read the documents the step uses: Nadia Kowalski can't read `/Legal`.
+- **A solution README** explains the answer and why it works, with the worked example's numbers. It's not a copy of the problem README.
+- **Never touch the learner's playground.** Lucien may have a step active while lanes work. Lanes never run `pnpm ex start`, `reset` or `solution`, and never edit `playground/` or `.ex/`. They check steps with `pnpm ex test <step> --target problem` and `--target solution`, and with `pnpm ex gate`. They start the dev server only if `:3000` is free, and stop it after.
+
+## Wave 2 ownership
+
+| Lane | Owns |
+|---|---|
+| A. Sections 01 + 02, plus the `ex` fixes | `exercises/01.*/**`, `exercises/02.*/**`, `src/routes/labs/{models,connectors}*`, `src/components/labs/{models,connectors}*`, `scripts/ex/**` (the fixes below), the reference splits those sections need in `src/core/{model,connectors}/**` |
+| B. Sections 03 + 05 | `exercises/03.*/**`, `exercises/05.*/**`, `src/routes/labs/{parsing,background}*`, `src/components/labs/{parsing,background}*`, the reference splits those sections need in `src/core/{parse,queue}/**`, `src/workflows/**` (splits only) |
+
+Shared files (`src/routes/labs/index.tsx` and `-functions.ts`, the contract's Settled section, `package.json`): re-read right before writing, change only your lines. No nested subagents. Never stop Docker or OrbStack.
+
+**The `ex` fixes (lane A):**
+- `ex start` prints what to do next: the step README's path, `pnpm ex test <id>`, and the lab URL when the section has one.
+- `ex test` prints the warning "Postgres is unreachable" only when the step has database tests, and then names `pnpm ex up` as the fix.
+- `ex test`'s failure output is short and readable: each failing test's name and its assertion message, without colour codes or the JSON report path.
+- `pnpm ex stop` leaves no active step (after checking for unsaved playground changes, like `start`).
+
+**Section notes:**
+- **01:** steps for the provider interface, the hand-written Responses client with streaming, the tool-call wire format, and the AI SDK behind the interface with structured output and token counting. Lab: a request inspector that shows the request body and the SSE events of one call (it may replay a recorded cassette, so no live call is needed).
+- **02:** steps for the connector interface, full crawl with pagination, 429 and `Retry-After`, delta and webhooks, deletes and moves. Lab: a fake-workspace control panel over `/_control/*` (faults, clock, deliveries).
+- **03:** steps for text layer vs OCR, OCR confidences and the review queue, tables to markdown, page mapping. Docling compared is `guided`. Lab: a parsed-page viewer showing blocks, method and confidence, plus the review queue.
+- **05:** steps for the job queue by hand, ingestion as Workflow steps with `RetryableError`, `FatalError` and limits, the outbox and relay (plus workflow-first), fan-out over the filing, and per-class limits against starvation. Lab: a queue board (jobs by class and state) plus a link to Workflow's run viewer.
+
 ## Settled during the build
 
 (Lanes add what they decided here: one bullet per decision, plain words.)
