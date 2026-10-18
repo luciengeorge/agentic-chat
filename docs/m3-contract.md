@@ -166,6 +166,37 @@ Shared files: as in wave 2.
   - **Lab:** a user and tenant switcher. Pick a user, run a query, and see the chunks they get, the ones denied, and the audit row. The Heron memo for `leo.martin` versus `daniel.reyes` is the example.
   - **The `readable()` alias bug is a teaching moment:** a caller's `d.id` captured by the subquery. Use it in a 🦉.
 
+## What wave 3 taught
+
+- **Test setup never calls a slotted function.** A `beforeAll` that fails makes the gate report "errors" for the problem, not "fails", and the step fails the gate. The setup builds its world with the reference or with plain SQL.
+- **Step tests that read a recording** set `// @vitest-environment node`.
+- **Trying a wrong answer:** call `runStepTests` on a copy of the solution dir.
+- **A lab that shows another user's access is dev only.** It refuses when `acEnv()` is prod, and says so on the page.
+- **Results that lose are taught as results** (HyDE and routing in 08): the numbers, why they lose here, and when they would win.
+
+## Wave 4 ownership
+
+| Lane | Owns |
+|---|---|
+| A. Sections 10 + 11 | `exercises/10.*/**`, `exercises/11.*/**`, `src/routes/labs/{prompt,boundary}*`, `src/components/labs/{prompt,boundary}*`, the reference splits those sections need in `src/core/{generate,cite}/**`, `src/lib/{middleware,rate-limit,auth-server}.ts` and `src/routes/api/chat/-chat.ts` (splits only; behaviour unchanged) |
+| B. Section 12, plus the course front door | `exercises/12.*/**`, `exercises/README.md` (new: the course map, how a step works, the `ex` commands, the hint legend, the labs), the `/labs` index page, the component splits section 12 needs in `src/components/{chat,agent}/**` (splits only) |
+
+Shared files: as in waves 2 and 3.
+
+**Section notes:**
+- **10:**
+  - **Steps:** prompt assembly and the token budget; grounding and abstention; streaming with the AI SDK; the citation validator.
+  - **Lab:** a prompt inspector that shows, for one question, the assembled prompt, which sources fit the budget and which were skipped, the model's raw reply, and the validator's verdict (citations kept, dropped and why). Replay a recording; no live call is needed.
+  - **Real material:** the expenses policy v1 vs v2 conflict, the Heron abstention, the Brightwell injection that gets ignored, and the 8-character quote rule.
+- **11:**
+  - **Steps:** better-auth sessions with organisations as tenants; one middleware for every server function and route; zod validation, and why the tenant never comes from the client; the token bucket in Postgres; streaming through the boundary (aborts, heartbeats).
+  - **The `.server()` trap is the classic mistake for the middleware step:** referencing `getViewer` outside `.server()` pulls postgres into the browser bundle.
+  - **Lab:** a request log of the last N requests through the middleware: route, viewer, tenant, status, rate-limit tokens left. Dev only, like the ACL lab.
+- **12:**
+  - **Steps:** server functions in components; streaming chat with `useChat`; citation to the page viewer; the run timeline and approval inbox.
+  - **Tests:** components are tested with the repo's React test setup (Testing Library). Tests check behaviour the learner can see: tokens appear as they stream, a citation chip opens the source at the right page, an approval button sends the decision, a reload resumes from `Last-Event-ID`.
+  - **Lab:** the app itself. Each step's README says what to click and what should happen.
+
 ## Settled during the build
 
 (Lanes add what they decided here: one bullet per decision, plain words.)
