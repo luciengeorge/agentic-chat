@@ -10,13 +10,15 @@ export const MAX_REWRITES = 3;
 /** Rewrites a question into search queries: other phrasings, expansions, the identifiers it names. */
 export type QueryRewriter = (query: string) => Promise<string[]>;
 
-const RewriteSchema = z.object({
+/** What the model must return: up to three queries. */
+export const RewriteSchema = z.object({
   queries: z
     .array(z.string())
     .describe("Search queries for the same need, each different from the question and from each other"),
 });
 
-const SYSTEM = `You turn a question to a company's internal search into search queries.
+/** The rewriter's instructions. Each rule is there for a reason: see section 08.2. */
+export const REWRITE_INSTRUCTIONS = `You turn a question to a company's internal search into search queries.
 Write up to ${MAX_REWRITES} short queries that would find the passages answering it:
 - a rephrasing in the words a policy, report or contract would use;
 - the key terms expanded (acronyms spelled out, synonyms);
@@ -29,7 +31,7 @@ export function modelRewriter(model: StructuredModel, reasoning: ReasoningEffort
   return async (query) => {
     const { object } = await model.object(
       {
-        instructions: SYSTEM,
+        instructions: REWRITE_INSTRUCTIONS,
         messages: [{ role: "user", content: query }],
         name: "search_queries",
         reasoningEffort: reasoning,

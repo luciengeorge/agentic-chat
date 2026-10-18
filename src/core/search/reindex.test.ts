@@ -11,10 +11,12 @@ import { lexicalSearch } from "./lexical";
 import {
   BM25_INDEX,
   bm25Indexes,
+  beginTokenizerChange,
   bm25IndexSql,
   buildBm25IndexConcurrently,
   compareFields,
   fieldExpression,
+  finishTokenizerChange,
   LEXICAL_V1,
   LEXICAL_V2,
   replaceBm25Index,
@@ -139,5 +141,23 @@ describe.skipIf(!postgresAvailable)("changing the tokenizer without downtime", (
       expect.arrayContaining(["The 2026 budget plan for the payments team.", "Another 2026 note."]),
     );
     expect(await search("2026", LEXICAL_V2.name)).toHaveLength(2);
+  });
+
+  it("begins and finishes a change in one call each, and the old field answers the same until the switch", async () => {
+    // The index now holds v2 alone; change it to a plain lowercase split, under an alias of its own.
+    const simple = { name: "text_simple", tokenizer: { name: "simple", args: [] } };
+    const before = await search("2026", LEXICAL_V2.name);
+    await expect(beginTokenizerChange(t.db, LEXICAL_V2, { ...simple, name: LEXICAL_V2.name })).rejects.toThrow(
+      RangeError,
+    );
+    await beginTokenizerChange(t.db, LEXICAL_V2, simple);
+    expect(await bm25Indexes(t.db)).toEqual([BM25_INDEX]);
+    expect(await search("2026", LEXICAL_V2.name)).toEqual(before);
+    // simple splits the identifier, so the year finds the contract again; it doesn't stem.
+    expect(await search("2026", simple.name)).toHaveLength(3);
+    expect(await search("runs", simple.name)).toEqual([]);
+    await finishTokenizerChange(t.db, simple);
+    expect(await bm25Indexes(t.db)).toEqual([BM25_INDEX]);
+    expect(await search("2026", simple.name)).toHaveLength(3);
   });
 });

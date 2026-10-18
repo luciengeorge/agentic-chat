@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import type { Db } from "@/db/create";
 import type { Tx } from "@/db/tenant";
 
-import { identifier, vectorLiteral } from "./sql";
+import { identifier, vectorLiteral } from "#learn/vectors/sql";
 
 /**
  * HNSW (hierarchical navigable small world) is a graph: each vector links to its nearest neighbours, in layers

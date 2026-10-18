@@ -48,6 +48,30 @@ const LABS = [
     description:
       "A queue board of jobs by class and state, the outbox, and a backfill starving a delta, capped or not.",
   },
+  {
+    section: "06",
+    to: "/labs/vectors",
+    title: "Vectors",
+    description: "Recall against search time for exact, HNSW, truncated, halfvec and bit vectors, run on your code.",
+  },
+  {
+    section: "07",
+    to: "/labs/lexical",
+    title: "Lexical and hybrid",
+    description: "One question ranked by BM25, by vectors and fused with RRF, side by side, as you would see it.",
+  },
+  {
+    section: "08",
+    to: "/labs/rerank",
+    title: "Rerank",
+    description: "Every candidate the reranker read for one question: where fusion put it, and where it went.",
+  },
+  {
+    section: "09",
+    to: "/labs/acls",
+    title: "Identity and ACLs",
+    description: "Search as anyone, in either tenant: their groups, what came back, what was denied, the audit row.",
+  },
 ] as const;
 
 function LabsPage() {

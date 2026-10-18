@@ -2,8 +2,8 @@ import { sql } from "drizzle-orm";
 
 import type { Db } from "@/db/create";
 
-import { identifier, vectorLiteral } from "./sql";
-import { truncateEmbedding } from "./truncate";
+import { identifier, vectorLiteral } from "#learn/vectors/sql";
+import { truncateEmbedding } from "#learn/vectors/truncate";
 
 /**
  * A scratch table for vector experiments, beside (never inside) the app's tables. Each row holds one embedding in

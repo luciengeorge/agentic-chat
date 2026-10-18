@@ -2,8 +2,8 @@ import { sql } from "drizzle-orm";
 
 import type { Tx } from "@/db/tenant";
 
-import { setEfSearch } from "./hnsw";
-import { identifier, vectorLiteral } from "./sql";
+import { setEfSearch } from "#learn/vectors/hnsw";
+import { identifier, vectorLiteral } from "#learn/vectors/sql";
 
 /**
  * Binary quantisation: one bit per dimension, 1 where the value is above zero (pgvector's `binary_quantize`).

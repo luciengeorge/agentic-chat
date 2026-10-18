@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
 
-import { bm25Search, buildBm25Index, idf, termScore, tokenize } from "./bm25";
+import { bm25Search, buildBm25Index, explainScore, idf, termScore, tokenize } from "./bm25";
 
 // Three tiny documents. Lengths 3, 3 and 2 tokens, so the average length is 8 / 3 = 2.667.
 const CORPUS = [
@@ -72,6 +72,22 @@ describe("bm25Search", () => {
     expect(bm25Search(index, "card card").map((hit) => hit.id)).toEqual(["d1"]);
     expect(bm25Search(index, "card card")[0].score).toBeCloseTo(bm25Search(index, "card")[0].score, 12);
     expect(bm25Search(index, "nothing here")).toEqual([]);
+  });
+});
+
+describe("explainScore", () => {
+  const index = buildBm25Index(CORPUS);
+
+  it("splits a score into its terms, absent ones included, and the parts add up", () => {
+    const explained = explainScore(index, "card payment refund card", "d1")!;
+    expect(explained.terms.map((t) => [t.term, t.tf, t.documentFrequency])).toEqual([
+      ["card", 1, 1],
+      ["payment", 1, 2],
+      ["refund", 0, 2],
+    ]);
+    expect(explained.terms[2].score).toBe(0);
+    expect(explained.score).toBeCloseTo(bm25Search(index, "card payment refund")[0].score, 12);
+    expect(explainScore(index, "card", "nope")).toBeNull();
   });
 });
 

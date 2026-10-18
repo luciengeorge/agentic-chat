@@ -15,6 +15,26 @@ export interface Reranker {
 }
 
 /**
+ * Reranks the first `depth` candidates against the query and returns the best `k`, best first, each with the
+ * reranker's score. The depth is how far down the fused list the reranker reads: a chunk below it can never come
+ * back, however relevant. `retrieve` passes the allowed candidates in fused order.
+ */
+export async function rerankCandidates<T extends { text: string }>(
+  reranker: Reranker,
+  query: string,
+  candidates: readonly T[],
+  options: { depth: number; k: number },
+): Promise<(T & { score: number })[]> {
+  const pool = candidates.slice(0, options.depth);
+  const ranked = await reranker.rerank(
+    query,
+    pool.map((candidate) => candidate.text),
+    options.k,
+  );
+  return ranked.map(({ index, score }) => ({ ...pool[index], score }));
+}
+
+/**
  * A hosted cross-encoder (Cohere) through the AI SDK's `rerank()`. The SDK retries a 429 or a 5xx with exponential
  * backoff from 2 s, honouring the provider's retry-after; `maxRetries` 5 waits out about a minute, a trial key's
  * rate-limit window.

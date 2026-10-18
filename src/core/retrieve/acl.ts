@@ -58,7 +58,7 @@ export async function candidateDocuments(tx: Tx, principalIds: readonly string[]
 }
 
 /** True when `principal` is the user or a group in their closure. */
-const holds = (userId: string, principal: SQL) =>
+export const holds = (userId: string, principal: SQL) =>
   sql`(${principal} = ${userId} OR ${principal} IN (SELECT acl_gc.group_id FROM group_closure acl_gc WHERE acl_gc.member_id = ${userId}))`;
 
 /**
@@ -80,6 +80,50 @@ export function readable(userId: string, documentId: SQL): SQL {
       SELECT 1 FROM document_acl acl_a
       WHERE acl_a.document_id = ${documentId} AND acl_a.effect = 'deny' AND ${holds(userId, sql`acl_a.principal_id`)})
   )`;
+}
+
+/** A candidate chunk the decision let through, with what retrieval returns about it. */
+export interface DecidedChunk extends Record<string, unknown> {
+  id: string;
+  documentId: string;
+  title: string;
+  path: string;
+  text: string;
+  pageStart: number | null;
+  pageEnd: number | null;
+  section: string | null;
+}
+
+/**
+ * The decision over search's candidates, in one statement: each chunk joined to its document at the document's
+ * current version, with `readable` as a column. Allowed ones come back in the order given (the fused order), denied
+ * ones as ids for the audit. A chunk of a version that isn't the document's current one is dropped silently: it's
+ * stale, not denied.
+ */
+export async function decideChunks(
+  tx: Tx,
+  userId: string,
+  candidateIds: readonly string[],
+): Promise<{ allowed: DecidedChunk[]; denied: string[] }> {
+  if (candidateIds.length === 0) return { allowed: [], denied: [] };
+  const rows = await tx.execute<DecidedChunk & { allowed: boolean }>(sql`
+    SELECT c.id, c.document_id AS "documentId", d.title, d.path, c.text,
+      c.page_start AS "pageStart", c.page_end AS "pageEnd", c.section,
+      ${readable(userId, sql`c.document_id`)} AS allowed
+    FROM chunks c
+    JOIN documents d ON d.id = c.document_id AND d.version = c.document_version
+    WHERE c.id = ANY(${uuidArray(candidateIds)})`);
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const allowed: DecidedChunk[] = [];
+  const denied: string[] = [];
+  for (const id of candidateIds) {
+    const row = byId.get(id);
+    if (!row) continue;
+    const { allowed: ok, ...chunk } = row;
+    if (ok) allowed.push(chunk);
+    else denied.push(id);
+  }
+  return { allowed, denied };
 }
 
 /** May this user read this document? Run it inside `withTenant` for the viewer's tenant. */

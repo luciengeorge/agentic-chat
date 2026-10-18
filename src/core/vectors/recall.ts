@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { Tx } from "@/db/tenant";
 
-import { nearest, type NearestQuery } from "./hnsw";
+import { nearest, type NearestQuery } from "#learn/vectors/hnsw";
 
 /**
  * The exact k nearest ids: every row's distance computed and sorted. Index scans are switched off for the

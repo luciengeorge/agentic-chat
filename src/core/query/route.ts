@@ -54,7 +54,8 @@ export async function documentCards(
   return rows.map((row) => ({ ...row, embedding: row.embedding === null ? null : JSON.parse(row.embedding) }));
 }
 
-const cosine = (a: readonly number[], b: readonly number[]) => {
+/** How close two vectors point: 1 the same way, 0 at right angles. */
+export const cosine = (a: readonly number[], b: readonly number[]) => {
   let dot = 0;
   let na = 0;
   let nb = 0;

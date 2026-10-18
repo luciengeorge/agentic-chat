@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import type { Db } from "@/db/create";
 import type { Tx } from "@/db/tenant";
 
-import { LEXICAL_FIELD, lexicalSearch } from "./lexical";
+import { LEXICAL_FIELD, lexicalSearch } from "#learn/search/lexical";
 
 /**
  * Changing the BM25 tokenizer without downtime, on pg_search 0.26.
@@ -122,6 +122,26 @@ export async function bm25Indexes(db: Db): Promise<string[]> {
 export async function replaceBm25Index(db: Db, oldName: string, newName: string): Promise<void> {
   await db.execute(sql.raw(`DROP INDEX CONCURRENTLY IF EXISTS ${identifier(oldName)}`));
   await db.execute(sql.raw(`ALTER INDEX ${identifier(newName)} RENAME TO ${identifier(oldName)}`));
+}
+
+/** The name the next index builds under, while `chunks_bm25_idx` still serves. */
+export const NEXT_BM25_INDEX = "chunks_bm25_next";
+
+/**
+ * Steps 1 and 2: build the transition index (the old field exactly as it is, plus the new one under its alias)
+ * beside the live index, then put it in the live index's place. No query changes its answer: `from` is indexed as
+ * before, and the switch to `to` is a separate decision (step 4).
+ */
+export async function beginTokenizerChange(db: Db, from: LexicalField, to: LexicalField): Promise<void> {
+  if (from.name === to.name) throw new RangeError(`the new field needs a name of its own, not ${from.name}`);
+  await buildBm25IndexConcurrently(db, NEXT_BM25_INDEX, [from, to]);
+  await replaceBm25Index(db, BM25_INDEX, NEXT_BM25_INDEX);
+}
+
+/** Step 5: once nothing searches the old field, an index with the new field alone takes over. */
+export async function finishTokenizerChange(db: Db, to: LexicalField): Promise<void> {
+  await buildBm25IndexConcurrently(db, NEXT_BM25_INDEX, [to]);
+  await replaceBm25Index(db, BM25_INDEX, NEXT_BM25_INDEX);
 }
 
 export interface FieldComparison {

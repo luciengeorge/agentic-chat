@@ -5,9 +5,8 @@ import type { Tx } from "@/db/tenant";
 
 import { recordMemberships } from "#learn/acl/audit";
 import { bumpDirectoryVersion } from "#learn/acl/principal-cache";
+import { computeClosure, type Edge } from "#learn/directory/closure";
 import { groupClosure, groupMembers, principals } from "@/db/schema";
-
-import { computeClosure, type Edge } from "./closure";
 
 export interface DirectoryPrincipal {
   /** The directory's id. Entra ids are uuids, so it's also the principal's id here. */
