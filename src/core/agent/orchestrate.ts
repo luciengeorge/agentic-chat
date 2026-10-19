@@ -10,9 +10,10 @@
 import { v5 as uuidv5 } from "uuid";
 import { z } from "zod";
 
-import type { AgentTool, ChildUsage, RunEvent, RunStatus, ToolCall, ToolContext } from "./types";
+import type { AgentTool, ChildUsage, RunEvent, RunStatus, ToolCall, ToolContext } from "#learn/agent/types";
 
-import { type Caps, runUsage } from "./caps";
+import { type Caps, runUsage } from "#learn/agent/caps";
+import { subagentMessage } from "#learn/agent/prompt";
 
 export const DELEGATE_TOOL = "delegate";
 
@@ -74,6 +75,44 @@ export function childCaps(
     toolCalls: share(parent.toolCalls - used.toolCalls - batch),
     tokens: share(parent.tokens - used.tokens),
     activeMs: parent.activeMs,
+  };
+}
+
+/** The parent run, as far as starting a child goes. */
+export interface ParentRun {
+  runId: string;
+  kind: "chat" | "automation" | "subagent";
+  caps: Caps;
+}
+
+/** What a delegate call starts: the child run's id, caps and first message, or why it can't start one. */
+export type ChildStart =
+  | { kind: "child"; runId: string; caps: Caps; message: { messageId: "task"; text: string } }
+  | { kind: "refused"; error: string };
+
+/**
+ * The child run a delegate call starts, or why none. A sub-agent can't delegate in turn (one level, so a tree
+ * stays bounded). The child's id comes from the call, so a step that runs again finds the child it made. Its caps
+ * are its share of what the parent has left (`used` is the parent's `runUsage`). Its first message frames the task
+ * as a read-only research task: the parent's model wrote it, not the user, and a document may have steered it.
+ */
+export function childStart(
+  parent: ParentRun,
+  call: ToolCall,
+  used: ChildUsage,
+  siblings: number,
+  batch = siblings,
+): ChildStart {
+  if (parent.kind === "subagent") {
+    return { kind: "refused", error: "A sub-agent can't hand work to another sub-agent." };
+  }
+  const input = DelegateSchema.safeParse(call.input);
+  if (!input.success) return { kind: "refused", error: "Invalid input: delegate takes { task }." };
+  return {
+    kind: "child",
+    runId: childRunId(parent.runId, call.callId),
+    caps: childCaps(parent.caps, siblings, used, batch),
+    message: { messageId: "task", text: subagentMessage(input.data.task) },
   };
 }
 

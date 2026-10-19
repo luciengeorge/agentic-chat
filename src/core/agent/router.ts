@@ -19,7 +19,7 @@ export interface RouteDecision {
 
 export const ROUTE_TOOL = "route";
 
-const RouteSchema = z.object({
+export const RouteSchema = z.object({
   route: z.enum(["answer", "agent"]),
   reason: z.string().max(300),
 });

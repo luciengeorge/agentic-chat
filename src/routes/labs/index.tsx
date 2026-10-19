@@ -131,6 +131,20 @@ const LABS: Lab[] = [
       "A run's event log, live: seq, version, type and data. Send two messages at once and watch both land, once.",
   },
   {
+    section: "15",
+    to: "/labs/durability",
+    title: "Agents: kill the server",
+    description: "A real run's send held mid-flight: stop pnpm dev, start it again, and watch it resume and mail once.",
+    devOnly: true,
+  },
+  {
+    section: "16",
+    to: "/labs/orchestration",
+    title: "Agents: the run tree",
+    description:
+      "A parent run and its sub-agents: each child's caps and spend, and what the parent has left, on your code.",
+  },
+  {
     section: "17",
     to: "/labs/safety",
     title: "Safety: the red-team runner",

@@ -24,9 +24,11 @@ import { Route as LabsBackgroundRouteImport } from './routes/labs/background'
 import { Route as LabsBoundaryRouteImport } from './routes/labs/boundary'
 import { Route as LabsChunkingRouteImport } from './routes/labs/chunking'
 import { Route as LabsConnectorsRouteImport } from './routes/labs/connectors'
+import { Route as LabsDurabilityRouteImport } from './routes/labs/durability'
 import { Route as LabsLexicalRouteImport } from './routes/labs/lexical'
 import { Route as LabsLoopRouteImport } from './routes/labs/loop'
 import { Route as LabsModelsRouteImport } from './routes/labs/models'
+import { Route as LabsOrchestrationRouteImport } from './routes/labs/orchestration'
 import { Route as LabsParsingRouteImport } from './routes/labs/parsing'
 import { Route as LabsPromptRouteImport } from './routes/labs/prompt'
 import { Route as LabsRerankRouteImport } from './routes/labs/rerank'
@@ -131,6 +133,11 @@ const LabsConnectorsRoute = LabsConnectorsRouteImport.update({
   path: '/labs/connectors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LabsDurabilityRoute = LabsDurabilityRouteImport.update({
+  id: '/labs/durability',
+  path: '/labs/durability',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabsLexicalRoute = LabsLexicalRouteImport.update({
   id: '/labs/lexical',
   path: '/labs/lexical',
@@ -144,6 +151,11 @@ const LabsLoopRoute = LabsLoopRouteImport.update({
 const LabsModelsRoute = LabsModelsRouteImport.update({
   id: '/labs/models',
   path: '/labs/models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsOrchestrationRoute = LabsOrchestrationRouteImport.update({
+  id: '/labs/orchestration',
+  path: '/labs/orchestration',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabsParsingRoute = LabsParsingRouteImport.update({
@@ -304,9 +316,11 @@ export interface FileRoutesByFullPath {
   '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/durability': typeof LabsDurabilityRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
+  '/labs/orchestration': typeof LabsOrchestrationRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
@@ -351,9 +365,11 @@ export interface FileRoutesByTo {
   '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/durability': typeof LabsDurabilityRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
+  '/labs/orchestration': typeof LabsOrchestrationRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
@@ -400,9 +416,11 @@ export interface FileRoutesById {
   '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/durability': typeof LabsDurabilityRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
+  '/labs/orchestration': typeof LabsOrchestrationRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
@@ -450,9 +468,11 @@ export interface FileRouteTypes {
     | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
+    | '/labs/durability'
     | '/labs/lexical'
     | '/labs/loop'
     | '/labs/models'
+    | '/labs/orchestration'
     | '/labs/parsing'
     | '/labs/prompt'
     | '/labs/rerank'
@@ -497,9 +517,11 @@ export interface FileRouteTypes {
     | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
+    | '/labs/durability'
     | '/labs/lexical'
     | '/labs/loop'
     | '/labs/models'
+    | '/labs/orchestration'
     | '/labs/parsing'
     | '/labs/prompt'
     | '/labs/rerank'
@@ -545,9 +567,11 @@ export interface FileRouteTypes {
     | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
+    | '/labs/durability'
     | '/labs/lexical'
     | '/labs/loop'
     | '/labs/models'
+    | '/labs/orchestration'
     | '/labs/parsing'
     | '/labs/prompt'
     | '/labs/rerank'
@@ -593,9 +617,11 @@ export interface RootRouteChildren {
   LabsBoundaryRoute: typeof LabsBoundaryRoute
   LabsChunkingRoute: typeof LabsChunkingRoute
   LabsConnectorsRoute: typeof LabsConnectorsRoute
+  LabsDurabilityRoute: typeof LabsDurabilityRoute
   LabsLexicalRoute: typeof LabsLexicalRoute
   LabsLoopRoute: typeof LabsLoopRoute
   LabsModelsRoute: typeof LabsModelsRoute
+  LabsOrchestrationRoute: typeof LabsOrchestrationRoute
   LabsParsingRoute: typeof LabsParsingRoute
   LabsPromptRoute: typeof LabsPromptRoute
   LabsRerankRoute: typeof LabsRerankRoute
@@ -733,6 +759,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabsConnectorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/labs/durability': {
+      id: '/labs/durability'
+      path: '/labs/durability'
+      fullPath: '/labs/durability'
+      preLoaderRoute: typeof LabsDurabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/labs/lexical': {
       id: '/labs/lexical'
       path: '/labs/lexical'
@@ -752,6 +785,13 @@ declare module '@tanstack/react-router' {
       path: '/labs/models'
       fullPath: '/labs/models'
       preLoaderRoute: typeof LabsModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/orchestration': {
+      id: '/labs/orchestration'
+      path: '/labs/orchestration'
+      fullPath: '/labs/orchestration'
+      preLoaderRoute: typeof LabsOrchestrationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/labs/parsing': {
@@ -994,9 +1034,11 @@ const rootRouteChildren: RootRouteChildren = {
   LabsBoundaryRoute: LabsBoundaryRoute,
   LabsChunkingRoute: LabsChunkingRoute,
   LabsConnectorsRoute: LabsConnectorsRoute,
+  LabsDurabilityRoute: LabsDurabilityRoute,
   LabsLexicalRoute: LabsLexicalRoute,
   LabsLoopRoute: LabsLoopRoute,
   LabsModelsRoute: LabsModelsRoute,
+  LabsOrchestrationRoute: LabsOrchestrationRoute,
   LabsParsingRoute: LabsParsingRoute,
   LabsPromptRoute: LabsPromptRoute,
   LabsRerankRoute: LabsRerankRoute,

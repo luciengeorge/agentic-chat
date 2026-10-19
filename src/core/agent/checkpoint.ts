@@ -1,5 +1,3 @@
-import { RunHalted } from "#learn/agent/loop";
-
 /**
  * A run advanced one checkpoint at a time (section 15.1). The checkpoint is the event log itself: each step reads
  * the log, decides, does one piece of work and appends what happened. A worker that dies mid-step leaves the log
@@ -11,10 +9,11 @@ import { RunHalted } from "#learn/agent/loop";
  *
  * The queue runner does `advance` once per job; the Workflow runner calls the pieces as separate steps.
  */
-import type { AgentContext } from "./context";
-import type { NextAction, RunEvent, RunEventData, RunStatus, ToolCall } from "./types";
+import type { AgentContext } from "#learn/agent/context";
+import type { NextAction, RunEvent, RunEventData, RunStatus, ToolCall } from "#learn/agent/types";
 
-import { buildContext, DEFAULT_CONTEXT_TOKENS } from "./context";
+import { buildContext, DEFAULT_CONTEXT_TOKENS } from "#learn/agent/context";
+import { RunHalted } from "#learn/agent/loop";
 
 type AssistantTurn = Extract<RunEventData, { type: "assistant_turn" }>;
 type ToolResult = Extract<RunEventData, { type: "tool_result" }>;
