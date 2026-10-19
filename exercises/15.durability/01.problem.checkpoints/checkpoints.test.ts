@@ -320,6 +320,30 @@ describe.skipIf(!postgresAvailable)("checkpoints on the job queue", () => {
       expect((await state(runId)).run.status).toBe("cancelled");
     });
 
+    it("checks the cancel before the lease: when both abort at once, the job ends quietly and the run stays cancelled", async () => {
+      const hang = hangingModel(0);
+      const runtime = graceRuntime(t.appDb, { mailroom: new Mailroom(), model: hang.model });
+      const runId = await begin();
+      await enqueue(runId);
+      const worker = new AbortController();
+      const working = settle(queue(runtime).handler(await claimed(), worker.signal));
+      await expect.poll(() => hang.calls()).toBe(1);
+      // The server shuts down as Grace cancels: the cancel switch and the worker's signal abort together.
+      const both = async (_: unknown, id: string) => {
+        abortLive(id);
+        worker.abort(new Error("shutting down"));
+      };
+      expect(await cancelRun(t.appDb, grace, runId, both)).toBe("ok");
+      const outcome = await within(3_000, working, "the model call is still running after the cancel");
+      expect(
+        outcome.threw,
+        "both signals aborted and the job threw, which hands it back to the queue for a run that's already " +
+          "cancelled. The order of the checks matters: the cancel switch (`deps.hold`'s signal) first, then the " +
+          "worker's `signal`",
+      ).toBe(false);
+      expect((await state(runId)).run.status).toBe("cancelled");
+    });
+
     it("expires an approval nobody decided, from its own job, and the run carries on without the mail", async () => {
       const mailroom = new Mailroom();
       const runtime = graceRuntime(t.appDb, { mailroom, approvalTtlMs: 100 });

@@ -130,6 +130,20 @@ export async function waitForChange(
 }
 
 /**
+ * The step for each of a turn's calls (section 16.3's rule): a delegate the policy didn't deny becomes a child run,
+ * told how many of the turn's calls are delegates and how many calls there are; any other call is a tool step.
+ */
+export function stepFor(
+  steps: RunSteps,
+  calls: readonly ToolCall[],
+  signal: AbortSignal,
+): (call: ToolCall) => Promise<ToolOutcome> {
+  const delegated = (call: ToolCall) => call.tool === DELEGATE_TOOL && !("denied" in call);
+  const delegates = calls.filter(delegated).length;
+  return (call) => (delegated(call) ? steps.delegate(call, delegates, calls.length) : steps.tool(call, signal));
+}
+
+/**
  * The run as a loop of steps (section 15.3): plan, then the work the plan calls for, until the run is final. A
  * turn's tool calls run as parallel steps, and their results are recorded together, in call order, by one more
  * step. Returns the status the run ended with: `cancelled` when a cancel stopped it, `failed` when a step failed
@@ -166,15 +180,8 @@ export async function driveRun(
           break;
         }
       } else {
-        const delegates = action.calls.filter((call) => call.tool === DELEGATE_TOOL && !("denied" in call)).length;
         const done = await unlessCancelled(
-          Promise.all(
-            action.calls.map((call) =>
-              call.tool === DELEGATE_TOOL && !("denied" in call)
-                ? steps.delegate(call, delegates, action.calls.length)
-                : steps.tool(call, controller.signal),
-            ),
-          ),
+          Promise.all(action.calls.map(stepFor(steps, action.calls, controller.signal))),
           signals,
           controller,
         );

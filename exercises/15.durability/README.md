@@ -17,6 +17,7 @@ Section 14 made the run a record in Postgres. This section makes it survive: a c
 - A **workflow** (Vercel Workflow, met in section 05) is a function whose steps' results are recorded, so that after a crash it can be **replayed**: run again from the top, with finished steps answered from the record.
 - A **hook** pauses a workflow until something resumes it; a **sleep** pauses it until a time. Neither holds a process while it waits.
 - A **lease** is how long a worker may hold work without checking in. A dead worker's lease runs out, and its work is handed on.
+- The **ownership lease** is Workflow's lease on a step. When a step starts, the process running it owns it for a fixed time, counted from the start and never renewed. Until it runs out, Workflow assumes the owner may still be working and runs the step nowhere else; after it, Workflow takes the owner for dead and runs the step again, with the same step id. Workflow's default is 860 seconds: no function on Vercel lives past 800, so by then the owner is surely gone. On this machine it's 150 (`WORKFLOW_INLINE_OWNERSHIP_LEASE_SECONDS`, set in `src/workflows/start-world.ts`): just over the 120 seconds a model turn may take before its step gives up, so a slow step is never taken for dead, and a step killed with the dev server runs again two and a half minutes later.
 
 ## The steps
 
@@ -27,6 +28,6 @@ Section 14 made the run a record in Postgres. This section makes it survive: a c
 5. **Timeouts and cancellation** (`durable-run.ts`, `durable.ts`). Abort a live model call on a cancel, and retry one that hung.
 6. **Determinism and versioning** (`durable-replay.ts`). Build a small replayer by hand, and see why a workflow body may not read the clock, and why a deploy can break an open run.
 
-Steps 1 and 3 to 6 replay Grace's recorded run (section 13's `kpc-terms`) through the app's own runners, so nothing here calls a model. Most tests need Postgres (`pnpm ex up`); steps 2 to 5 also run the real workflow in the test.
+Steps 1 and 3 to 5 replay Grace's recorded run (section 13's `kpc-terms`) through the app's own runners, so nothing here calls a model. Step 6 replays something smaller: a 28-step model of her run (`graceBody` in `src/core/agent/durable-testing.ts`, the same loop as `driveRun` with every effect a step), through the replayer you write. The app's runners play no part in it. Most tests need Postgres (`pnpm ex up`); steps 2 to 5 also run the real workflow in the test.
 
-The lab, `/labs/durability`, is the kill proof by hand: start a run, approve its send while fake-workspace holds it, stop `pnpm dev` with Ctrl+C, start it again, and watch the run come back and send one mail.
+The lab, `/labs/durability`, is the kill proof by hand: start a run, approve its send while fake-workspace holds it, stop `pnpm dev` with Ctrl+C, start it again, and watch the run come back after the ownership lease and send one mail.

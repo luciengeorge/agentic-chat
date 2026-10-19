@@ -68,8 +68,8 @@ export async function holdBudget(
   // 🐨 In one statement, hold `tokens` of the user's day, or hold nothing when they aren't left. What's left is the
   //    row's `token_limit`, less its `tokens_used`, less the tokens of the holds still live at `now`.
   // 🐨 A day with no row yet starts at `dailyTokens`: insert the row with this hold in it, if `dailyTokens` covers
-  //    it. A day that has a row: keep its live holds (the lapsed ones go) and add this one, if what's left covers
-  //    it.
+  //    it, or if the day has a row already (so the insert reaches the conflict). A day that has a row: keep its
+  //    live holds (the lapsed ones go) and add this one, if what's left covers it.
   // 🐨 A hold is `{ "<id>": { tokens, until } }` in the row's `holds` (jsonb), with `until` `HOLD_MS` after `now`.
   //    Return `{ id, day, tokens }` when the hold was taken, null when it wasn't.
   // 🐨 The classic mistake: reading what's left, then writing the hold, in two statements. Five turns at once all
@@ -80,11 +80,15 @@ export async function holdBudget(
   //    in it, `agent_budgets.<column>` is the row already there and `EXCLUDED.<column>` the row you tried to insert.
   //    `RETURNING 1` returns a row only when one was written. In jsonb, `a || b` merges two objects.
   //    `${liveHolds(at)}` and `${heldTokens(at)}` drop into the statement as the row's live holds and their sum.
-  //    `crypto.randomUUID()`.
+  //    `crypto.randomUUID()`. `EXISTS (SELECT 1 FROM ... WHERE ...)` is true when the query finds a row.
   //
   // 🦉 Why one statement. An upsert takes the row's lock. A second upsert on the same row waits, then reads the row
   //    as the first one left it, holds and all. So no other turn can come between the check and the hold, and five
   //    turns at once against room for two give exactly two.
+  // 🦉 Why the insert must reach the conflict when the row exists. An `INSERT ... SELECT ... WHERE` whose condition
+  //    is false inserts nothing, so nothing conflicts and `DO UPDATE` never runs. Make the condition "`dailyTokens`
+  //    covers it" alone, and a user whose row was raised to 10,000 against a default of 100 is refused a hold of
+  //    4,000: the row's own limit is never read. With "or the day has a row", the row's limit decides.
   // 🦉 Why hold before the call. Nobody knows what a call costs until it's over. Checking "is there budget?"
   //    without holding any lets every turn in flight spend the same last tokens: on 14 October, before holds,
   //    leo.martin's day reached 507,000 of 500,000 that way. A hold is the most the call can cost (`turnEstimate`:
@@ -92,8 +96,9 @@ export async function holdBudget(
   // 🦉 Why holds lapse. A process killed mid-call never settles its hold. Without `until`, those tokens would stay
   //    held until midnight UTC. Five minutes is longer than any model call (the longest step gives up at 120 s).
   //
-  // 🚨 The tests check turns charged, a spent day, a new day, a raised limit, five holds at once against room for
-  //    two, a hold settled and one given back, a lapsed hold, and Grace's first turn holding 6,033 tokens.
+  // 🚨 The tests check turns charged, a spent day, a new day, a raised limit (and a hold above the default
+  //    against one), five holds at once against room for two, a hold settled and one given back, a lapsed hold,
+  //    and Grace's first turn holding 6,033 tokens.
   throw new Error(
     `holdBudget(${typeof tx}, ${viewer.userId}, ${day}, ${tokens} of ${dailyTokens}, ${now.toISOString()}) isn't written yet`,
   );

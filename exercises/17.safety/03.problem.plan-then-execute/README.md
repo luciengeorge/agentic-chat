@@ -20,7 +20,7 @@ slots:
 
 ## Do this
 
-🐨 Write `uncovered` in `playground/plan.ts`, and `planPolicy` and `subagentPolicy` in `playground/policy.ts`.
+🐨 Write the `send_mail` branch of `uncovered` in `playground/plan.ts` (the note and share checks around it are written), and `planPolicy` and `subagentPolicy` in `playground/policy.ts`. The policy checks the plan before a guardrails flag can ask the user.
 
 ## A worked example
 

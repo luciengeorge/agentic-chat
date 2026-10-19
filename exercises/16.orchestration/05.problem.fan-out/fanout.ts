@@ -47,10 +47,12 @@ export async function fanOut<T, R>(items: readonly T[], options: FanOutOptions<T
   // 🐨 The other one: batches of `limit`, as section 05.5 does with page ranges. A batch waits for its slowest
   //    child, so two slots sit empty while one long summary finishes.
   //
-  // 💰 `Promise.all(promises)` waits for every one. `Array.from({ length: n }, fn)` makes n of something.
-  //    `Math.max`, `Math.min`, `Math.floor`. A variable several async functions share is safe to `++`: JavaScript
-  //    runs one of them at a time, switching only at an `await`.
+  // 💰 `Promise.all(promises)` waits for every one. `Math.max`, `Math.min`, `Math.floor`.
   //
+  // 🦉 Why no lock around shared counters. JavaScript runs one async function at a time on one thread, and it
+  //    switches to another only at an `await`. So code between two `await`s runs whole: a shared variable read and
+  //    `++`ed there can't be changed halfway by another child. That's what makes "take the next item" safe without
+  //    a mutex.
   // 🦉 Why a limit at all: backpressure. A fire is a burst of work, and everything behind it has a capacity: the
   //    model provider's rate limit, the owner's daily budget (each model call holds its estimate first, section
   //    13.6), the database's connections. Running three at a time and making the rest wait is backpressure: the

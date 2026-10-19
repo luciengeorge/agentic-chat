@@ -18,7 +18,7 @@ slots:
 - **Whole words of the title.** `documentMatches` drops stopwords and file extensions, then needs every word of the planned name as a whole word of the title. A folder in the path or half a word matches nothing.
 - **Labels the server resolved.** The plan's "Tom Whitfield" is matched against the guardrails' `Tom Whitfield <tom.whitfield@kestrelpay.example>`, never the model's own text. A target with an address matches by that address alone, so "Tom (attacker@evil.example)" covers the attacker and nobody else.
 - **Fail closed.** A write with no screen is one the guardrails never saw. Refusing it means a missing check can't pass for a passed one.
-- **Flags go to a person.** Only a person can judge "Tom can't open this attachment"; the policy turns a flag into an approval with the reason.
+- **Flags go to a person, last.** Only a person can judge "Tom can't open this attachment"; the policy turns a flag into an approval with the reason. But only for a write the plan already covers. Asked before the plan, a flag would send Daniel's unplanned Heron memo, attached to his planned mail to Tom, to an approver whose yes sends it: M2's hole, and the test that checks the order.
 - **Sub-agents can't write.** A child's task is written by its parent's model, maybe after reading a poisoned document. With no writes allowed, the child reports back, and only the parent's plan, from the user's words, can send anything. Automations follow the same rule: their first message carries a document's id, never its title, because a title is text someone else wrote.
 
 ## The worked example

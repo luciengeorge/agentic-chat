@@ -52,7 +52,8 @@ export async function checkpointJob(job: Job<AgentJob>, signal: AbortSignal, dep
   //    Then: `continue` queues the next step; `waiting` on an approval queues its expiry; and either way kick the
   //    workers. Release the cancel switch however the job ends.
   // 🐨 When `advance` throws, the order of the checks matters:
-  //    1. the user cancelled (the switch's signal aborted): the run is already final, so just return;
+  //    1. the user cancelled (the switch's signal aborted): the run is already final, so just return, even when
+  //       the worker's `signal` aborted too (the server stopping as Grace cancels);
   //    2. the worker stopped or lost its lease (`signal` aborted): throw it, so the job comes back;
   //    3. a failure that could pass (`isRetryable`) with attempts left (`job.attempts < job.maxAttempts`): tell
   //       `deps.onRetry` and throw, so the queue backs off and tries again;
@@ -78,6 +79,6 @@ export async function checkpointJob(job: Job<AgentJob>, signal: AbortSignal, dep
   //
   // 🚨 The tests drive Grace's recorded run on the queue: 8 jobs to her approval, a worker killed mid-send and
   //    its job taken back after its lease, a redone job that does nothing twice, a lost lease, a 503, a 400, a
-  //    cancel and an approval that expires.
+  //    cancel, a cancel that lands as the worker stops (the cancel wins: no throw), and an approval that expires.
   throw new Error(`checkpointJob(job ${job.id}, aborted ${signal.aborted}, ${typeof deps}) isn't written yet`);
 }

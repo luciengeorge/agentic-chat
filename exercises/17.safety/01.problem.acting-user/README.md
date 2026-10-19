@@ -15,7 +15,8 @@ slots:
 - The **acting user** is `ctx.viewer`: the person the run works for. The agent has no access of its own.
 - **`canRead`** (section 09) is the one place access is decided: Postgres, the document's ACL, the user's groups. `readableDocument(tx, userId, id)` wraps it and returns the document, or null.
 - A **drive item id** is fake-workspace's id for a file: the document's `externalId`.
-- **`X-Acting-User`** is the header the writer sends with an invite, like the subject of a delegated token: fake-workspace checks that user can read the item too.
+- A **confused deputy** is a program with more power than the person it acts for, tricked into using that power on their behalf. It's the interview name for what this step stops: the agent's tools reach every drive, so they must check what the user can do, never what the tool can.
+- **`X-Acting-User`** is the header the writer sends with an invite. It names the user the invite is made for, and fake-workspace checks that user can read the item too.
 - An **idempotency key** (`ctx.idempotencyKey`, `agent:<run>:<call>`) makes a retried call happen once.
 
 ## Do this

@@ -19,7 +19,7 @@ slots:
 
 ## Do this
 
-🐨 In `playground/stream.ts`, write `toSse` (one event on the wire), `resumeFrom` (where a stream starts) and `tailEvents` (the loop: read the status, read the events after the cursor, send them, wait, again). The route, `GET /api/runs/<id>/stream`, calls all three; `toTokenSse` and `sleep` are written.
+🐨 In `playground/stream.ts`, write `resumeFrom` (where a stream starts) and `tailEvents` (the loop: read the status, read the events after the cursor, send them, wait, again). The route, `GET /api/runs/<id>/stream`, calls both, and sends each event with `toSse`, which is written: `id: <seq>`, a `data:` line, a blank line. `toTokenSse` and `sleep` are written too.
 
 🚨 The classic mistake is replaying after a reconnect: a stream that starts from 0 because it never looked at `Last-Event-ID`, so every step shows twice. Its quieter twin reads the events before the status, and ends the stream one event early whenever the last event and the final status land between the two reads. The tests make that happen every time.
 

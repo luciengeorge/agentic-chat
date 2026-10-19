@@ -57,6 +57,10 @@ export const planPolicy: Policy = {
     //    doesn't cover it (`uncovered`'s reason, and that writes must come from the user's request).
     // 🐨 A write that passes all that: allow it, unless the screen flagged it. Then the user decides, with the
     //    reason: `{ kind: "approve", reason: <the flag> }`.
+    // 🐨 The classic mistake: answering a flag before the plan. Daniel can read the Heron memo and attaches it to
+    //    his planned mail to Tom, though his plan names no attachment. The guardrails flag it (Tom can't open it),
+    //    and `approve` hands it to an approver who clicks yes without reading: the memo goes out. That was M2's hole.
+    //    A flag can only ask about a write the plan already covers.
     //
     // 💰 `deny(reason)` words a refusal for the model. Add `currentPlan`, `isPlanningCall` and `uncovered` to the
     //    `#learn/agent/plan` import. `tool.effect` is "read" or "write".
@@ -71,6 +75,7 @@ export const planPolicy: Policy = {
     //
     // 🚨 The tests check reads, an unknown tool, `make_plan` in and after the planning turn, and a write
     //    unscreened, denied, unplanned, planned and flagged.
+    // 🚨 The plan is checked before a flag can ask the user: a flagged mail with an unplanned attachment is denied.
     throw new Error(
       `planPolicy.check(${call.tool}, ${events.length} events, ${tool?.name ?? "no tool"}) isn't written yet`,
     );

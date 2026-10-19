@@ -3,6 +3,7 @@ title: Automations
 type: graded
 slots:
   automations/automation: automation.ts
+  automations/cron: cron.ts
 ---
 
 # Automations
@@ -20,12 +21,12 @@ slots:
 
 ## Do this
 
-🐨 In `playground/automation.ts`, write `dueSlot` (the slot a scheduler should fire now), `dueFire` (that slot as a fire, with its key) and `fireRun` (each run's id and first message).
+🐨 In `playground/cron.ts`, write `latestSlot` (the schedule's latest slot in a window). Then in `playground/automation.ts`, write `dueSlot` (the slot a scheduler should fire now), `dueFire` (that slot as a fire, with its key) and `fireRun` (each run's id and first message).
 
 ## A worked example
 
 Grace makes the digest on Monday 12 October at 10:00, after that day's slot. On Monday 19 October two dev servers tick at **09:00:12** and **09:00:27**. Both read the table before either has claimed anything, both find 09:00 due, and both name the fire `schedule:2026-10-19T09:00:00.000Z`. Both start a workflow; the first claim inserts the row and fires, the second hits the primary key and answers `duplicate`. A server restarted at 09:01:40 sees `last_fired_at` at 09:00 and finds nothing due. One digest.
 
-Two more from the same rules. An every-15-minutes schedule on a server down from 09:50 to 11:05 fires 11:00 alone of the four slots it missed. And Monday's digest on a server that was off until Wednesday doesn't fire at all: the slot is more than a day old.
+Two more from the same rules. An every-15-minutes schedule that last fired at 09:45, on a server down from 09:50 to 11:05, has five slots due when it comes back (10:00 to 11:00), and fires 11:00 alone. And Monday's digest on a server that was off until Wednesday doesn't fire at all: the slot is more than a day old.
 
 Run the tests with `pnpm ex test 16.4`. The last one needs Postgres (`pnpm ex up`).
