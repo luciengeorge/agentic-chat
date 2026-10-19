@@ -105,6 +105,18 @@ Shared files (`src/routes/labs/index.tsx`, `-functions.ts`, `package.json`, this
   4. guardrails at the server boundary.
 - **Lab:** the red-team runner. Pick scenarios, run them on the scripted model, and see each attacking write refused (or let through, while the learner's step is unfinished).
 
+## Wave 2 ownership
+
+| Lane | Owns |
+|---|---|
+| A. 15 | `exercises/15.*/**`, `src/routes/labs/durability*`, `src/components/labs/durability*`, splits in `src/core/agent/{checkpoint,durable}*`, `src/core/queue/**` (agent runner only), `src/lib/agent-queue.ts`, `src/lib/agent-runtime.ts`, `src/workflows/agent-run*.ts` (splits only) |
+| B. 16 + front door | `exercises/16.*/**`, `src/routes/labs/orchestration*`, `src/components/labs/orchestration*`, splits in `src/core/agent/{router,orchestrate,fanout}*`, `src/core/automations/**`, `src/workflows/{orchestrator,automation,workflow-agent}*.ts` (splits only), `exercises/README.md` (sections 13 to 17 now available), the `/labs` index |
+
+**Wave 1 notes for wave 2** (from Settled):
+- Sibling imports in carved files go through `#learn/...`, so a slotted copy resolves them and classes like `RunHalted` stay one class. `orchestrate.ts` still imports `./caps`; switch it.
+- When a scripted test's tools include `make_plan`, the test must plan first: the AI SDK enforces a forced `toolChoice`.
+- Recorded runs live in `fixtures/cassettes/agent/`. Replay them through `src/core/agent/loop-recorded.ts` or `state-testing.ts`. A test that checks each request is rebuilt byte for byte catches prompt drift.
+
 ## Settled during the build
 
 (Lanes add what they decided here: one bullet per decision, plain words.)
