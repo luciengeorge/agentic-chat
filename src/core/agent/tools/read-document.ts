@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { AgentTool } from "#learn/agent/types";
 
-import { notReadable, readableDocument, type ToolDeps } from "./deps";
+import { notReadable, readableDocument, type ToolDeps } from "#learn/agent/tools/deps";
 
 /** About six pages of text per call: enough to read a memo, and the model can ask for the rest. */
 export const READ_DOCUMENT_TOKENS = 3000;

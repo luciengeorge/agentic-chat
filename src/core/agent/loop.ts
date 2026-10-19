@@ -5,14 +5,21 @@
  */
 import { z } from "zod";
 
-import type { ChatMessage, ChatModel, ChatRequest, ReasoningEffort, ToolSpec, Usage } from "#learn/model/types";
+import type { AgentTool, NextAction, RunEvent, RunEventData, Screen, ToolCall, ToolContext } from "#learn/agent/types";
+import type {
+  ChatEvent,
+  ChatMessage,
+  ChatModel,
+  ChatRequest,
+  ReasoningEffort,
+  ToolSpec,
+  Usage,
+} from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 
-import type { AgentTool, NextAction, RunEvent, RunEventData, Screen, ToolCall, ToolContext } from "./types";
-
-import { type Caps, capReached, runUsage, turnEstimate } from "./caps";
-import { PLAN_TOOL } from "./plan";
-import { type Policy, planPolicy, type Verdict } from "./policy";
+import { type Caps, capReached, runUsage, turnEstimate } from "#learn/agent/caps";
+import { PLAN_TOOL } from "#learn/agent/plan";
+import { type Policy, planPolicy, type Verdict } from "#learn/agent/policy";
 
 type AssistantTurn = Extract<RunEventData, { type: "assistant_turn" }>;
 type ToolResult = Extract<RunEventData, { type: "tool_result" }>;
@@ -20,7 +27,8 @@ type ToolResult = Extract<RunEventData, { type: "tool_result" }>;
 /** Retryable errors in a row (since the last model turn) before the run gives up. */
 export const MAX_RETRIES = 3;
 
-const FINAL = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
+/** The statuses a run never leaves. */
+export const FINAL = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
 
 /**
  * Says, for one call, whether it runs, waits for the user or is refused. A boolean is the tools' own
@@ -38,12 +46,9 @@ const verdictOf = (answer: boolean | Verdict): Verdict =>
  * What the loop does next, from the events alone. `needsApproval` says which calls run, wait for the user or are
  * refused (the policy, then the tools' own `needsApproval`, bound to the run by the runner). In order:
  * - a finished run, or nothing to answer yet: wait;
- * - a non-retryable error, or too many retryable ones: finish failed;
- * - a call the policy refuses goes with the runnable calls, marked, so `runTool` answers it with the reason;
- * - the last turn's calls: the approved ones and the ones needing none run together first; then each one needing
+ * - a non-retryable error, or too many retryable ones: finish failed (`giveUp`);
+ * - the last turn's calls (`pendingCalls`): the ones that can run go together first; then each one needing
  *   approval is asked for, one at a time; while an approval is open, wait;
- * - a rejected or expired call is settled: whoever records that decision also appends its `tool_result`
- *   (`declinedResult`), so the model sees why;
  * - once every call is settled, or a user message is newer than the last turn: a model turn;
  * - a last turn with no calls and nothing newer: finish succeeded.
  * Before a model turn or a batch of calls, the caps are checked; a cap reached finishes the run failed.
@@ -61,16 +66,8 @@ export function decide(events: readonly RunEvent[], caps: Caps, needsApproval: G
   }
   const since = events.slice(lastTurn + 1).map((e) => e.data);
 
-  const errors = since.filter((d) => d.type === "error");
-  const fatal = errors.find((d) => !d.retryable);
-  if (fatal) return { kind: "finish", status: "failed", reason: fatal.message };
-  if (errors.length >= MAX_RETRIES) {
-    return {
-      kind: "finish",
-      status: "failed",
-      reason: `gave up after ${errors.length} errors: ${errors.at(-1)!.message}`,
-    };
-  }
+  const stop = giveUp(since);
+  if (stop) return stop;
 
   const usage = runUsage(events);
   const model = (): NextAction => {
@@ -81,6 +78,58 @@ export function decide(events: readonly RunEvent[], caps: Caps, needsApproval: G
   if (lastTurn === -1) return since.some((d) => d.type === "user_message") ? model() : { kind: "wait" };
 
   const turn = events[lastTurn].data as AssistantTurn;
+  const { runnable, toAsk, waiting } = pendingCalls(turn, since, events, needsApproval);
+  if (runnable.length) {
+    const reason = capReached(usage, caps, runnable.length);
+    return reason ? { kind: "finish", status: "failed", reason } : { kind: "tools", calls: runnable };
+  }
+  if (toAsk) return { kind: "approval", call: toAsk };
+  if (waiting) return { kind: "wait" };
+  if (turn.toolCalls.length || since.some((d) => d.type === "user_message")) return model();
+  return { kind: "finish", status: "succeeded" };
+}
+
+/**
+ * The error rule, from the events since the last model turn: a non-retryable error finishes the run failed, and so
+ * does the `MAX_RETRIES`th retryable one. Null: carry on. (A tool's error never gets here: it's the call's result,
+ * for the model to read.)
+ */
+export function giveUp(since: readonly RunEventData[]): NextAction | null {
+  const errors = since.filter((d) => d.type === "error");
+  const fatal = errors.find((d) => !d.retryable);
+  if (fatal) return { kind: "finish", status: "failed", reason: fatal.message };
+  if (errors.length >= MAX_RETRIES) {
+    return {
+      kind: "finish",
+      status: "failed",
+      reason: `gave up after ${errors.length} errors: ${errors.at(-1)!.message}`,
+    };
+  }
+  return null;
+}
+
+/** Where a turn's unanswered calls stand. */
+export interface PendingCalls {
+  /** Calls that run now: reads, approved writes, and refused calls (marked, so `runTool` answers them). */
+  runnable: ToolCall[];
+  /** The first call that needs the user and hasn't been asked for yet. */
+  toAsk?: ToolCall;
+  /** A call is waiting on the user's decision. */
+  waiting: boolean;
+}
+
+/**
+ * Sorts the last turn's unanswered calls by `needsApproval`'s verdict. A refused call goes with the runnable ones,
+ * marked `denied`. An allowed one runs. One that needs approval runs once approved, waits while asked, and is asked
+ * for when it hasn't been. A rejected or expired one is settled already: whoever records that decision also appends
+ * its `tool_result` (`declinedResult`), so the model sees why.
+ */
+export function pendingCalls(
+  turn: AssistantTurn,
+  since: readonly RunEventData[],
+  events: readonly RunEvent[],
+  needsApproval: Gate,
+): PendingCalls {
   const answered = new Set(since.flatMap((d) => (d.type === "tool_result" ? [d.callId] : [])));
   const requested = new Map(
     since.flatMap((d) => (d.type === "approval_requested" ? [[d.call.callId, d.approvalId] as const] : [])),
@@ -110,15 +159,7 @@ export function decide(events: readonly RunEvent[], caps: Caps, needsApproval: G
     else if (decision === "approved") runnable.push(call);
     else if (decision === undefined) waiting = true;
   }
-
-  if (runnable.length) {
-    const reason = capReached(usage, caps, runnable.length);
-    return reason ? { kind: "finish", status: "failed", reason } : { kind: "tools", calls: runnable };
-  }
-  if (toAsk) return { kind: "approval", call: toAsk };
-  if (waiting) return { kind: "wait" };
-  if (turn.toolCalls.length || since.some((d) => d.type === "user_message")) return model();
-  return { kind: "finish", status: "succeeded" };
+  return { runnable, toAsk, waiting };
 }
 
 /**
@@ -136,12 +177,11 @@ export function approvalNeeded(
   policy: Policy | null = tools.some((t) => t.name === PLAN_TOOL) ? planPolicy : null,
 ): Gate {
   return (call, events) => {
-    const tool = tools.find((t) => t.name === call.tool);
-    const parsed = tool?.input.safeParse(call.input);
-    if (!tool || !parsed?.success) return false;
-    const verdict = policy?.check(call, { events, tool }) ?? { kind: "allow" };
+    const parsed = parseCall(call, tools);
+    if ("error" in parsed) return false;
+    const verdict = policy?.check(call, { events, tool: parsed.tool }) ?? { kind: "allow" };
     if (verdict.kind !== "allow") return verdict;
-    return tool.needsApproval(parsed.data, {
+    return parsed.tool.needsApproval(parsed.input, {
       viewer,
       runId,
       callId: call.callId,
@@ -222,7 +262,7 @@ const isSummary = (message: ChatMessage) =>
  * The planning turn: the agent has the plan tool and the newest message is the user's (a summary of compacted
  * events doesn't count). Then the model must call `make_plan` before anything else.
  */
-function planningTurn(context: TurnContext, tools: readonly AgentTool[]): boolean {
+function isPlanningTurn(context: TurnContext, tools: readonly AgentTool[]): boolean {
   const last = context.messages.at(-1);
   return tools.some((t) => t.name === PLAN_TOOL) && last?.role === "user" && !isSummary(last);
 }
@@ -232,7 +272,7 @@ function planningTurn(context: TurnContext, tools: readonly AgentTool[]): boolea
  * memory note and no summary (which retells tool output) can put a write in the plan. `buildContext` gives it
  * with its instructions; without it, the user's messages are picked out of the context.
  */
-function planningInput(context: TurnContext): { instructions: string; messages: ChatMessage[] } {
+export function planningInput(context: TurnContext): { instructions: string; messages: ChatMessage[] } {
   return (
     context.planning ?? {
       instructions: context.instructions,
@@ -248,7 +288,7 @@ function planningInput(context: TurnContext): { instructions: string; messages: 
  * events.
  */
 export async function modelTurn(context: TurnContext, deps: ModelTurnDeps): Promise<AssistantTurn> {
-  const planning = planningTurn(context, deps.tools);
+  const planning = isPlanningTurn(context, deps.tools);
   const { instructions, messages } = planning ? planningInput(context) : context;
   const request: ChatRequest = {
     instructions,
@@ -260,32 +300,46 @@ export async function modelTurn(context: TurnContext, deps: ModelTurnDeps): Prom
     abortSignal: deps.signal,
   };
   const hold = await deps.guard?.beforeModelTurn(turnEstimate(request));
-  let text = "";
-  const toolCalls: ToolCall[] = [];
-  let usage: Usage | undefined;
+  let turn: AssistantTurn;
   try {
-    for await (const event of deps.model.stream(request)) {
-      if (event.type === "text-delta") {
-        text += event.delta;
-        deps.onTextDelta?.(event.delta);
-      } else if (event.type === "tool-call") {
-        toolCalls.push({ callId: event.callId, tool: event.name, input: event.input });
-      } else {
-        usage = event.usage;
-      }
-    }
-    if (!usage) throw new Error("the model's stream ended without a finish");
+    turn = await readTurn(deps.model.stream(request), deps.onTextDelta);
   } catch (error) {
     // The call failed or was aborted: give the hold back.
     await deps.guard?.afterModelTurn(null, hold).catch(() => {});
     throw error;
   }
-  await deps.guard?.afterModelTurn(usage, hold);
-  const writes = toolCalls.filter((c) => deps.tools.find((t) => t.name === c.tool)?.effect === "write");
+  await deps.guard?.afterModelTurn(turn.usage, hold);
+  const writes = turn.toolCalls.filter((c) => deps.tools.find((t) => t.name === c.tool)?.effect === "write");
   if (writes.length > 0 && deps.guard?.screen) {
     const screens = await deps.guard.screen(writes, deps.signal);
     writes.forEach((call, i) => (call.screen = screens[i]));
   }
+  return turn;
+}
+
+/**
+ * Reads one model call's stream into its `assistant_turn`: the text deltas joined (each one also handed to
+ * `onTextDelta` as it comes), each tool call whole, as its own `ToolCall` with the model's call id, and the usage
+ * the finish carries. A stream that ends without a finish throws: the turn is incomplete.
+ */
+export async function readTurn(
+  stream: AsyncIterable<ChatEvent>,
+  onTextDelta?: (delta: string) => void,
+): Promise<AssistantTurn> {
+  let text = "";
+  const toolCalls: ToolCall[] = [];
+  let usage: Usage | undefined;
+  for await (const event of stream) {
+    if (event.type === "text-delta") {
+      text += event.delta;
+      onTextDelta?.(event.delta);
+    } else if (event.type === "tool-call") {
+      toolCalls.push({ callId: event.callId, tool: event.name, input: event.input });
+    } else {
+      usage = event.usage;
+    }
+  }
+  if (!usage) throw new Error("the model's stream ended without a finish");
   return { type: "assistant_turn", text, toolCalls, usage };
 }
 
@@ -313,15 +367,47 @@ const message = (error: unknown) => (error instanceof Error ? error.message : St
  * is thrown.
  */
 export async function runTool(call: ToolCall, deps: RunToolDeps): Promise<ToolResult> {
-  const fail = (error: string): ToolResult => ({ type: "tool_result", callId: call.callId, ok: false, error });
   const { denied } = call as Partial<DeniedCall>;
-  if (denied) return fail(denied);
+  if (denied) return failed(call, denied);
   await deps.guard?.beforeToolCall();
-  const tool = deps.tools.find((t) => t.name === call.tool);
-  if (!tool) return fail(`There is no tool called ${call.tool}.`);
-  const parsed = tool.input.safeParse(call.input);
-  if (!parsed.success) return fail(`Invalid input: ${z.prettifyError(parsed.error)}`);
+  const parsed = parseCall(call, deps.tools);
+  if ("error" in parsed) return failed(call, parsed.error);
+  return executeCall(call, parsed.tool, parsed.input, deps);
+}
 
+const failed = (call: ToolCall, error: string): ToolResult => ({
+  type: "tool_result",
+  callId: call.callId,
+  ok: false,
+  error,
+});
+
+/**
+ * Finds the call's tool in the registry and checks the model's input against the tool's zod schema: the tool and
+ * the parsed input, or the error the model should read (which tool doesn't exist, which field is wrong).
+ */
+export function parseCall(
+  call: ToolCall,
+  tools: readonly AgentTool[],
+): { tool: AgentTool; input: unknown } | { error: string } {
+  const tool = tools.find((t) => t.name === call.tool);
+  if (!tool) return { error: `There is no tool called ${call.tool}.` };
+  const parsed = tool.input.safeParse(call.input);
+  if (!parsed.success) return { error: `Invalid input: ${z.prettifyError(parsed.error)}` };
+  return { tool, input: parsed.data };
+}
+
+/**
+ * Runs a checked call as the viewer, within `timeoutMs`. Its output, or what went wrong, becomes the call's
+ * `tool_result`: a thrown error or a timeout is `ok: false` with a message the model can read. Only `RunHalted`
+ * (the kill switch, the budget) and the run's own abort are thrown, since those stop the run, not the call.
+ */
+export async function executeCall(
+  call: ToolCall,
+  tool: AgentTool,
+  input: unknown,
+  deps: RunToolDeps,
+): Promise<ToolResult> {
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   const timeout = AbortSignal.timeout(timeoutMs);
   const signal = deps.signal ? AbortSignal.any([deps.signal, timeout]) : timeout;
@@ -339,13 +425,13 @@ export async function runTool(call: ToolCall, deps: RunToolDeps): Promise<ToolRe
   });
   try {
     // A tool that ignores its signal still can't hold the loop past the timeout.
-    const output = await Promise.race([tool.execute(parsed.data, ctx), aborted]);
+    const output = await Promise.race([tool.execute(input, ctx), aborted]);
     return { type: "tool_result", callId: call.callId, ok: true, output: output ?? null };
   } catch (error) {
     if (error instanceof RunHalted) throw error;
-    if (timeout.aborted) return fail(`${call.tool} timed out after ${timeoutMs / 1000} s.`);
+    if (timeout.aborted) return failed(call, `${call.tool} timed out after ${timeoutMs / 1000} s.`);
     if (deps.signal?.aborted) throw deps.signal.reason;
-    return fail(message(error));
+    return failed(call, message(error));
   } finally {
     signal.removeEventListener("abort", onAbort);
     aborted.catch(() => {});

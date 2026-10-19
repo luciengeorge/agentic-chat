@@ -6,7 +6,7 @@
  */
 import { z } from "zod";
 
-import type { AgentTool, RunEvent, ToolCall } from "./types";
+import type { AgentTool, RunEvent, RunEventData, ToolCall } from "#learn/agent/types";
 
 export const PLAN_TOOL = "make_plan";
 
@@ -65,7 +65,7 @@ export function planTool(): AgentTool<Plan, { planned: number }> {
  * The first assistant turn after the latest user message: the planning turn. Its `make_plan` call, if any, is the
  * plan in force. A `make_plan` in any later turn isn't one: replanning needs the user.
  */
-function planningTurn(events: readonly RunEvent[]) {
+export function planningTurn(events: readonly RunEvent[]): Extract<RunEventData, { type: "assistant_turn" }> | null {
   let lastMessage = -1;
   for (let i = events.length - 1; i >= 0; i--) {
     if (events[i].data.type === "user_message") {
