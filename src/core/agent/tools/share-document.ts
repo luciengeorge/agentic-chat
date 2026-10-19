@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { AgentTool } from "#learn/agent/types";
 
-import { notReadable, readableDocument, type ToolDeps } from "./deps";
+import { notReadable, readableDocument, type ToolDeps } from "#learn/agent/tools/deps";
 
 const Input = z.object({
   documentId: z.uuid(),

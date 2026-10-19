@@ -2,9 +2,9 @@
  * What every durable runner (the job queue, Workflow) needs to decide about a failure, and how a side effect
  * stays single when its step runs again.
  */
-import type { AgentTool } from "./types";
+import type { AgentTool } from "#learn/agent/types";
 
-import { RunHalted } from "./loop";
+import { RunHalted } from "#learn/agent/loop";
 
 const NETWORK_CODES = new Set([
   "ECONNRESET",
@@ -42,6 +42,39 @@ export function isRetryable(error: unknown): boolean {
 /** How long to wait before attempt `attempt + 1`: doubling from `baseMs`, capped. */
 export const backoffMs = (attempt: number, baseMs = 1_000, maxMs = 60_000) =>
   Math.min(maxMs, baseMs * 2 ** Math.max(0, attempt - 1));
+
+/** What a model turn step does after its turn threw. */
+export type TurnFailure =
+  | { kind: "cancelled" }
+  | { kind: "halted"; reason: string }
+  | { kind: "retry"; message: string; afterMs: number }
+  | { kind: "fatal"; message: string };
+
+export interface TurnFailureContext {
+  /** The run's own signal: the user cancelled it. */
+  cancelled: boolean;
+  /** The step's own timeout fired. */
+  timedOut: boolean;
+  /** Which attempt of the step this was, from 1. */
+  attempt: number;
+  /** The wait before the retry, when the caller sets one (data, so tests can make it small). */
+  retryAfterMs?: number;
+}
+
+/**
+ * Sorts a failed model turn (section 15.5). A cancel isn't a failure: the body already knows, so the error goes up
+ * as it is. A halted run (the kill switch, the daily budget) fails the run. The step's own timeout, a rate limit, a
+ * 5xx or a dropped connection is tried again after a wait; anything else fails the step for good.
+ */
+export function turnFailure(error: unknown, context: TurnFailureContext): TurnFailure {
+  if (context.cancelled) return { kind: "cancelled" };
+  if (error instanceof RunHalted) return { kind: "halted", reason: error.reason };
+  const message = error instanceof Error ? error.message : String(error);
+  if (context.timedOut || isRetryable(error)) {
+    return { kind: "retry", message, afterMs: context.retryAfterMs ?? backoffMs(context.attempt) };
+  }
+  return { kind: "fatal", message };
+}
 
 /**
  * A write's idempotency key inside Workflow: the step's `stepId`, which stays the same across the step's retries

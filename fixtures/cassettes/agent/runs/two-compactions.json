@@ -1,0 +1,1152 @@
+{
+  "exported": "2026-10-19",
+  "source": "the dev database (run and run_events rows, as the app wrote them)",
+  "run": {
+    "id": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+    "user": "daniel.reyes",
+    "userId": "cc04b66d-ace4-5327-8590-8d0a41fca0fc",
+    "kind": "chat",
+    "status": "failed",
+    "version": 23,
+    "createdAt": "2026-10-14T14:54:47.485738+00:00"
+  },
+  "events": [
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 1,
+      "at": "2026-10-14T14:54:47.490Z",
+      "stepKey": null,
+      "data": {
+        "text": "Read the first six parts of the FCA Annual Regulatory Return 2026: find it, call read_document on it, then keep following nextChunk until you have read six parts. Don't search again after that. Then email Tom Whitfield (tom.whitfield@kestrelpay.example) three lines on what those parts cover.",
+        "type": "user_message",
+        "messageId": "smoke-bb06bfe4"
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 2,
+      "at": "2026-10-14T14:54:47.587Z",
+      "stepKey": null,
+      "data": {
+        "to": "running",
+        "from": "queued",
+        "type": "status"
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 3,
+      "at": "2026-10-14T14:54:49.908Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHYZ:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 2179,
+          "outputTokens": 145,
+          "reasoningTokens": 0
+        },
+        "toolCalls": [
+          {
+            "tool": "make_plan",
+            "input": {
+              "goal": "Find and read the first six parts of the FCA Annual Regulatory Return 2026, then email Tom Whitfield three lines summarizing what those parts cover.",
+              "steps": [
+                "Search for the FCA Annual Regulatory Return 2026.",
+                "Read it starting at the beginning and follow nextChunk until six parts have been read; do not search again after finding it.",
+                "Look up Tom Whitfield to confirm his email address.",
+                "Email Tom a three-line summary based on the six parts read."
+              ],
+              "writes": [
+                {
+                  "note": null,
+                  "tool": "send_mail",
+                  "targets": [
+                    "Tom Whitfield (tom.whitfield@kestrelpay.example)"
+                  ],
+                  "documents": []
+                }
+              ]
+            },
+            "callId": "call_xl73Y8BZFik6rzZ5ibJ1lGg9"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 4,
+      "at": "2026-10-14T14:54:49.978Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZ2:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_xl73Y8BZFik6rzZ5ibJ1lGg9",
+        "output": {
+          "planned": 1
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 5,
+      "at": "2026-10-14T14:54:51.021Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZ4:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 2303,
+          "outputTokens": 29,
+          "reasoningTokens": 0
+        },
+        "toolCalls": [
+          {
+            "tool": "search_documents",
+            "input": {
+              "k": 5,
+              "query": "FCA Annual Regulatory Return 2026"
+            },
+            "callId": "call_QJaSI1pYIGelRI18KmATJPXC"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 6,
+      "at": "2026-10-14T14:54:54.930Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZ7:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_QJaSI1pYIGelRI18KmATJPXC",
+        "output": {
+          "passages": [
+            {
+              "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+              "text": "# Annual Regulatory Return 2026\n\nKestrel Pay Ltd, an authorised electronic money institution (FRN 999901)\n\nReporting period: 1 July 2025 to 30 June 2026\n\nSubmitted to the Financial Conduct Authority on 15 September 2026\n\n| Item | Detail |\n| --- | --- |\n| Registered office | 12 Harrow Yard, London EC2A 4PN, United Kingdom |\n| Scope | Kestrel Pay Ltd only; Kestrel Pay Europe Ltd reports to the Central Bank of Ireland |\n| Prepared by | Legal and Compliance |\n| Regulatory contact | Sofia Lindqvist, Compliance Officer |\n| Legal contact | Helen Marsh, General Counsel |\n| Classification | Confidential: submitted under FSMA 2000, section 165 |",
+              "title": "FCA Annual Regulatory Return 2026.pdf",
+              "chunkId": "6113f380-7a2a-4a5c-b577-2758eb1aee7c",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            {
+              "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+              "text": "## 1. Summary\n\n| Area | Q1 2026 | Q2 2026 | Trend | Comment |\n| --- | --- | --- | --- | --- |\n| Safeguarding | Amber | Green | Better | Every daily reconciliation on time and no shortfalls. Q1 had one late EUR reconciliation (SG-2026-01) |\n| Financial crime (AML and sanctions) | Amber | Amber | Same | 146 enhanced due diligence (EDD) reviews overdue at 30 June |\n| Complaints | Green | Green | Same | 96.8% resolved within 15 business days |\n| Financial promotions | Green | Green | Same | One post published before approval |\n| Operational resilience | Amber | Green | Better | No P1 incidents in Q2. Five incidents were reported to the FCA in Q1 |\n| Data protection | Green | Amber | Worse | One personal data breach, not reportable to the ICO |\n| Regulatory reporting | Green | Green | Same | All returns submitted on time |\n\nTwo breaches were logged in the quarter (section 8). Neither needed notifying to the FCA or the ICO.",
+              "title": "Compliance Monitoring Report Q2 2026.pdf",
+              "chunkId": "2f604cdc-c46a-471e-a830-60747a1aaa37",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "cc05c310-506e-4fed-9b85-a0e8214bd22b"
+            },
+            {
+              "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+              "text": "## 4. Operating costs\n\n| Category | FY2026 budget | FY2025 forecast | Change | Notes |\n| --- | --- | --- | --- | --- |\n| Staff costs | £55.6m | £48.3m | +15.1% | 640 employees by year end; 4.5% pay rise from 1 April 2026 |\n| Technology and software | £7.3m | £6.4m | +14.1% | Includes the HR system and support platform renewals |\n| Sales and marketing | £9.4m | £8.2m | +14.6% | Ireland and Portugal campaigns in H2 |\n| Premises and office | £4.6m | £4.2m | +9.5% | London and Lisbon leases; no new Dublin office assumed |\n| Professional fees | £3.8m | £3.6m | +5.6% | Statutory audit, legal panel, tax advice, and the annual safeguarding audit (the 2025 audit in Q1, interim work for 2026 in Q4) |\n| Regulatory and compliance | £2.6m | £2.2m | +18.2% | FCA and Central Bank of Ireland fees; screening data and compliance tools |\n| Other operating costs | £2.4m | £2.0m | +20.0% | Travel, insurance, training |\n| Total | £85.7m | £74.9m | +14.4% |  |\n\nThe board asked for £1.2m of savings on draft 2. We made them by cutting the year-end headcount from 662 to 640 (22 roles, mostly in Sales and Operations) and by trimming £0.3m from marketing.",
+              "title": "FY2026 Budget Notes and Assumptions.docx",
+              "chunkId": "43290f89-1bbc-41f0-beec-ee7e19a50fec",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "71bfe152-f92e-45cf-9035-15aabe4aa603"
+            },
+            {
+              "path": "/Finance/Safeguarding Reconciliation Procedure.md",
+              "text": "## 6. What changed in version 3.1\n\nThe FCA's new safeguarding rules apply from 7 May 2026. Because of them:\n\n- the monthly safeguarding return to the FCA was added;\n\n- the resolution pack is now checked every month instead of every year;\n\n- the 15:00 statement file check, started after breach SG-2026-01 in March, is now part of the written procedure.",
+              "title": "Safeguarding Reconciliation Procedure.md",
+              "chunkId": "138b0023-bc52-42ed-8d03-a0d3d520cd9c",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "64f67362-6d6a-4923-be7a-4121a2436ff8"
+            },
+            {
+              "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+              "text": "## 2. Safeguarding\n\nKestrel safeguards relevant funds by segregation, in designated safeguarding accounts at Albion Clearing Bank (GBP) and Banco Meridional, S.A. (EUR). At 30 June 2026 Kestrel Pay Ltd held £1.02bn of customer funds: £0.94bn in GBP and €95m (about £0.08bn) in EUR. Kestrel Pay Europe Ltd held a further £0.22bn, so the group total was £1.24bn.\n\nThe FCA's new safeguarding rules came into force on 7 May 2026. They add a monthly safeguarding return and require the resolution pack to be kept up to date. Finance updated the safeguarding reconciliation procedure to version 3.1 from the same date.\n\nDaily reconciliations. There were 61 UK business days in Q2. All 61 reconciliations were finished by the 11:00 deadline, and none showed a shortfall.\n\nQ1 breach, now closed. On Thursday 12 March the EUR reconciliation was finished at 11:20, after the deadline, because the reconciliation tool could not load a bank statement file after the bank changed its file format. There was no shortfall. We reported the breach to the FCA on 13 March (SG-2026-01). Treasury Operations now checks at 15:00 every business day that each bank's statement file has arrived.\n\nMonthly returns. The first monthly safeguarding return (May) was submitted on 12 June. The June return was submitted on 14 July, ahead of the deadline of 21 July.\n\nAnnual audit. Fernside & Co LLP, our safeguarding auditor since October 2025, completed the audit for 2025 on 27 March 2026. It gave a reasonable assurance opinion with two low-rated findings, both closed by 30 April. Interim fieldwork for the 2026 audit (KPC-2026-0326) has been brought forward to 7 to 25\n\nSeptember 2026.",
+              "title": "Compliance Monitoring Report Q2 2026.pdf",
+              "chunkId": "b905c4f4-732f-451e-91d5-c26009566213",
+              "pageEnd": 2,
+              "pageStart": 1,
+              "documentId": "cc05c310-506e-4fed-9b85-a0e8214bd22b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 7,
+      "at": "2026-10-14T14:54:58.538Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZ9:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 4135,
+          "outputTokens": 144,
+          "reasoningTokens": 69
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": null,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            "callId": "call_kNqog0uB360aXFgOHYitNOsU"
+          },
+          {
+            "tool": "find_person",
+            "input": {
+              "query": "Tom Whitfield"
+            },
+            "callId": "call_qdxfjccUPneptVgGQCb1J8nj"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 8,
+      "at": "2026-10-14T14:54:58.629Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZD:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_kNqog0uB360aXFgOHYitNOsU",
+        "output": {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "title": "FCA Annual Regulatory Return 2026.pdf",
+          "chunks": [
+            {
+              "text": "# Annual Regulatory Return 2026\n\nKestrel Pay Ltd, an authorised electronic money institution (FRN 999901)\n\nReporting period: 1 July 2025 to 30 June 2026\n\nSubmitted to the Financial Conduct Authority on 15 September 2026\n\n| Item | Detail |\n| --- | --- |\n| Registered office | 12 Harrow Yard, London EC2A 4PN, United Kingdom |\n| Scope | Kestrel Pay Ltd only; Kestrel Pay Europe Ltd reports to the Central Bank of Ireland |\n| Prepared by | Legal and Compliance |\n| Regulatory contact | Sofia Lindqvist, Compliance Officer |\n| Legal contact | Helen Marsh, General Counsel |\n| Classification | Confidential: submitted under FSMA 2000, section 165 |",
+              "chunkId": "6113f380-7a2a-4a5c-b577-2758eb1aee7c",
+              "pageEnd": 1,
+              "section": "Annual Regulatory Return 2026",
+              "pageStart": 1
+            },
+            {
+              "text": "## Contents\n\n| Part | Title | Pages |\n| --- | --- | --- |\n|  | Cover | 1 |\n|  | Contents | 2 |\n|  | Abbreviations | 3 |\n|  | Declaration | 4 |\n| 1 | Firm information | 5 to 8 |\n| 2 | Governance and senior managers | 9 to 12 |\n| 3 | Capital adequacy | 13 to 28 |\n| 4 | Safeguarding of relevant funds | 29 to 403 |\n| 5 | Payment transactions by product and region | 404 to 637 |\n| 6 | Fraud reporting | 638 to 796 |\n| 7 | Complaints | 797 to 868 |\n| 8 | Operational and security incidents | 869 to 892 |\n| 9 | Outsourcing and third parties | 893 to 894 |\n| A | Annex A: daily transaction statistics | 895 to 2,499 |\n| B | Annex B: merchant movements register | 2,500 to 3,000 |",
+              "chunkId": "74206d8a-ad44-4475-91e6-1b931142f708",
+              "pageEnd": 2,
+              "section": "Contents",
+              "pageStart": 2
+            },
+            {
+              "text": "## Abbreviations\n\n| Term | Meaning |\n| --- | --- |\n| APP | Authorised push payment |\n| CET1 | Common equity tier 1 capital |\n| EDD | Enhanced due diligence |\n| EMI | Electronic money institution |\n| EMRs | Electronic Money Regulations 2011 |\n| FOS | Financial Ombudsman Service |\n| FRN | Firm reference number |\n| MCC | Merchant category code |\n| PSRs | Payment Services Regulations 2017 |\n| SMF | Senior management function |\n| Relevant funds | Funds received from or for customers that must be safeguarded |",
+              "chunkId": "1218a0f2-e769-48da-8996-031182efd859",
+              "pageEnd": 3,
+              "section": "Abbreviations",
+              "pageStart": 3
+            },
+            {
+              "text": "## Declaration\n\nWe confirm that this return has been prepared in accordance with the Electronic Money Regulations 2011, the Payment Services Regulations 2017 and the reporting rules in SUP 16. To the best of our knowledge and belief, the information in this return is complete and accurate, and Kestrel Pay Ltd met its safeguarding and capital requirements throughout the reporting period, except as disclosed in Part 4 and Schedule 8.\n\nThe board approved this return on 9 September 2026. Where a figure in a schedule differs from the audited financial statements for the year ended 31 December 2025, the schedule explains the difference.\n\n| Signed for the firm | Role | Date |\n| --- | --- | --- |\n| Amara Okafor | Chief Executive Officer (SMF1) | 9 September 2026 |\n| Daniel Reyes | Chief Financial Officer (SMF2) | 9 September 2026 |\n| Sofia Lindqvist | Compliance Officer (SMF16, SMF17) | 9 September 2026 |",
+              "chunkId": "e01b511b-0d4d-4904-ac54-84bda427dbce",
+              "pageEnd": 4,
+              "section": "Declaration",
+              "pageStart": 4
+            },
+            {
+              "text": "## Part 1. Firm information\n\n### 1.1 Firm details\n\n| Field | Value |\n| --- | --- |\n| Legal name | Kestrel Pay Ltd |\n| Company number | 10873215 |\n| Firm reference number | 999901 |\n| Status | Authorised electronic money institution |\n| Incorporated | England and Wales, 2017 |\n| Financial year end | 31 December |\n| Reporting currency | GBP |\n| Group revenue, year ended 31 December 2025 | £138.4m |\n| Group merchant customers at 30 June 2026 | 48,210 |\n| Business accounts open at 30 June 2026 | 30,600 |\n| Customer funds safeguarded at 30 June 2026 | £1.02bn (group £1.24bn) |\n| Group employees at 30 June 2026 | 589 |\n\nKestrel Pay Ltd provides card acceptance, business current accounts and supplier and payroll payouts to small and medium businesses. It holds no agents and uses no distributors of electronic money.",
+              "chunkId": "eb701e5a-6994-4044-8dd9-7959f7ab45c0",
+              "pageEnd": 5,
+              "section": "1.1 Firm details",
+              "pageStart": 5
+            },
+            {
+              "text": "### 1.2 Group structure, offices and headcount\n\nKestrel Pay Europe Ltd, the group's Irish subsidiary, serves EU merchants under its own authorisation from the Central Bank of Ireland and is outside this return. Group figures are given where the FCA asks for them.\n\n| Office | Role | Employees at 30 June 2026 |\n| --- | --- | --- |\n| London | Head office, all functions | 334 |\n| Lisbon | Engineering, operations and customer support | 168 |\n| Dublin | Kestrel Pay Europe Ltd | 73 |\n| Remote (UK) |  | 14 |\n| Total |  | 589 |",
+              "chunkId": "a6adf92c-7912-4f6f-9b43-eebe528bca49",
+              "pageEnd": 6,
+              "section": "1.2 Group structure, offices and headcount",
+              "pageStart": 6
+            },
+            {
+              "text": "### 1.3 Products\n\n| Product | Service | Regulated activity |\n| --- | --- | --- |\n| Kestrel Checkout | Card acceptance | Acquiring of payment transactions |\n| Kestrel Accounts | Business current accounts | Issuing e-money |\n| Kestrel Payouts | Supplier and payroll payouts | Money remittance |\n\nNo new product was launched in the reporting period. From 12 January 2026 UK merchants can hold EUR balances in Kestrel Accounts.",
+              "chunkId": "aed07e33-7b97-466d-a3ef-f3e759a32ee1",
+              "pageEnd": 7,
+              "section": "1.3 Products",
+              "pageStart": 7
+            },
+            {
+              "text": "### 1.4 Changes in the reporting period\n\nThere was no change in control and no change to the firm's permissions. The firm appointed Fernside & Co LLP as its safeguarding auditor in October 2025 and notified the FCA on 14 October 2025.",
+              "chunkId": "7272c051-c345-4441-948c-763b7f3177b2",
+              "pageEnd": 8,
+              "section": "1.4 Changes in the reporting period",
+              "pageStart": 8
+            },
+            {
+              "text": "## Part 2. Governance and senior managers\n\n### 2.1 Senior managers\n\n| Name | Function | Since |\n| --- | --- | --- |\n| Amara Okafor | SMF1 Chief Executive | 2 May 2017 |\n| Daniel Reyes | SMF2 Chief Finance | 11 January 2021 |\n| Sofia Lindqvist | SMF16 Compliance Oversight | 3 April 2023 |\n| Sofia Lindqvist | SMF17 Money Laundering Reporting | 3 April 2023 |\n| Priya Nair | SMF24 Chief Operations | 5 September 2022 |",
+              "chunkId": "7e221f56-9e48-418c-8be3-25eb0a784d5e",
+              "pageEnd": 9,
+              "section": "2.1 Senior managers",
+              "pageStart": 9
+            },
+            {
+              "text": "### 2.2 Board and committees\n\n| Body | Chair | Meetings in period |\n| --- | --- | --- |\n| Board | Independent chair | 9 |\n| Audit and Risk Committee | Independent director | 6 |\n| Safeguarding Committee | Daniel Reyes | 12 |\n| Financial Crime Committee | Sofia Lindqvist | 12 |",
+              "chunkId": "3678a64e-e901-4760-a5c4-da8fd4d35ffd",
+              "pageEnd": 10,
+              "section": "2.2 Board and committees",
+              "pageStart": 10
+            },
+            {
+              "text": "### 2.3 Responsibility for this return\n\nHelen Marsh, General Counsel, owns the preparation of this return. Sofia Lindqvist reviews the safeguarding, fraud and complaints schedules, and Tom Whitfield, Financial Controller, prepares the capital and safeguarding figures.",
+              "chunkId": "3feb387e-ec96-47a7-b61d-93d069ffdf21",
+              "pageEnd": 11,
+              "section": "2.3 Responsibility for this return",
+              "pageStart": 11
+            },
+            {
+              "text": "### 2.4 Training\n\nAll staff completed the annual financial crime and safeguarding training by 31 March 2026. Completion was 99.2%; the remaining staff were on long-term leave.",
+              "chunkId": "5a52e89d-f65d-4c69-a982-67aa122cffc6",
+              "pageEnd": 12,
+              "section": "2.4 Training",
+              "pageStart": 12
+            },
+            {
+              "text": "## Part 3. Capital adequacy\n\nThe firm calculates its own funds requirement for issuing e-money under Method D (2% of average outstanding e-money) and, for payment services not related to e-money, under Method B on its monthly payment volume. Own funds are common equity tier 1 capital only.",
+              "chunkId": "2a7608fb-bf5d-4424-8496-613a5af2ff24",
+              "pageEnd": 13,
+              "section": "Part 3. Capital adequacy",
+              "pageStart": 13
+            },
+            {
+              "text": "### 3.1 Own funds at 30 June 2026\n\n| Component | Amount |\n| --- | --- |\n| Share capital and premium | £52,000,000.00 |\n| Retained earnings | £14,826,410.00 |\n| Less intangible assets | (£5,512,300.00) |\n| Common equity tier 1 | £61,314,110.00 |",
+              "chunkId": "ad871f2b-9c42-4e98-9e25-bb4379107c8f",
+              "pageEnd": 14,
+              "section": "3.1 Own funds at 30 June 2026",
+              "pageStart": 14
+            },
+            {
+              "text": "### 3.2 Stress testing\n\nThe board's capital stress test assumes a 30% fall in revenue over two quarters and a single operational loss of £4m. Own funds stay above the requirement in every scenario.",
+              "chunkId": "445449c4-9637-47fe-8c6c-a5543becc49f",
+              "pageEnd": 15,
+              "section": "3.2 Stress testing",
+              "pageStart": 15
+            },
+            {
+              "text": "### 3.3 Wind-down plan\n\nThe wind-down plan was refreshed in January 2026. It sets aside £9.5m to return relevant funds and close the business over nine months.",
+              "chunkId": "c8711c40-9c3b-48d8-9092-cc4c84d8c411",
+              "pageEnd": 16,
+              "section": "3.3 Wind-down plan",
+              "pageStart": 16
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: July 2025\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £586,285,339.32 |\n| Method D requirement (2%) | £11,725,706.79 |\n| Monthly payment volume, Checkout and Payouts | £1,671,902,788.12 |\n| Method B requirement | £5,529,756.97 |\n| Total own funds requirement | £17,255,463.76 |\n| Own funds (CET1) | £54,928,217.88 |\n| Surplus | £37,672,754.12 |\n| Coverage | 3.18x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "a9841c77-7f1e-46cd-bf75-ecca48ec7b8e",
+              "pageEnd": 17,
+              "section": "Schedule 3. Own funds requirement: July 2025",
+              "pageStart": 17
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: August 2025\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £611,222,233.51 |\n| Method D requirement (2%) | £12,224,444.67 |\n| Monthly payment volume, Checkout and Payouts | £1,765,046,914.94 |\n| Method B requirement | £5,762,617.29 |\n| Total own funds requirement | £17,987,061.96 |\n| Own funds (CET1) | £55,756,380.62 |\n| Surplus | £37,769,318.66 |\n| Coverage | 3.10x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "b760a0c0-2c8d-41fd-9c9b-77f7f355766c",
+              "pageEnd": 18,
+              "section": "Schedule 3. Own funds requirement: August 2025",
+              "pageStart": 18
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: September 2025\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £613,284,183.50 |\n| Method D requirement (2%) | £12,265,683.67 |\n| Monthly payment volume, Checkout and Payouts | £1,761,509,009.80 |\n| Method B requirement | £5,753,772.52 |\n| Total own funds requirement | £18,019,456.19 |\n| Own funds (CET1) | £56,297,616.93 |\n| Surplus | £38,278,160.74 |\n| Coverage | 3.12x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "269c3fa8-18ee-45ce-ac3e-32b56e6364d6",
+              "pageEnd": 19,
+              "section": "Schedule 3. Own funds requirement: September 2025",
+              "pageStart": 19
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: October 2025\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £612,473,042.92 |\n| Method D requirement (2%) | £12,249,460.86 |\n| Monthly payment volume, Checkout and Payouts | £1,751,518,638.69 |\n| Method B requirement | £5,728,796.60 |\n| Total own funds requirement | £17,978,257.46 |\n| Own funds (CET1) | £56,844,258.45 |\n| Surplus | £38,866,000.99 |\n| Coverage | 3.16x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "d0e78aa0-7fc3-49b9-8a3e-3d7128ad0ccf",
+              "pageEnd": 20,
+              "section": "Schedule 3. Own funds requirement: October 2025",
+              "pageStart": 20
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: November 2025\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £629,594,579.41 |\n| Method D requirement (2%) | £12,591,891.59 |\n| Monthly payment volume, Checkout and Payouts | £1,873,468,586.86 |\n| Method B requirement | £6,033,671.47 |\n| Total own funds requirement | £18,625,563.06 |\n| Own funds (CET1) | £57,352,744.87 |\n| Surplus | £38,727,181.81 |\n| Coverage | 3.08x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "25cd50fa-8f72-4663-8433-59d2066b40f2",
+              "pageEnd": 21,
+              "section": "Schedule 3. Own funds requirement: November 2025",
+              "pageStart": 21
+            }
+          ],
+          "nextChunk": 21,
+          "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 9,
+      "at": "2026-10-14T14:54:58.629Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZD:1",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_qdxfjccUPneptVgGQCb1J8nj",
+        "output": {
+          "people": [
+            {
+              "id": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+              "kind": "user",
+              "name": "Tom Whitfield",
+              "email": "tom.whitfield@kestrelpay.example"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 10,
+      "at": "2026-10-14T14:55:02.059Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZF:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 8439,
+          "outputTokens": 139,
+          "reasoningTokens": 96
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": 21,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            "callId": "call_Qj9QkMyzytYzErYotsRB2Vbs"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 11,
+      "at": "2026-10-14T14:55:02.160Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZJ:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_Qj9QkMyzytYzErYotsRB2Vbs",
+        "output": {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "title": "FCA Annual Regulatory Return 2026.pdf",
+          "chunks": [
+            {
+              "text": "### Schedule 3. Own funds requirement: December 2025\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £640,830,648.74 |\n| Method D requirement (2%) | £12,816,612.97 |\n| Monthly payment volume, Checkout and Payouts | £1,855,705,714.96 |\n| Method B requirement | £5,989,264.29 |\n| Total own funds requirement | £18,805,877.26 |\n| Own funds (CET1) | £57,965,280.26 |\n| Surplus | £39,159,403.00 |\n| Coverage | 3.08x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "ac13eb3f-4807-446f-a319-f5be3b6291b4",
+              "pageEnd": 22,
+              "section": "Schedule 3. Own funds requirement: December 2025",
+              "pageStart": 22
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: January 2026\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £649,589,590.50 |\n| Method D requirement (2%) | £12,991,791.81 |\n| Monthly payment volume, Checkout and Payouts | £1,846,342,149.50 |\n| Method B requirement | £5,965,855.37 |\n| Total own funds requirement | £18,957,647.18 |\n| Own funds (CET1) | £58,050,932.95 |\n| Surplus | £39,093,285.77 |\n| Coverage | 3.06x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "af208541-17cd-4565-913b-cab9383a0d4e",
+              "pageEnd": 23,
+              "section": "Schedule 3. Own funds requirement: January 2026",
+              "pageStart": 23
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: February 2026\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £665,165,084.83 |\n| Method D requirement (2%) | £13,303,301.70 |\n| Monthly payment volume, Checkout and Payouts | £1,933,310,211.17 |\n| Method B requirement | £6,183,275.53 |\n| Total own funds requirement | £19,486,577.23 |\n| Own funds (CET1) | £58,804,048.01 |\n| Surplus | £39,317,470.78 |\n| Coverage | 3.02x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "10bb8158-0729-46da-9663-8e98f34ab944",
+              "pageEnd": 24,
+              "section": "Schedule 3. Own funds requirement: February 2026",
+              "pageStart": 24
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: March 2026\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £683,839,657.90 |\n| Method D requirement (2%) | £13,676,793.16 |\n| Monthly payment volume, Checkout and Payouts | £1,916,647,954.80 |\n| Method B requirement | £6,141,619.89 |\n| Total own funds requirement | £19,818,413.05 |\n| Own funds (CET1) | £59,134,544.54 |\n| Surplus | £39,316,131.49 |\n| Coverage | 2.98x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "8e5a9517-d94f-4176-a5f9-481d9ed05c6c",
+              "pageEnd": 25,
+              "section": "Schedule 3. Own funds requirement: March 2026",
+              "pageStart": 25
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: April 2026\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £694,001,258.96 |\n| Method D requirement (2%) | £13,880,025.18 |\n| Monthly payment volume, Checkout and Payouts | £1,934,529,301.35 |\n| Method B requirement | £6,186,323.25 |\n| Total own funds requirement | £20,066,348.43 |\n| Own funds (CET1) | £59,954,814.01 |\n| Surplus | £39,888,465.58 |\n| Coverage | 2.99x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "8c3ede9b-539f-4634-85a7-3c81dd59f927",
+              "pageEnd": 26,
+              "section": "Schedule 3. Own funds requirement: April 2026",
+              "pageStart": 26
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: May 2026\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £688,576,742.31 |\n| Method D requirement (2%) | £13,771,534.85 |\n| Monthly payment volume, Checkout and Payouts | £2,035,598,034.14 |\n| Method B requirement | £6,438,995.09 |\n| Total own funds requirement | £20,210,529.94 |\n| Own funds (CET1) | £60,374,572.32 |\n| Surplus | £40,164,042.38 |\n| Coverage | 2.99x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "956097da-523f-41a7-b947-9e167482f1c5",
+              "pageEnd": 27,
+              "section": "Schedule 3. Own funds requirement: May 2026",
+              "pageStart": 27
+            },
+            {
+              "text": "### Schedule 3. Own funds requirement: June 2026\n\n| Line | Amount |\n| --- | --- |\n| Average outstanding e-money | £701,548,109.09 |\n| Method D requirement (2%) | £14,030,962.18 |\n| Monthly payment volume, Checkout and Payouts | £2,000,533,051.58 |\n| Method B requirement | £6,351,332.63 |\n| Total own funds requirement | £20,382,294.81 |\n| Own funds (CET1) | £61,314,110.00 |\n| Surplus | £40,931,815.19 |\n| Coverage | 3.01x |\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 3.",
+              "chunkId": "4c61f988-23ef-459d-9347-76259e039229",
+              "pageEnd": 28,
+              "section": "Schedule 3. Own funds requirement: June 2026",
+              "pageStart": 28
+            },
+            {
+              "text": "## Part 4. Safeguarding of relevant funds\n\nThe firm safeguards relevant funds by segregation, in designated safeguarding accounts that the banks have acknowledged in writing: ACB-SG-01 at Albion Clearing Bank for GBP, and BM-SG-02 at Banco Meridional, S.A. for EUR, opened on 12 January 2026 for UK merchants' EUR balances. Funds received for customers reach a safeguarding account by the end of the business day after receipt.\n\nAt 30 June 2026 the firm held £1.02bn of customer funds: £0.94bn in GBP and €95m (about £0.08bn) in EUR.",
+              "chunkId": "cbb715e5-4ee5-4873-b6d3-c3f37b85ce0e",
+              "pageEnd": 29,
+              "section": "Part 4. Safeguarding of relevant funds",
+              "pageStart": 29
+            },
+            {
+              "text": "### 4.1 Reconciliation\n\nEvery UK business day, by 11:00, Treasury Operations compares the requirement (e-money outstanding plus Checkout settlements in transit) with the resource (cleared balances on the safeguarding accounts) for each currency, as at the 17:00 cut-off on the previous business day. Any shortfall is topped up from the firm's own funds by 12:00. Since March 2026 Treasury Operations also checks at 15:00 that each bank's statement file has arrived.",
+              "chunkId": "fcb26327-ac8a-4fdc-ae58-f42e912b2dcd",
+              "pageEnd": 30,
+              "section": "4.1 Reconciliation",
+              "pageStart": 30
+            },
+            {
+              "text": "### 4.2 Safeguarding audit\n\nFernside & Co LLP completed the annual safeguarding audit for the year ended 31 December 2025 on 27 March 2026 with a reasonable assurance opinion and two low-rated findings, both closed by 30 April 2026. The FCA's new safeguarding rules applied from 7 May 2026; the firm has submitted a monthly safeguarding return since May 2026.",
+              "chunkId": "04c7e0dc-c7e7-4f29-90b3-1a8526f64c48",
+              "pageEnd": 31,
+              "section": "4.2 Safeguarding audit",
+              "pageStart": 31
+            },
+            {
+              "text": "### 4.3 Breaches\n\nTwo safeguarding breaches occurred in the period, SG-2025-02 and SG-2026-01. Each is described on the reconciliation page for the position it affected, in Schedules 4A and 4B.",
+              "chunkId": "97816f1c-c99e-4ada-9ca5-2fdda8ac636d",
+              "pageEnd": 32,
+              "section": "4.3 Breaches",
+              "pageStart": 32
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 1 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £440,967,349.14 |\n| E-money outstanding: Payouts wallets | £122,176,863.09 |\n| Checkout settlements in transit | £172,335,590.78 |\n| Requirement | £735,479,803.01 |\n| Resource: cleared balance on ACB-SG-01 | £735,972,934.08 |\n| Excess (shortfall) | £493,131.07 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £734,821,394.12 | £213,651,521.42 | £212,499,981.46 | £735,972,934.08 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "c9ed9420-b5ad-4679-bf10-c2c4d3f84cb4",
+              "pageEnd": 33,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 33
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 2 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £464,507,287.40 |\n| E-money outstanding: Payouts wallets | £120,956,007.05 |\n| Checkout settlements in transit | £173,692,666.27 |\n| Requirement | £759,155,960.72 |\n| Resource: cleared balance on ACB-SG-01 | £759,636,335.77 |\n| Excess (shortfall) | £480,375.05 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £735,972,934.08 | £176,327,698.70 | £152,664,297.01 | £759,636,335.77 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "183ce767-2c4b-42d7-8e01-aadabbd6d468",
+              "pageEnd": 34,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 34
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 3 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £465,884,161.17 |\n| E-money outstanding: Payouts wallets | £117,601,605.70 |\n| Checkout settlements in transit | £174,075,160.89 |\n| Requirement | £757,560,927.76 |\n| Resource: cleared balance on ACB-SG-01 | £757,893,696.42 |\n| Excess (shortfall) | £332,768.66 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £759,636,335.77 | £169,035,808.40 | £170,778,447.75 | £757,893,696.42 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "bc9dc314-0ddb-472f-b04a-b011f634efb9",
+              "pageEnd": 35,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 35
+            }
+          ],
+          "nextChunk": 35,
+          "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 12,
+      "at": "2026-10-14T14:55:06.151Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZM:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 12293,
+          "outputTokens": 128,
+          "reasoningTokens": 85
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": 35,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            "callId": "call_oxQSJxsVkBwkElYKzH1VQq90"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 13,
+      "at": "2026-10-14T14:55:06.255Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZQ:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_oxQSJxsVkBwkElYKzH1VQq90",
+        "output": {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "title": "FCA Annual Regulatory Return 2026.pdf",
+          "chunks": [
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 4 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £443,388,451.06 |\n| E-money outstanding: Payouts wallets | £123,754,436.55 |\n| Checkout settlements in transit | £174,836,206.38 |\n| Requirement | £741,979,093.99 |\n| Resource: cleared balance on ACB-SG-01 | £742,586,498.64 |\n| Excess (shortfall) | £607,404.65 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £757,893,696.42 | £195,357,638.65 | £210,664,836.43 | £742,586,498.64 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "60e9b2a0-743c-4e8d-9669-fb0b0801c1ca",
+              "pageEnd": 36,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 36
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 7 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £464,514,149.31 |\n| E-money outstanding: Payouts wallets | £117,527,181.48 |\n| Checkout settlements in transit | £172,796,489.15 |\n| Requirement | £754,837,819.94 |\n| Resource: cleared balance on ACB-SG-01 | £755,277,881.42 |\n| Excess (shortfall) | £440,061.48 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £742,586,498.64 | £194,188,141.79 | £181,496,759.01 | £755,277,881.42 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "bae521b8-b852-48e1-928d-803e602f5d0a",
+              "pageEnd": 37,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 37
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 8 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £452,893,449.60 |\n| E-money outstanding: Payouts wallets | £118,377,324.78 |\n| Checkout settlements in transit | £177,447,467.41 |\n| Requirement | £748,718,241.79 |\n| Resource: cleared balance on ACB-SG-01 | £749,157,258.87 |\n| Excess (shortfall) | £439,017.08 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £755,277,881.42 | £160,302,273.17 | £166,422,895.72 | £749,157,258.87 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "51e8ebfa-3288-4d16-800d-e4b72f62a4c6",
+              "pageEnd": 38,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 38
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 9 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £456,637,466.19 |\n| E-money outstanding: Payouts wallets | £124,205,659.42 |\n| Checkout settlements in transit | £174,103,511.89 |\n| Requirement | £754,946,637.50 |\n| Resource: cleared balance on ACB-SG-01 | £755,039,024.35 |\n| Excess (shortfall) | £92,386.85 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £749,157,258.87 | £191,402,012.79 | £185,520,247.31 | £755,039,024.35 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "2c4aff17-5409-4d40-aba5-7f8a858e5d51",
+              "pageEnd": 39,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 39
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 10 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £459,185,032.42 |\n| E-money outstanding: Payouts wallets | £120,711,229.63 |\n| Checkout settlements in transit | £171,946,702.63 |\n| Requirement | £751,842,964.68 |\n| Resource: cleared balance on ACB-SG-01 | £752,613,766.10 |\n| Excess (shortfall) | £770,801.42 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £755,039,024.35 | £212,161,418.98 | £214,586,677.23 | £752,613,766.10 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "ae6b07cb-2450-4f6f-bb73-9a21c1a0b565",
+              "pageEnd": 40,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 40
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 11 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £467,366,949.56 |\n| E-money outstanding: Payouts wallets | £124,528,161.25 |\n| Checkout settlements in transit | £172,387,811.11 |\n| Requirement | £764,282,921.92 |\n| Resource: cleared balance on ACB-SG-01 | £764,737,288.79 |\n| Excess (shortfall) | £454,366.87 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £752,613,766.10 | £225,431,141.08 | £213,307,618.39 | £764,737,288.79 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "467cae5e-1285-442e-85d7-c9cb84c8175c",
+              "pageEnd": 41,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 41
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 14 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £468,462,585.59 |\n| E-money outstanding: Payouts wallets | £124,577,301.30 |\n| Checkout settlements in transit | £173,212,437.55 |\n| Requirement | £766,252,324.44 |\n| Resource: cleared balance on ACB-SG-01 | £767,061,844.56 |\n| Excess (shortfall) | £809,520.12 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £764,737,288.79 | £158,582,820.46 | £156,258,264.69 | £767,061,844.56 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "36a6649d-04e9-4eb8-8f66-e7e4fdbb91ae",
+              "pageEnd": 42,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 42
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 15 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £457,179,655.74 |\n| E-money outstanding: Payouts wallets | £119,144,981.11 |\n| Checkout settlements in transit | £174,175,655.58 |\n| Requirement | £750,500,292.43 |\n| Resource: cleared balance on ACB-SG-01 | £751,275,991.86 |\n| Excess (shortfall) | £775,699.43 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £767,061,844.56 | £193,996,423.58 | £209,782,276.28 | £751,275,991.86 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "81daa826-32bf-431c-a718-2e23da74017b",
+              "pageEnd": 43,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 43
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 16 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £469,241,582.93 |\n| E-money outstanding: Payouts wallets | £124,099,900.25 |\n| Checkout settlements in transit | £176,672,726.81 |\n| Requirement | £770,014,209.99 |\n| Resource: cleared balance on ACB-SG-01 | £770,792,871.13 |\n| Excess (shortfall) | £778,661.14 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £751,275,991.86 | £165,855,255.19 | £146,338,375.92 | £770,792,871.13 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "f12d77b6-78a0-4f3a-abaa-8ed286a105ea",
+              "pageEnd": 44,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 44
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 17 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £470,271,544.67 |\n| E-money outstanding: Payouts wallets | £119,888,841.50 |\n| Checkout settlements in transit | £179,891,827.08 |\n| Requirement | £770,052,213.25 |\n| Resource: cleared balance on ACB-SG-01 | £770,777,681.01 |\n| Excess (shortfall) | £725,467.76 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £770,792,871.13 | £138,876,880.36 | £138,892,070.48 | £770,777,681.01 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "1ae05d73-2afd-4eb4-997f-19cd350f7725",
+              "pageEnd": 45,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 45
+            }
+          ],
+          "nextChunk": 45,
+          "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 14,
+      "at": "2026-10-14T14:55:09.734Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZS:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 16115,
+          "outputTokens": 152,
+          "reasoningTokens": 109
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": 45,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            "callId": "call_nrPOgwauxAvRiWDnkDhAIOch"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 15,
+      "at": "2026-10-14T14:55:09.857Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZW:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_nrPOgwauxAvRiWDnkDhAIOch",
+        "output": {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "title": "FCA Annual Regulatory Return 2026.pdf",
+          "chunks": [
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 18 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £456,733,825.88 |\n| E-money outstanding: Payouts wallets | £124,018,931.30 |\n| Checkout settlements in transit | £178,189,446.83 |\n| Requirement | £758,942,204.01 |\n| Resource: cleared balance on ACB-SG-01 | £759,332,490.46 |\n| Excess (shortfall) | £390,286.45 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £770,777,681.01 | £220,292,094.97 | £231,737,285.52 | £759,332,490.46 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "0f9cb347-0de0-4ccf-bc0e-6e50cad58d48",
+              "pageEnd": 46,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 46
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 21 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £461,909,658.76 |\n| E-money outstanding: Payouts wallets | £121,120,117.01 |\n| Checkout settlements in transit | £180,002,460.26 |\n| Requirement | £763,032,236.03 |\n| Resource: cleared balance on ACB-SG-01 | £763,246,483.95 |\n| Excess (shortfall) | £214,247.92 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £759,332,490.46 | £208,680,585.72 | £204,766,592.23 | £763,246,483.95 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "a21c2fed-8ef0-48c6-9497-00a48ab70a7b",
+              "pageEnd": 47,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 47
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 22 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £467,273,788.58 |\n| E-money outstanding: Payouts wallets | £120,531,349.88 |\n| Checkout settlements in transit | £174,616,158.70 |\n| Requirement | £762,421,297.16 |\n| Resource: cleared balance on ACB-SG-01 | £763,172,651.00 |\n| Excess (shortfall) | £751,353.84 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £763,246,483.95 | £194,601,055.51 | £194,674,888.46 | £763,172,651.00 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "334afb34-9ffc-4da6-bb83-a6930fe22bd5",
+              "pageEnd": 48,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 48
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 23 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £458,132,397.01 |\n| E-money outstanding: Payouts wallets | £119,497,671.56 |\n| Checkout settlements in transit | £177,330,373.78 |\n| Requirement | £754,960,442.35 |\n| Resource: cleared balance on ACB-SG-01 | £755,660,583.85 |\n| Excess (shortfall) | £700,141.50 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £763,172,651.00 | £174,881,955.55 | £182,394,022.70 | £755,660,583.85 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "622fbe9a-2d91-4e8a-924b-0666c9387ad4",
+              "pageEnd": 49,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 49
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 24 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £464,576,165.82 |\n| E-money outstanding: Payouts wallets | £124,180,286.66 |\n| Checkout settlements in transit | £178,591,492.60 |\n| Requirement | £767,347,945.08 |\n| Resource: cleared balance on ACB-SG-01 | £767,455,083.54 |\n| Excess (shortfall) | £107,138.46 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £755,660,583.85 | £158,254,466.98 | £146,459,967.29 | £767,455,083.54 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "3d17f2c6-acf8-45e4-bda3-dc162a56685b",
+              "pageEnd": 50,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 50
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 25 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £470,582,828.80 |\n| E-money outstanding: Payouts wallets | £124,071,201.92 |\n| Checkout settlements in transit | £175,748,059.15 |\n| Requirement | £770,402,089.87 |\n| Resource: cleared balance on ACB-SG-01 | £770,622,306.33 |\n| Excess (shortfall) | £220,216.46 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £767,455,083.54 | £182,491,205.64 | £179,323,982.85 | £770,622,306.33 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "ac63184e-22c6-430e-a4b9-0013d490cbe5",
+              "pageEnd": 51,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 51
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 28 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £456,660,382.95 |\n| E-money outstanding: Payouts wallets | £118,628,745.39 |\n| Checkout settlements in transit | £172,807,951.90 |\n| Requirement | £748,097,080.24 |\n| Resource: cleared balance on ACB-SG-01 | £748,536,578.95 |\n| Excess (shortfall) | £439,498.71 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £770,622,306.33 | £169,831,475.86 | £191,917,203.24 | £748,536,578.95 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "6b45d37e-00e1-4fdd-b794-a3f181442980",
+              "pageEnd": 52,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 52
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 29 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £448,368,201.12 |\n| E-money outstanding: Payouts wallets | £118,857,040.13 |\n| Checkout settlements in transit | £173,454,085.13 |\n| Requirement | £740,679,326.38 |\n| Resource: cleared balance on ACB-SG-01 | £741,518,694.60 |\n| Excess (shortfall) | £839,368.22 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £748,536,578.95 | £159,492,643.80 | £166,510,528.15 | £741,518,694.60 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "44d16fbb-7551-4478-ae71-200cc49b3d49",
+              "pageEnd": 53,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 53
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 30 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £449,832,245.89 |\n| E-money outstanding: Payouts wallets | £125,141,616.93 |\n| Checkout settlements in transit | £174,054,321.89 |\n| Requirement | £749,028,184.71 |\n| Resource: cleared balance on ACB-SG-01 | £749,103,871.90 |\n| Excess (shortfall) | £75,687.19 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £741,518,694.60 | £172,131,843.68 | £164,546,666.38 | £749,103,871.90 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "d62301c7-fe58-4542-93a2-107a9e6d77f2",
+              "pageEnd": 54,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 54
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 31 July 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £450,881,076.54 |\n| E-money outstanding: Payouts wallets | £119,787,069.59 |\n| Checkout settlements in transit | £182,850,345.42 |\n| Requirement | £753,518,491.55 |\n| Resource: cleared balance on ACB-SG-01 | £754,394,536.56 |\n| Excess (shortfall) | £876,045.01 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £749,103,871.90 | £177,763,177.11 | £172,472,512.45 | £754,394,536.56 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "4bc755f4-cd10-4ab6-8ce0-ff1854ccbebc",
+              "pageEnd": 55,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 55
+            }
+          ],
+          "nextChunk": 55,
+          "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 16,
+      "at": "2026-10-14T14:55:14.581Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRHZY:0",
+      "data": {
+        "type": "compaction",
+        "summary": "- User asked: find the FCA Annual Regulatory Return 2026, read it and keep following `nextChunk` until six parts have been read; do not search again after finding it. Then email Tom Whitfield three lines on what those parts cover.\n- Found document **FCA Annual Regulatory Return 2026.pdf**, `/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf`, document ID `121af263-ba7e-40f8-8194-b17758262182`.\n- Contents list Parts 1–6 as: Firm information (pp. 5–8); Governance and senior managers (pp. 9–12); Capital adequacy (pp. 13–28); Safeguarding of relevant funds (pp. 29–403); Payment transactions by product and region (pp. 404–637); Fraud reporting (pp. 638–796).\n- Initial `read_document` returned cover, contents, abbreviations and further chunks, but its result is truncated in the event record. A subsequent read used `fromChunk: 21`, returning capital adequacy schedules around pages 22–23. **The six parts have not been confirmed read in full**; continue reading the same document with `nextChunk`, without searching again.\n- Tom confirmed via `find_person`: Tom Whitfield, `tom.whitfield@kestrelpay.example`, person ID `e8a6bf31-0196-5c63-8cb6-9db675db14fa`.\n- No email has been sent yet. Once the requested reading is complete, email Tom exactly three lines summarizing the parts’ coverage.\n\nPlan in force for user message smoke-bb06bfe4 (call call_xl73Y8BZFik6rzZ5ibJ1lGg9; it's already made, so don't call make_plan again): [{\"note\":null,\"tool\":\"send_mail\",\"targets\":[\"Tom Whitfield (tom.whitfield@kestrelpay.example)\"],\"documents\":[]}]\nTool calls:\n- call_xl73Y8BZFik6rzZ5ibJ1lGg9 make_plan {\"goal\":\"Find and read the first six parts of the FCA Annual Regulatory Return 2026, then email Tom Whitfield three lines summarizing what those parts cover.\",\"steps\":[\"Search for the FCA Annual Regulatory Return 2026.\",\"Read it starting at the beginning and follow nextChunk until six parts have been read; do not search again after finding it.\",\"Look up Tom Whitfield to confirm his email address.\",\"Email Tom a three-line summary based on the six parts read.\"],\"writes\":[{\"note\":null,\"tool\":\"send_mail\",\"targets\":[\"Tom Whitfield (tom.whitfield@kestrelpay.example)\"],\"documents\":[]}]}: ok\n- call_QJaSI1pYIGelRI18KmATJPXC search_documents {\"k\":5,\"query\":\"FCA Annual Regulatory Return 2026\"}: ok\n- call_kNqog0uB360aXFgOHYitNOsU read_document {\"fromChunk\":null,\"documentId\":\"121af263-ba7e-40f8-8194-b17758262182\"}: ok\n- call_qdxfjccUPneptVgGQCb1J8nj find_person {\"query\":\"Tom Whitfield\"}: ok\n- call_Qj9QkMyzytYzErYotsRB2Vbs read_document {\"fromChunk\":21,\"documentId\":\"121af263-ba7e-40f8-8194-b17758262182\"}: ok\nUser messages: smoke-bb06bfe4",
+        "throughSeq": 11
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 17,
+      "at": "2026-10-14T14:55:19.508Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ00:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 10491,
+          "outputTokens": 341,
+          "reasoningTokens": 298
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": 55,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            "callId": "call_Drhlkg30fRgJJca6GwUmTqTP"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 18,
+      "at": "2026-10-14T14:55:19.622Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ03:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_Drhlkg30fRgJJca6GwUmTqTP",
+        "output": {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "title": "FCA Annual Regulatory Return 2026.pdf",
+          "chunks": [
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 1 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £465,207,679.46 |\n| E-money outstanding: Payouts wallets | £122,280,265.87 |\n| Checkout settlements in transit | £178,049,552.97 |\n| Requirement | £765,537,498.30 |\n| Resource: cleared balance on ACB-SG-01 | £765,701,194.02 |\n| Excess (shortfall) | £163,695.72 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £754,394,536.56 | £139,061,429.09 | £127,754,771.63 | £765,701,194.02 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "bc6b3187-5ef0-4522-9c85-82d7b39deeb8",
+              "pageEnd": 56,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 56
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 4 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £468,770,956.11 |\n| E-money outstanding: Payouts wallets | £126,360,013.64 |\n| Checkout settlements in transit | £174,229,696.46 |\n| Requirement | £769,360,666.21 |\n| Resource: cleared balance on ACB-SG-01 | £770,192,548.19 |\n| Excess (shortfall) | £831,881.98 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £765,701,194.02 | £170,301,582.37 | £165,810,228.20 | £770,192,548.19 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "8a127f04-fad1-42fa-8977-d3042bccb071",
+              "pageEnd": 57,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 57
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 5 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £452,597,604.82 |\n| E-money outstanding: Payouts wallets | £120,880,793.08 |\n| Checkout settlements in transit | £184,000,265.33 |\n| Requirement | £757,478,663.23 |\n| Resource: cleared balance on ACB-SG-01 | £757,863,740.47 |\n| Excess (shortfall) | £385,077.24 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £770,192,548.19 | £219,537,923.25 | £231,866,730.97 | £757,863,740.47 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "138c6bcb-e95f-4239-a9c7-55ee7ffdbe15",
+              "pageEnd": 58,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 58
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 6 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £473,143,512.94 |\n| E-money outstanding: Payouts wallets | £121,558,212.15 |\n| Checkout settlements in transit | £182,798,135.19 |\n| Requirement | £777,499,860.28 |\n| Resource: cleared balance on ACB-SG-01 | £777,608,287.51 |\n| Excess (shortfall) | £108,427.23 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £757,863,740.47 | £188,589,770.52 | £168,845,223.48 | £777,608,287.51 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "91856154-20a7-4c48-980a-efbf26c6a339",
+              "pageEnd": 59,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 59
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 7 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £466,706,561.62 |\n| E-money outstanding: Payouts wallets | £122,321,601.16 |\n| Checkout settlements in transit | £183,075,324.01 |\n| Requirement | £772,103,486.79 |\n| Resource: cleared balance on ACB-SG-01 | £772,272,145.78 |\n| Excess (shortfall) | £168,658.99 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £777,608,287.51 | £160,019,677.47 | £165,355,819.20 | £772,272,145.78 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "4e8fad46-d8a4-45b0-ac6a-271eb1e4ebd9",
+              "pageEnd": 60,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 60
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 8 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £457,973,320.73 |\n| E-money outstanding: Payouts wallets | £125,669,025.87 |\n| Checkout settlements in transit | £179,110,228.77 |\n| Requirement | £762,752,575.37 |\n| Resource: cleared balance on ACB-SG-01 | £763,088,186.52 |\n| Excess (shortfall) | £335,611.15 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £772,272,145.78 | £223,908,260.50 | £233,092,219.76 | £763,088,186.52 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "62e74eba-046f-4837-8fec-0665ad047561",
+              "pageEnd": 61,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 61
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 11 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £476,402,199.50 |\n| E-money outstanding: Payouts wallets | £121,518,405.78 |\n| Checkout settlements in transit | £174,579,414.43 |\n| Requirement | £772,500,019.71 |\n| Resource: cleared balance on ACB-SG-01 | £773,064,968.77 |\n| Excess (shortfall) | £564,949.06 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £763,088,186.52 | £208,664,529.83 | £198,687,747.58 | £773,064,968.77 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "c35971f5-bc35-4710-b2ac-7a48ad9595dd",
+              "pageEnd": 62,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 62
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 12 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £468,818,989.12 |\n| E-money outstanding: Payouts wallets | £120,425,353.03 |\n| Checkout settlements in transit | £175,331,797.07 |\n| Requirement | £764,576,139.22 |\n| Resource: cleared balance on ACB-SG-01 | £765,108,367.13 |\n| Excess (shortfall) | £532,227.91 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £773,064,968.77 | £207,938,664.19 | £215,895,265.83 | £765,108,367.13 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "9bc68ecb-c91a-4c6e-9e01-87f2ca09ef1b",
+              "pageEnd": 63,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 63
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 13 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £452,581,698.90 |\n| E-money outstanding: Payouts wallets | £126,878,205.11 |\n| Checkout settlements in transit | £179,527,368.28 |\n| Requirement | £758,987,272.29 |\n| Resource: cleared balance on ACB-SG-01 | £759,304,481.89 |\n| Excess (shortfall) | £317,209.60 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £765,108,367.13 | £144,784,504.04 | £150,588,389.28 | £759,304,481.89 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "b8700ff1-cbe4-4947-a640-167d86ec1f63",
+              "pageEnd": 64,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 64
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 14 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £458,081,355.75 |\n| E-money outstanding: Payouts wallets | £120,174,473.90 |\n| Checkout settlements in transit | £176,131,684.99 |\n| Requirement | £754,387,514.64 |\n| Resource: cleared balance on ACB-SG-01 | £754,921,121.90 |\n| Excess (shortfall) | £533,607.26 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £759,304,481.89 | £176,543,493.42 | £180,926,853.41 | £754,921,121.90 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "d3cc4fda-a340-497c-bb6a-ad01a5dd69f7",
+              "pageEnd": 65,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 65
+            }
+          ],
+          "nextChunk": 65,
+          "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 19,
+      "at": "2026-10-14T14:55:21.712Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ05:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 14299,
+          "outputTokens": 76,
+          "reasoningTokens": 33
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": 65,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            "callId": "call_RFg4S3l8gUZdU5iNKp6qupc6"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 20,
+      "at": "2026-10-14T14:55:21.831Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ08:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_RFg4S3l8gUZdU5iNKp6qupc6",
+        "output": {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "title": "FCA Annual Regulatory Return 2026.pdf",
+          "chunks": [
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 15 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £467,139,349.44 |\n| E-money outstanding: Payouts wallets | £127,320,867.79 |\n| Checkout settlements in transit | £179,929,001.44 |\n| Requirement | £774,389,218.67 |\n| Resource: cleared balance on ACB-SG-01 | £775,251,048.30 |\n| Excess (shortfall) | £861,829.63 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £754,921,121.90 | £218,744,786.29 | £198,414,859.89 | £775,251,048.30 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "f8eec383-8c48-4bad-894c-05a765b53c71",
+              "pageEnd": 66,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 66
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 18 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £477,232,400.33 |\n| E-money outstanding: Payouts wallets | £121,416,016.83 |\n| Checkout settlements in transit | £183,526,412.20 |\n| Requirement | £782,174,829.36 |\n| Resource: cleared balance on ACB-SG-01 | £782,751,569.71 |\n| Excess (shortfall) | £576,740.35 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £775,251,048.30 | £191,984,610.74 | £184,484,089.33 | £782,751,569.71 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "a8172406-3aa2-4d04-816b-fad11678f22e",
+              "pageEnd": 67,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 67
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 19 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £470,191,073.25 |\n| E-money outstanding: Payouts wallets | £127,244,498.33 |\n| Checkout settlements in transit | £180,287,060.70 |\n| Requirement | £777,722,632.28 |\n| Resource: cleared balance on ACB-SG-01 | £778,002,200.44 |\n| Excess (shortfall) | £279,568.16 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £782,751,569.71 | £142,256,813.42 | £147,006,182.69 | £778,002,200.44 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "11b6baf4-8269-4f25-86d8-c4355d43a803",
+              "pageEnd": 68,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 68
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 20 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £461,612,206.49 |\n| E-money outstanding: Payouts wallets | £127,969,307.60 |\n| Checkout settlements in transit | £177,322,481.07 |\n| Requirement | £766,903,995.16 |\n| Resource: cleared balance on ACB-SG-01 | £767,357,451.36 |\n| Excess (shortfall) | £453,456.20 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £778,002,200.44 | £224,366,558.25 | £235,011,307.33 | £767,357,451.36 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "dc5b8cdc-6754-457e-a49d-f9a87cb127e9",
+              "pageEnd": 69,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 69
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 21 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £467,621,145.39 |\n| E-money outstanding: Payouts wallets | £122,646,078.70 |\n| Checkout settlements in transit | £185,431,389.70 |\n| Requirement | £775,698,613.79 |\n| Resource: cleared balance on ACB-SG-01 | £776,088,936.91 |\n| Excess (shortfall) | £390,323.12 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £767,357,451.36 | £227,835,907.02 | £219,104,421.47 | £776,088,936.91 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "62a289e9-9b80-43e8-ad67-432ad88caaac",
+              "pageEnd": 70,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 70
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 22 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £462,885,865.94 |\n| E-money outstanding: Payouts wallets | £122,448,610.05 |\n| Checkout settlements in transit | £179,781,322.29 |\n| Requirement | £765,115,798.28 |\n| Resource: cleared balance on ACB-SG-01 | £765,646,523.23 |\n| Excess (shortfall) | £530,724.95 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £776,088,936.91 | £218,181,940.41 | £228,624,354.09 | £765,646,523.23 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "6d500cc5-4439-49cb-816c-e5607f66aed7",
+              "pageEnd": 71,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 71
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 26 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £455,799,854.39 |\n| E-money outstanding: Payouts wallets | £125,987,025.72 |\n| Checkout settlements in transit | £186,299,989.26 |\n| Requirement | £768,086,869.37 |\n| Resource: cleared balance on ACB-SG-01 | £768,889,990.34 |\n| Excess (shortfall) | £803,120.97 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £765,646,523.23 | £159,569,617.71 | £156,326,150.60 | £768,889,990.34 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "1d7c4b28-0a21-4de6-ba1f-d96a7e6c7d50",
+              "pageEnd": 72,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 72
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 27 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £473,058,316.79 |\n| E-money outstanding: Payouts wallets | £123,403,211.56 |\n| Checkout settlements in transit | £179,449,521.03 |\n| Requirement | £775,911,049.38 |\n| Resource: cleared balance on ACB-SG-01 | £776,508,053.70 |\n| Excess (shortfall) | £597,004.32 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £768,889,990.34 | £155,391,949.72 | £147,773,886.36 | £776,508,053.70 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "5deab67e-e03a-485d-9552-1aaca36125d4",
+              "pageEnd": 73,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 73
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 28 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £478,310,920.24 |\n| E-money outstanding: Payouts wallets | £126,709,889.20 |\n| Checkout settlements in transit | £184,765,438.49 |\n| Requirement | £789,786,247.93 |\n| Resource: cleared balance on ACB-SG-01 | £790,011,384.76 |\n| Excess (shortfall) | £225,136.83 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £776,508,053.70 | £226,548,674.85 | £213,045,343.79 | £790,011,384.76 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "f3b8a30b-33cf-44ab-8fda-5db14de5c467",
+              "pageEnd": 74,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 74
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 29 August 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £482,610,465.85 |\n| E-money outstanding: Payouts wallets | £124,238,702.72 |\n| Checkout settlements in transit | £176,891,800.76 |\n| Requirement | £783,740,969.33 |\n| Resource: cleared balance on ACB-SG-01 | £784,202,764.69 |\n| Excess (shortfall) | £461,795.36 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £790,011,384.76 | £151,277,074.25 | £157,085,694.32 | £784,202,764.69 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "98f167fc-27d3-4153-bd97-953f47a062ac",
+              "pageEnd": 75,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 75
+            }
+          ],
+          "nextChunk": 75,
+          "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 21,
+      "at": "2026-10-14T14:55:25.035Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ0A:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 18112,
+          "outputTokens": 102,
+          "reasoningTokens": 59
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": 75,
+              "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+            },
+            "callId": "call_sdh3jFlqvjRvYh5DJ2Q2CiEw"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 22,
+      "at": "2026-10-14T14:55:25.144Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ0D:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_sdh3jFlqvjRvYh5DJ2Q2CiEw",
+        "output": {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "title": "FCA Annual Regulatory Return 2026.pdf",
+          "chunks": [
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 1 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £465,170,809.32 |\n| E-money outstanding: Payouts wallets | £125,206,675.88 |\n| Checkout settlements in transit | £177,219,767.09 |\n| Requirement | £767,597,252.29 |\n| Resource: cleared balance on ACB-SG-01 | £767,765,468.15 |\n| Excess (shortfall) | £168,215.86 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £784,202,764.69 | £175,628,849.70 | £192,066,146.24 | £767,765,468.15 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "fd3b3add-0d48-4249-96ae-e858be5e84a0",
+              "pageEnd": 76,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 76
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 2 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £470,564,226.80 |\n| E-money outstanding: Payouts wallets | £128,689,870.11 |\n| Checkout settlements in transit | £187,142,715.84 |\n| Requirement | £786,396,812.75 |\n| Resource: cleared balance on ACB-SG-01 | £786,677,765.25 |\n| Excess (shortfall) | £280,952.50 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £767,765,468.15 | £200,393,012.69 | £181,480,715.59 | £786,677,765.25 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "60111de6-a315-411c-bd13-a81f36083a79",
+              "pageEnd": 77,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 77
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 3 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £461,739,308.87 |\n| E-money outstanding: Payouts wallets | £122,415,173.92 |\n| Checkout settlements in transit | £181,267,344.52 |\n| Requirement | £765,421,827.31 |\n| Resource: cleared balance on ACB-SG-01 | £766,134,513.51 |\n| Excess (shortfall) | £712,686.20 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £786,677,765.25 | £146,759,271.38 | £167,302,523.12 | £766,134,513.51 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "f942e55c-bc40-4248-b498-a5c4824cce35",
+              "pageEnd": 78,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 78
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 4 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £485,413,124.65 |\n| E-money outstanding: Payouts wallets | £127,756,059.49 |\n| Checkout settlements in transit | £179,164,738.03 |\n| Requirement | £792,333,922.17 |\n| Resource: cleared balance on ACB-SG-01 | £793,109,545.26 |\n| Excess (shortfall) | £775,623.09 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £766,134,513.51 | £176,162,367.75 | £149,187,336.00 | £793,109,545.26 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "e7906614-5fd1-4f77-800e-1dc9b2f63e3e",
+              "pageEnd": 79,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 79
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 5 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £480,921,222.23 |\n| E-money outstanding: Payouts wallets | £126,988,418.61 |\n| Checkout settlements in transit | £185,446,484.91 |\n| Requirement | £793,356,125.75 |\n| Resource: cleared balance on ACB-SG-01 | £793,984,900.41 |\n| Excess (shortfall) | £628,774.66 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £793,109,545.26 | £167,705,358.13 | £166,830,002.98 | £793,984,900.41 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "0a70f5d0-177d-4a3d-bdb6-9d2c6c21d9a2",
+              "pageEnd": 80,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 80
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Monday 8 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £479,631,376.06 |\n| E-money outstanding: Payouts wallets | £123,975,949.26 |\n| Checkout settlements in transit | £187,272,938.34 |\n| Requirement | £790,880,263.66 |\n| Resource: cleared balance on ACB-SG-01 | £791,437,728.98 |\n| Excess (shortfall) | £557,465.32 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £793,984,900.41 | £220,040,341.37 | £222,587,512.80 | £791,437,728.98 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "b3661b8a-eb9e-46be-8a3c-31d5852a5883",
+              "pageEnd": 81,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 81
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Tuesday 9 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £476,822,464.61 |\n| E-money outstanding: Payouts wallets | £122,916,500.55 |\n| Checkout settlements in transit | £183,195,204.92 |\n| Requirement | £782,934,170.08 |\n| Resource: cleared balance on ACB-SG-01 | £783,022,937.95 |\n| Excess (shortfall) | £88,767.87 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £791,437,728.98 | £229,402,143.13 | £237,816,934.16 | £783,022,937.95 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "508e2b9b-8f83-4bcd-ad40-02244e846f29",
+              "pageEnd": 82,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 82
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Wednesday 10 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £474,479,986.74 |\n| E-money outstanding: Payouts wallets | £125,670,090.99 |\n| Checkout settlements in transit | £180,258,962.78 |\n| Requirement | £780,409,040.51 |\n| Resource: cleared balance on ACB-SG-01 | £781,292,117.45 |\n| Excess (shortfall) | £883,076.94 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £783,022,937.95 | £194,513,708.36 | £196,244,528.86 | £781,292,117.45 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "84ca0f94-74aa-4992-ba75-cb9197f274cb",
+              "pageEnd": 83,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 83
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Thursday 11 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £473,431,861.33 |\n| E-money outstanding: Payouts wallets | £129,402,660.88 |\n| Checkout settlements in transit | £180,984,138.60 |\n| Requirement | £783,818,660.81 |\n| Resource: cleared balance on ACB-SG-01 | £784,090,433.10 |\n| Excess (shortfall) | £271,772.29 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £781,292,117.45 | £198,232,439.36 | £195,434,123.71 | £784,090,433.10 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "03e0b24e-5277-4eb8-aad2-699109b1e745",
+              "pageEnd": 84,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 84
+            },
+            {
+              "text": "### Schedule 4A. Daily safeguarding reconciliation, GBP\n\nPosition at 17:00 on Friday 12 September 2025\n\nAccount ACB-SG-01, Albion Clearing Bank.\n\n| Line | Amount |\n| --- | --- |\n| E-money outstanding: Kestrel Accounts | £484,960,052.19 |\n| E-money outstanding: Payouts wallets | £123,100,370.38 |\n| Checkout settlements in transit | £188,368,813.17 |\n| Requirement | £796,429,235.74 |\n| Resource: cleared balance on ACB-SG-01 | £796,611,636.66 |\n| Excess (shortfall) | £182,400.92 |\n\n| Opening balance | Receipts | Payments | Closing balance |\n| --- | --- | --- | --- |\n| £784,090,433.10 | £163,100,508.89 | £150,579,305.33 | £796,611,636.66 |\n\nPrepared by Treasury Operations. Reviewed by Tom Whitfield.\n\nNotes. Figures are unaudited and stated in pounds sterling unless shown otherwise. Balances are taken at the 17:00 UK cut-off on each business day. This schedule forms part of the annual return of Kestrel Pay Ltd (FRN 999901) for the period 1 July 2025 to 30 June 2026 and should be read with Part 4.",
+              "chunkId": "ddb75cf8-5de6-4fce-82af-bee3481c6ecf",
+              "pageEnd": 85,
+              "section": "Schedule 4A. Daily safeguarding reconciliation, GBP",
+              "pageStart": 85
+            }
+          ],
+          "nextChunk": 85,
+          "documentId": "121af263-ba7e-40f8-8194-b17758262182"
+        }
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 23,
+      "at": "2026-10-14T14:55:31.206Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ0F:0",
+      "data": {
+        "type": "compaction",
+        "summary": "- User requested: locate **FCA Annual Regulatory Return 2026**, read Parts 1–6 by continuing with `nextChunk` and **do not search again** after finding it; then email Tom Whitfield an exactly three-line summary of what the parts cover.\n- Document: **FCA Annual Regulatory Return 2026.pdf**, `/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf`, ID `121af263-ba7e-40f8-8194-b17758262182`.\n- Contents identify Parts 1–6 as: Firm information (pp. 5–8); Governance and senior managers (pp. 9–12); Capital adequacy (pp. 13–28); Safeguarding of relevant funds (pp. 29–403); Payment transactions by product and region (pp. 404–637); Fraud reporting (pp. 638–796).\n- Reads so far include the beginning, `fromChunk: 21` (capital adequacy, pp. 22–23), and `fromChunk: 35`, `45`, `55`. The latest reads are still within **Part 4** (daily safeguarding reconciliations). Six parts are **not yet confirmed read in full**. Continue reading this same document using `nextChunk`; do not search again.\n- Tom confirmed: Tom Whitfield, `tom.whitfield@kestrelpay.example`, person ID `e8a6bf31-0196-5c63-8cb6-9db675db14fa`.\n- No email sent yet. After completing the requested reading, send Tom exactly three lines summarizing the six parts.\n- Existing plan for user message `smoke-bb06bfe4` is already made; **do not call `make_plan` again**. It authorizes a `send_mail` to Tom.\n\nPlan in force for user message smoke-bb06bfe4 (call call_xl73Y8BZFik6rzZ5ibJ1lGg9; it's already made, so don't call make_plan again): [{\"note\":null,\"tool\":\"send_mail\",\"targets\":[\"Tom Whitfield (tom.whitfield@kestrelpay.example)\"],\"documents\":[]}]\nTool calls:\n- call_xl73Y8BZFik6rzZ5ibJ1lGg9 make_plan {\"goal\":\"Find and read the first six parts of the FCA Annual Regulatory Return 2026, then email Tom Whitfield three lines summarizing what those parts cover.\",\"steps\":[\"Search for the FCA Annual Regulatory Return 2026.\",\"Read it starting at the beginning and follow nextChunk until six parts have been read; do not search again after finding it.\",\"Look up Tom Whitfield to confirm his email address.\",\"Email Tom a three-line summary based on the six parts read.\"],\"writes\":[{\"note\":null,\"tool\":\"send_mail\",\"targets\":[\"Tom Whitfield (tom.whitfield@kestrelpay.example)\"],\"documents\":[]}]}: ok\n- call_QJaSI1pYIGelRI18KmATJPXC search_documents {\"k\":5,\"query\":\"FCA Annual Regulatory Return 2026\"}: ok\n- call_kNqog0uB360aXFgOHYitNOsU read_document {\"fromChunk\":null,\"documentId\":\"121af263-ba7e-40f8-8194-b17758262182\"}: ok\n- call_qdxfjccUPneptVgGQCb1J8nj find_person {\"query\":\"Tom Whitfield\"}: ok\n- call_Qj9QkMyzytYzErYotsRB2Vbs read_document {\"fromChunk\":21,\"documentId\":\"121af263-ba7e-40f8-8194-b17758262182\"}: ok\n- call_oxQSJxsVkBwkElYKzH1VQq90 read_document {\"fromChunk\":35,\"documentId\":\"121af263-ba7e-40f8-8194-b17758262182\"}: ok\n- call_nrPOgwauxAvRiWDnkDhAIOch read_document {\"fromChunk\":45,\"documentId\":\"121af263-ba7e-40f8-8194-b17758262182\"}: ok\n- call_Drhlkg30fRgJJca6GwUmTqTP read_document {\"fromChunk\":55,\"documentId\":\"121af263-ba7e-40f8-8194-b17758262182\"}: ok\nUser messages: smoke-bb06bfe4",
+        "throughSeq": 18
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 24,
+      "at": "2026-10-14T14:55:31.289Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ0H:0",
+      "data": {
+        "type": "error",
+        "message": "daily token budget spent",
+        "retryable": false
+      }
+    },
+    {
+      "runId": "bb06bfe4-3cf9-4349-b5c6-12b061a09433",
+      "seq": 25,
+      "at": "2026-10-14T14:55:31.289Z",
+      "stepKey": "wf:step_01M4XEH96DRMXMM306PXFRRJ0H:1",
+      "data": {
+        "to": "failed",
+        "from": "running",
+        "type": "status",
+        "reason": "daily token budget spent"
+      }
+    }
+  ]
+}

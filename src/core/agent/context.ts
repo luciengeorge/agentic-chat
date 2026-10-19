@@ -1,9 +1,8 @@
 import type { RunEvent, ToolCall } from "#learn/agent/types";
 import type { ChatMessage } from "#learn/model/types";
 
+import { AGENT_INSTRUCTIONS, PLANNING_NOTE } from "#learn/agent/prompt";
 import { countMessageTokens, countTokens } from "#learn/model/tokens";
-
-import { AGENT_INSTRUCTIONS, PLANNING_NOTE } from "./prompt";
 
 /**
  * What a model turn gets: the instructions (the user's memory notes included) and the conversation so far. When
@@ -154,7 +153,7 @@ export function buildContext(
 }
 
 /** The user's messages since the latest compaction, newest kept within the budget: all the planning turn sees. */
-function userMessages(events: readonly RunEvent[], budget: number): ChatMessage[] {
+export function userMessages(events: readonly RunEvent[], budget: number): ChatMessage[] {
   const all: ChatMessage[] = events.flatMap(({ data }) =>
     data.type === "user_message" ? [{ role: "user" as const, content: data.text }] : [],
   );

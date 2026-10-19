@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { AgentTool } from "#learn/agent/types";
 
-import { notReadable, readableDocument, type ToolDeps } from "./deps";
+import { notReadable, readableDocument, type ToolDeps } from "#learn/agent/tools/deps";
 
 const Input = z.object({
   to: z.array(z.email()).min(1).max(10).describe("Recipients' email addresses."),

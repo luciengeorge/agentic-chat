@@ -8,7 +8,7 @@ import { sql } from "drizzle-orm";
 import type { Viewer } from "#learn/retrieve/types";
 import type { Tx } from "@/db/tenant";
 
-import { RunHalted, type RunGuard, type TokenHold } from "./loop";
+import { RunHalted, type RunGuard, type TokenHold } from "#learn/agent/loop";
 
 export const DEFAULT_DAILY_TOKENS = 500_000;
 
@@ -35,10 +35,10 @@ export async function budgetLeft(tx: Tx, viewer: Viewer, day: string, dailyToken
 export const HOLD_MS = 5 * 60_000;
 
 /** The row's holds that haven't lapsed at `at`: `{ "<id>": { tokens, until } }`. */
-const liveHolds = (at: string) => sql`COALESCE((
+export const liveHolds = (at: string) => sql`COALESCE((
   SELECT jsonb_object_agg(k, v) FROM jsonb_each(agent_budgets.holds) AS h(k, v)
   WHERE (v->>'until')::timestamptz > ${at}::timestamptz), '{}'::jsonb)`;
-const heldTokens = (at: string) => sql`COALESCE((
+export const heldTokens = (at: string) => sql`COALESCE((
   SELECT sum((v->>'tokens')::bigint) FROM jsonb_each(agent_budgets.holds) AS h(k, v)
   WHERE (v->>'until')::timestamptz > ${at}::timestamptz), 0)`;
 

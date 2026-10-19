@@ -1,14 +1,12 @@
+import type { ToolDeps } from "#learn/agent/tools/deps";
 import type { AgentTool } from "#learn/agent/types";
 
 import { planTool } from "#learn/agent/plan";
-
-import type { ToolDeps } from "./deps";
-
-import { findPerson } from "./find-person";
-import { readDocument } from "./read-document";
-import { searchDocuments } from "./search-documents";
-import { sendMail } from "./send-mail";
-import { shareDocument } from "./share-document";
+import { findPerson } from "#learn/agent/tools/find-person";
+import { readDocument } from "#learn/agent/tools/read-document";
+import { searchDocuments } from "#learn/agent/tools/search-documents";
+import { sendMail } from "#learn/agent/tools/send-mail";
+import { shareDocument } from "#learn/agent/tools/share-document";
 
 /**
  * The agent's tools: the plan tool (with it, `approvalNeeded` applies plan-then-execute, section 17), three that
