@@ -118,7 +118,7 @@ function line({ data }: RunEvent): string | null {
  * thinking it has no plan; it then calls `make_plan` again, which the policy refuses, and the user's write never
  * happens.
  */
-function planInForce(events: readonly RunEvent[]): string | null {
+export function planInForce(events: readonly RunEvent[]): string | null {
   let message: string | null = null;
   for (const { data } of events) if (data.type === "user_message") message = data.messageId;
   for (const { data } of events) {

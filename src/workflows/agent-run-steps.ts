@@ -7,11 +7,12 @@
 import { sql } from "drizzle-orm";
 import { FatalError, getStepMetadata, getWritable, RetryableError } from "workflow";
 
+import type { ToolOutcome } from "#learn/agent/durable-run";
 import type { ToolCall } from "#learn/agent/types";
 import type { Viewer } from "#learn/retrieve/types";
 
 import { failRun, isFinalStatus, modelStep, type Plan, plan, recordResults } from "#learn/agent/checkpoint";
-import { backoffMs, isRetryable, stepIdempotencyKey } from "#learn/agent/durable";
+import { stepIdempotencyKey, turnFailure } from "#learn/agent/durable";
 import { RunHalted } from "#learn/agent/loop";
 import { withTenantOn } from "@/db/tenant";
 import { expireApproval, loadRun, runStore, stepLoop } from "@/lib/agent-runs";
@@ -36,10 +37,7 @@ export interface TokenChunk {
 
 type ToolResult = Awaited<ReturnType<ReturnType<typeof stepLoop>["runTools"]>>[number];
 
-export type ToolOutcome =
-  | { kind: "result"; result: ToolResult }
-  | { kind: "halted"; reason: string }
-  | { kind: "skipped" };
+export type { ToolOutcome };
 
 const viewerOf = (ref: RunRef): Viewer => ({ tenantId: ref.tenantId, userId: ref.userId });
 const stepKey = () => `wf:${getStepMetadata().stepId}`;
@@ -96,18 +94,18 @@ export async function modelTurnStep(ref: RunRef, version: number, signal: AbortS
       onTextDelta: (delta) => writes.push(writer.write({ delta, turn: key })),
     });
   } catch (error) {
-    if (signal.aborted) throw error;
-    const message = error instanceof Error ? error.message : String(error);
-    if (error instanceof RunHalted) {
-      await failRun(store(ref), error.reason, { stepKey: key });
+    const { attempt } = getStepMetadata();
+    const failure = turnFailure(error, { cancelled: signal.aborted, timedOut: timeout.aborted, attempt, retryAfterMs });
+    if (failure.kind === "cancelled") throw error;
+    if (failure.kind === "halted") {
+      await failRun(store(ref), failure.reason, { stepKey: key });
       return "done";
     }
-    if (timeout.aborted || isRetryable(error)) {
-      const { attempt } = getStepMetadata();
+    if (failure.kind === "retry") {
       logger.warn("model turn failed; Workflow will retry it", { runId: ref.runId, attempt, error });
-      throw new RetryableError(message, { retryAfter: retryAfterMs ?? backoffMs(attempt) });
+      throw new RetryableError(failure.message, { retryAfter: failure.afterMs });
     }
-    throw new FatalError(message);
+    throw new FatalError(failure.message);
   } finally {
     await Promise.allSettled(writes);
     writer.releaseLock();

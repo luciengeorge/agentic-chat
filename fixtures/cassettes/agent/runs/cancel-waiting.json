@@ -1,0 +1,232 @@
+{
+  "exported": "2026-10-19",
+  "source": "the dev database (run and run_events rows, as the app wrote them)",
+  "run": {
+    "id": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+    "user": "tom.whitfield",
+    "userId": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+    "kind": "chat",
+    "status": "cancelled",
+    "version": 9,
+    "createdAt": "2026-10-14T13:35:28.47585+00:00"
+  },
+  "events": [
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 1,
+      "at": "2026-10-14T13:35:28.481Z",
+      "stepKey": null,
+      "data": {
+        "text": "Email Leo Martin (leo.martin@kestrelpay.example) one line saying \"smoke cancel\". Nothing else.",
+        "type": "user_message",
+        "messageId": "smoke-c3bef80e"
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 2,
+      "at": "2026-10-14T13:35:28.783Z",
+      "stepKey": null,
+      "data": {
+        "to": "running",
+        "from": "queued",
+        "type": "status"
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 3,
+      "at": "2026-10-14T13:35:30.369Z",
+      "stepKey": "wf:step_01M4XA01RC0YZWENPTMX0A847F:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 1864,
+          "outputTokens": 74,
+          "reasoningTokens": 0
+        },
+        "toolCalls": [
+          {
+            "tool": "make_plan",
+            "input": {
+              "goal": "Email Leo Martin the one-line message “smoke cancel” and nothing else.",
+              "steps": [
+                "Send the requested one-line email to Leo."
+              ],
+              "writes": [
+                {
+                  "tool": "send_mail",
+                  "targets": [
+                    "Leo Martin (leo.martin@kestrelpay.example)"
+                  ],
+                  "documents": []
+                }
+              ]
+            },
+            "callId": "call_POw2MAvI2KQkkB5kZbwV1Rih"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 4,
+      "at": "2026-10-14T13:35:30.410Z",
+      "stepKey": "wf:step_01M4XA01RC0YZWENPTMX0A847J:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_POw2MAvI2KQkkB5kZbwV1Rih",
+        "output": {
+          "planned": 1
+        }
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 5,
+      "at": "2026-10-14T13:35:34.123Z",
+      "stepKey": "wf:step_01M4XA01RC0YZWENPTMX0A847M:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 1954,
+          "outputTokens": 54,
+          "reasoningTokens": 25
+        },
+        "toolCalls": [
+          {
+            "tool": "find_person",
+            "input": {
+              "query": "leo.martin@kestrelpay.example"
+            },
+            "callId": "call_RTdjT6NyBZjgU6OdLfM9I6gj"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 6,
+      "at": "2026-10-14T13:35:34.208Z",
+      "stepKey": "wf:step_01M4XA01RC0YZWENPTMX0A847Q:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_RTdjT6NyBZjgU6OdLfM9I6gj",
+        "output": {
+          "people": [
+            {
+              "id": "0ae8fa04-8d89-5fd9-b3f0-17a15e8a72f6",
+              "kind": "user",
+              "name": "Leo Martin",
+              "email": "leo.martin@kestrelpay.example"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 7,
+      "at": "2026-10-14T13:35:37.171Z",
+      "stepKey": "wf:step_01M4XA01RC0YZWENPTMX0A847S:0",
+      "data": {
+        "text": "I’m about to email Leo Martin with the one-line message “smoke cancel,” as requested.",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 2049,
+          "outputTokens": 215,
+          "reasoningTokens": 141
+        },
+        "toolCalls": [
+          {
+            "tool": "send_mail",
+            "input": {
+              "to": [
+                "leo.martin@kestrelpay.example"
+              ],
+              "body": "smoke cancel",
+              "subject": "smoke cancel",
+              "attachmentDocumentIds": []
+            },
+            "callId": "call_SXBJAa3SYwee5EzzoxKGsKuh",
+            "screen": {
+              "documents": [],
+              "recipients": [
+                "Leo Martin <leo.martin@kestrelpay.example>"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 8,
+      "at": "2026-10-14T13:35:37.232Z",
+      "stepKey": "wf:step_01M4XA01RC0YZWENPTMX0A847V:0",
+      "data": {
+        "call": {
+          "tool": "send_mail",
+          "input": {
+            "to": [
+              "leo.martin@kestrelpay.example"
+            ],
+            "body": "smoke cancel",
+            "subject": "smoke cancel",
+            "attachmentDocumentIds": []
+          },
+          "callId": "call_SXBJAa3SYwee5EzzoxKGsKuh",
+          "screen": {
+            "documents": [],
+            "recipients": [
+              "Leo Martin <leo.martin@kestrelpay.example>"
+            ]
+          }
+        },
+        "type": "approval_requested",
+        "expiresAt": "2026-10-21T13:35:37.232Z",
+        "approvalId": "59e598ae-d52c-4148-914e-e476f7c07e54"
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 9,
+      "at": "2026-10-14T13:35:37.232Z",
+      "stepKey": "wf:step_01M4XA01RC0YZWENPTMX0A847V:1",
+      "data": {
+        "to": "waiting",
+        "from": "running",
+        "type": "status",
+        "reason": "approval"
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 10,
+      "at": "2026-10-14T13:35:37.335Z",
+      "stepKey": null,
+      "data": {
+        "by": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+        "type": "approval_decided",
+        "decision": "rejected",
+        "approvalId": "59e598ae-d52c-4148-914e-e476f7c07e54"
+      }
+    },
+    {
+      "runId": "c3bef80e-a79b-4c29-a6fd-32c9bcbe30a3",
+      "seq": 11,
+      "at": "2026-10-14T13:35:37.335Z",
+      "stepKey": null,
+      "data": {
+        "to": "cancelled",
+        "from": "waiting",
+        "type": "status",
+        "reason": "cancelled by the user"
+      }
+    }
+  ]
+}

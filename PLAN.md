@@ -263,7 +263,7 @@ Commands (run as `pnpm ex <command>`): `up`, `down`, `list`, `start <step>`, `te
 
 **Step types.** Every step is tagged in its README frontmatter:
 - `graded` (most steps): tests decide when you're done.
-- `guided`: a walkthrough or comparison with no pass/fail. Steps 00.1, 00.2, 03.5, 16.6, 18.5, 19.2, and 22.1 to 22.4.
+- `guided`: a walkthrough or comparison with no pass/fail. Steps 00.1, 00.2, 03.5, 16.1, 16.6, 18.5, 19.2, and 22.1 to 22.4.
 - `lab`: done when an observable result appears in the app.
 
 **Quality gate.** CI runs every `graded` step's tests from the problem dir, twice. Against the problem code they must fail; against the solution code they must pass. That catches a step whose tests grade nothing. A solution dir holding a `*.test.ts` fails the gate, so there is one copy of each test to trust.

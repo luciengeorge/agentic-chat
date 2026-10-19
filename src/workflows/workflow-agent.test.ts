@@ -1,3 +1,5 @@
+import { createOpenAI } from "@ai-sdk/openai";
+import { WORKFLOW_SERIALIZE } from "@ai-sdk/provider-utils";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { start } from "workflow/api";
 import { z } from "zod";
@@ -9,9 +11,25 @@ import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/t
 import { createRunnerLoop } from "@/lib/agent-runs";
 import { setAgentRuntime } from "@/lib/agent-runtime";
 
-import { setWorkflowAgentModel, workflowAgentRun } from "./workflow-agent";
+import { RuntimeModel, setWorkflowAgentModel, workflowAgentRun } from "./workflow-agent";
 
 const LEO = "44444444-4444-4444-8444-444444444444";
+
+describe("the model as WorkflowAgent carries it", () => {
+  it("keeps the API key out of Workflow's log, where the provider's own model would write it", () => {
+    // A fake key: what Workflow would write to its event log on disk for each step that gets the model.
+    const fake = "sk-fake-key-for-this-test";
+    const provider = createOpenAI({ apiKey: fake })("gpt-6-luna");
+    const serialize = (provider.constructor as unknown as Record<symbol, (model: unknown) => unknown>)[
+      WORKFLOW_SERIALIZE
+    ];
+    expect(serialize(provider)).toMatchObject({
+      modelId: "gpt-6-luna",
+      config: { headers: { authorization: `Bearer ${fake}` } },
+    });
+    expect(RuntimeModel[WORKFLOW_SERIALIZE](new RuntimeModel("gpt-6-luna"))).toEqual({ modelId: "gpt-6-luna" });
+  });
+});
 
 describe.skipIf(!postgresAvailable)("the same agent on WorkflowAgent", () => {
   let t: TestDatabase;

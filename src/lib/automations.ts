@@ -9,10 +9,10 @@ import type { Db } from "@/db/create";
 
 import {
   type DocumentRef,
-  dueSlot,
+  dueFire,
+  type FireItem,
   inFolder,
   type NewAutomation,
-  scheduleFireKey,
   type Trigger,
 } from "#learn/automations/automation";
 import { canRead, readable } from "#learn/retrieve/acl";
@@ -107,8 +107,7 @@ export async function automationRuns(tx: Tx, viewer: Viewer, automationId: strin
     .limit(limit);
 }
 
-/** One item of a fire: a run, about a document or not. */
-export type FireItem = { document: DocumentRef | null };
+export type { FireItem };
 
 export type Claim =
   | { kind: "duplicate" | "disabled" }
@@ -201,9 +200,9 @@ export async function dueScheduleFires(system: Db, now: Date): Promise<DueFire[]
     WHERE enabled AND trigger = 'schedule'`);
   const due: DueFire[] = [];
   for (const row of rows) {
-    let slot: Date | null;
+    let fire: { fireKey: string; firedAt: Date } | null;
     try {
-      slot = dueSlot(row.cron, {
+      fire = dueFire(row.cron, {
         now,
         createdAt: new Date(row.created_at),
         lastFiredAt: row.last_fired_at === null ? null : new Date(row.last_fired_at),
@@ -212,8 +211,7 @@ export async function dueScheduleFires(system: Db, now: Date): Promise<DueFire[]
       logger.warn("an automation's schedule can't be read; skipped", { automationId: row.id, error });
       continue;
     }
-    if (slot)
-      due.push({ tenantId: row.tenant_id, automationId: row.id, fireKey: scheduleFireKey(slot), firedAt: slot });
+    if (fire) due.push({ tenantId: row.tenant_id, automationId: row.id, ...fire });
   }
   return due;
 }

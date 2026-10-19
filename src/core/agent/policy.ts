@@ -6,10 +6,10 @@
  * It's pure: it reads the run's events (where the plan is) and the guardrails' findings recorded on the call. The
  * database work happened earlier, when the model proposed the call (`#learn/agent/guardrails`).
  */
-import type { AgentTool, RunEvent, ToolCall } from "./types";
+import type { AgentTool, RunEvent, ToolCall } from "#learn/agent/types";
 
-import { DELEGATE_TOOL } from "./orchestrate";
-import { currentPlan, isPlanningCall, PLAN_TOOL, uncovered } from "./plan";
+import { DELEGATE_TOOL } from "#learn/agent/orchestrate";
+import { currentPlan, isPlanningCall, PLAN_TOOL, uncovered } from "#learn/agent/plan";
 
 export type Verdict =
   | { kind: "allow" }
@@ -27,8 +27,9 @@ export interface Policy {
   check(call: ToolCall, ctx: PolicyContext): Verdict;
 }
 
-const ALLOW: Verdict = { kind: "allow" };
-const deny = (reason: string): Verdict => ({ kind: "deny", reason: `Refused by policy: ${reason}` });
+export const ALLOW: Verdict = { kind: "allow" };
+/** A refusal, worded for the model: "Refused by policy: " and why. */
+export const deny = (reason: string): Verdict => ({ kind: "deny", reason: `Refused by policy: ${reason}` });
 
 /**
  * Plan-then-execute with an allowlist:

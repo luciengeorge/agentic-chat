@@ -8,9 +8,10 @@
  * A fire has a key, the same for every scheduler that sees it (the slot's time, or the document's version), so a
  * fire claimed once is never claimed again.
  */
+import { v5 as uuidv5 } from "uuid";
 import { z } from "zod";
 
-import { CronError, type Cron, latestSlot, parseCron } from "./cron";
+import { CronError, type Cron, latestSlot, parseCron } from "#learn/automations/cron";
 
 export type Trigger =
   | { kind: "schedule"; cron: string; folder: string | null }
@@ -77,6 +78,29 @@ export function runMessage(prompt: string, documentId: string | null): string {
   return `${prompt}\n\nThe document's id: ${documentId}. Read it with read_document.`;
 }
 
+/** One item of a fire: a run, about a document or not. */
+export type FireItem = { document: DocumentRef | null };
+
+export const RUN_NAMESPACE = "3d1f0f5c-8a7e-4f0b-9b44-2e6c5a1d9f30";
+
+/**
+ * The run a fire starts for one item: its id, from the automation, the fire and the item, so a step that runs
+ * again makes no second run; and its first message, which carries the document's id and nothing the document's
+ * author wrote.
+ */
+export function fireRun(
+  automationId: string,
+  fireKey: string,
+  prompt: string,
+  item: FireItem,
+): { runId: string; message: { messageId: "automation"; text: string } } {
+  const documentId = item.document?.id ?? null;
+  return {
+    runId: uuidv5(`${automationId}:${fireKey}:${documentId ?? "-"}`, RUN_NAMESPACE),
+    message: { messageId: "automation", text: runMessage(prompt, documentId) },
+  };
+}
+
 export const scheduleFireKey = (slot: Date) => `schedule:${slot.toISOString()}`;
 export const changeFireKey = (documentId: string, version: number) => `doc:${documentId}:v${version}`;
 
@@ -94,4 +118,16 @@ export function dueSlot(
   const parsed = typeof cron === "string" ? parseCron(cron) : cron;
   const floor = Math.max(createdAt.getTime(), lastFiredAt?.getTime() ?? 0, now.getTime() - CATCH_UP_MS);
   return latestSlot(parsed, new Date(floor), now);
+}
+
+/**
+ * The fire a scheduler should start now, keyed by its slot, so every scheduler that sees it (two servers, one
+ * restarted) names the same fire; null when no slot is due.
+ */
+export function dueFire(
+  cron: Cron | string,
+  times: { now: Date; createdAt: Date; lastFiredAt: Date | null },
+): { fireKey: string; firedAt: Date } | null {
+  const slot = dueSlot(cron, times);
+  return slot ? { fireKey: scheduleFireKey(slot), firedAt: slot } : null;
 }

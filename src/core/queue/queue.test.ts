@@ -70,10 +70,12 @@ describe.skipIf(!postgresAvailable)("the job queue", () => {
 
   it("keeps a live worker's job while it heartbeats", async () => {
     const id = await add();
-    const job = (await claim(t.db, queue, "alive", 200))!;
+    // 3 x 400 ms outlasts the first 1 s lease, so only the heartbeats can have kept it; each one has 600 ms of
+    // slack, so a loaded machine doesn't let the lease lapse between them.
+    const job = (await claim(t.db, queue, "alive", 1000))!;
     for (let i = 0; i < 3; i++) {
-      await sleep(100);
-      expect(await heartbeat(t.db, job, "alive", 200)).toBe(true);
+      await sleep(400);
+      expect(await heartbeat(t.db, job, "alive", 1000)).toBe(true);
     }
     expect(await reclaimExpired(t.db, queue)).toEqual({ requeued: 0, dead: 0 });
     expect(await row(id)).toMatchObject({ state: "running", locked_by: "alive" });

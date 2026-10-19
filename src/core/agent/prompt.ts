@@ -3,7 +3,7 @@
  * of any instruction. The plan, the policy and the guardrails are what actually stop a bad write; the prompt makes
  * the model less likely to try one, and tells it how to recover when one is refused.
  */
-import { PLAN_TOOL } from "./plan";
+import { PLAN_TOOL } from "#learn/agent/plan";
 
 export const AGENT_INSTRUCTIONS = `You are Kestrel's workplace assistant. You act for the signed-in employee, with their permissions and nobody else's, through the tools you are given.
 

@@ -116,6 +116,42 @@ const LABS: Lab[] = [
     description:
       "The chat, its citation chips and the agent's timeline, on your code. Each step's README says what to click.",
   },
+  {
+    section: "13",
+    to: "/labs/loop",
+    title: "Agents: the run stepper",
+    description:
+      "A recorded agent run, one decision at a time, on your loop: each model turn, each call and result, the caps.",
+  },
+  {
+    section: "14",
+    to: "/labs/state",
+    title: "Agents: state",
+    description:
+      "A run's event log, live: seq, version, type and data. Send two messages at once and watch both land, once.",
+  },
+  {
+    section: "15",
+    to: "/labs/durability",
+    title: "Agents: kill the server",
+    description: "A real run's send held mid-flight: stop pnpm dev, start it again, and watch it resume and mail once.",
+    devOnly: true,
+  },
+  {
+    section: "16",
+    to: "/labs/orchestration",
+    title: "Agents: the run tree",
+    description:
+      "A parent run and its sub-agents: each child's caps and spend, and what the parent has left, on your code.",
+  },
+  {
+    section: "17",
+    to: "/labs/safety",
+    title: "Safety: the red-team runner",
+    description:
+      "Fifteen attacks on the agent's writes, on a model that obeys them, through your plan, policy and guardrails.",
+    devOnly: true,
+  },
 ];
 
 const rowClass = "flex items-center gap-4 rounded-xl border px-4 py-3 transition-colors hover:bg-muted";
