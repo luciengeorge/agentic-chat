@@ -51,9 +51,9 @@ export function shareDocument(
       //    `import { sql } from "drizzle-orm";` and `notReadable` and `readableDocument` to the deps import.
       //    `(await deps.workspace(tenantId)).invite(actingUserId, itemId, recipientId, key, signal)`.
       //
-      // 🦉 Why fake-workspace gets the acting user. The invite carries `X-Acting-User`, like the subject of a
-      //    delegated token, and the drive refuses a user who can't read the item. That's the second line: with a
-      //    bug in this tool, the drive would still refuse.
+      // 🦉 Why fake-workspace gets the acting user. The invite carries `X-Acting-User`, which names the user it's
+      //    made for, and the drive refuses a user who can't read the item. That's the second line: with a bug in
+      //    this tool, the drive would still refuse.
       // 🦉 Why name the tenant in the query. RLS (section 09) already hides Harbour's people from a Kestrel
       //    transaction. Writing `tenant_id = <the viewer's>` too keeps the check true in code that runs without
       //    RLS, such as a job on the owner's connection.

@@ -18,9 +18,22 @@ slots:
 - A **lease** is how long a worker may hold a job without checking in (section 05.1). 30 seconds in the app, renewed every 10. A killed worker stops renewing it, and `reclaimExpired` queues its job again, **with the same id** and one more attempt.
 - **Retryable** means a later try could work: a 429, a 5xx, a dropped connection (`isRetryable`). A 400 isn't.
 
+## What's already written
+
+In `checkpoint.ts`:
+
+- `StepStore`, the run's log for one viewer: `load` it, `append` at a version (false when another writer got in first), ask whether a step key `wrote`, `requestApproval`.
+- `StepLoop`, section 13's loop bound to the run: `decide`, `modelTurn`, `runTools`.
+- `plan(store, loop)` reads the log and decides. It makes the moves that only change the status (claim, wait, finish) itself, and hands back `act`: the work, and the version to write it at.
+- `modelStep` does one model turn and appends it under the step key; `stale` when the log moved first.
+- `recordResults` appends a turn's tool results, in call order, once.
+- `failRun` ends the run `failed`, from whatever status it's in.
+
+In `agent-runner.ts`, `AgentJobDeps` is all the job needs from the app (`src/lib/agent-queue.ts` binds it): `open` (the run's store and loop), `queueStep` (the next checkpoint's job), `queueExpiry` and `expire` (the approval's timer), `hold` (this process's cancel switch for the run), `kick` (wake the workers now) and `onRetry`.
+
 ## Do this
 
-🐨 In `playground/checkpoint.ts`, write `advance`: plan, then the one step the plan calls for, under the caller's step key. `plan`, `modelStep`, `recordResults` and `failRun` are written.
+🐨 In `playground/checkpoint.ts`, write `advance`: plan, then the one step the plan calls for, under the caller's step key.
 
 🐨 In `playground/agent-runner.ts`, write `checkpointJob`: what one job on the queue does with each outcome of `advance`, and with each way it can fail. `src/lib/agent-queue.ts` binds its `deps` to Postgres and runs it in the dev server's two workers (`AGENT_RUNNER=queue`).
 

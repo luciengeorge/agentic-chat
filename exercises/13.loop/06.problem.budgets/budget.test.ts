@@ -105,6 +105,18 @@ describe.skipIf(!postgresAvailable)("the daily budget and the kill switch, in Po
       ).resolves.toMatchObject({ type: "assistant_turn" });
     });
 
+    it("holds against a raised limit even when the hold is more than the default", async () => {
+      await t.sql`INSERT INTO agent_budgets (tenant_id, user_id, day, tokens_used, token_limit)
+                  VALUES (${kestrel}, ${GRACE}, '2026-10-19', 0, 10000)`;
+      expect(
+        await outcome(guard({ dailyTokens: 100 }).beforeModelTurn(4_000)),
+        "4,000 of a 10,000 limit was refused because the default is 100. When the day has a row, the insert must " +
+          "still reach ON CONFLICT, where the row's own limit decides: insert when `dailyTokens` covers the hold OR " +
+          "the row exists",
+      ).toBe("allowed");
+      expect(Object.values((await row())!.holds).map((h) => h.tokens)).toEqual([4_000]);
+    });
+
     it("holds in one statement, so five turns at once against room for two give two", async () => {
       const g = guard({ dailyTokens: 10_000 });
       const tries = await Promise.allSettled(Array.from({ length: 5 }, () => g.beforeModelTurn(4_000)));

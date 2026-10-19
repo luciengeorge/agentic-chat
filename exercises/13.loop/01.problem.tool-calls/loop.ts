@@ -75,7 +75,8 @@ export function decide(events: readonly RunEvent[], _caps: Caps, needsApproval: 
   //
   // 💰 `array.findLastIndex((e) => ...)` gives the last matching index, or -1. `events.slice(i + 1)`. The actions
   //    are `{ kind: "model" }`, `{ kind: "tools", calls }`, `{ kind: "approval", call }`, `{ kind: "wait" }` and
-  //    `{ kind: "finish", status: "succeeded" }`. `_caps` stays unused until step 4.
+  //    `{ kind: "finish", status: "succeeded" }`. `_caps` stays unused until step 4, when `decide` checks the
+  //    caps you write in step 3.
   //
   // 🦉 Why the log decides. `decide` reads nothing but the events: no variable remembers "we're waiting for a
   //    search". So whatever runs the loop (this request, a job queue, a Workflow that crashed and woke up on

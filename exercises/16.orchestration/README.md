@@ -29,7 +29,7 @@ Made on 19 October 2026 on gpt-6-luna, so nothing in this section calls a model:
 1. **Workflows vs agents** (guided). Which shape a job takes, read off ingestion, two recorded runs and the automation workflow.
 2. **Routing** (`agent/router`: `routeMessage`). A forced tool call picks `answer` or `agent`, and a reply to a live run goes into it.
 3. **An orchestrator with sub-agents** (`agent/orchestrate`: `childCaps`, `childStart`, `delegateResult`). Read-only children, each with a share of what the parent has left, and their spend counted against it.
-4. **Automations** (`automations/automation`: `dueSlot`, `dueFire`, `fireRun`). A schedule fires each slot once, however many schedulers see it, and its runs hear only a document's id.
+4. **Automations** (`automations/cron`: `latestSlot`; `automations/automation`: `dueSlot`, `dueFire`, `fireRun`). A schedule fires each slot once, however many schedulers see it, and its runs hear only a document's id.
 5. **Fan-out with backpressure** (`agent/fanout`: `fanOut`). A fire's runs three at a time, the rest queued, admission before each start.
 6. **The same agent on `WorkflowAgent`** (guided). What a framework's loop gives, and what it takes away.
 

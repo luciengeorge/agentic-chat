@@ -7,7 +7,7 @@ slots:
 
 # Streaming the log: the solution
 
-`toSse` writes `id: <seq>`, `data: <the event as JSON>` and a blank line. `resumeFrom` returns the first of the header and the query that is 1 to 9 digits once trimmed, else 0. `tailEvents` keeps a cursor from `from`. Each time round it asks the status, then the events after the cursor. With events, it moves the cursor to the last one and yields them, then goes round at once. With none, it returns if the run is gone or final, and otherwise sleeps `pollMs` (an abort cuts the sleep short and ends the loop).
+`toSse` (written for you) sends `id: <seq>`, `data: <the event as JSON>` and a blank line, so the id the browser sends back is a seq. `resumeFrom` returns the first of the header and the query that is 1 to 9 digits once trimmed, else 0. `tailEvents` keeps a cursor from `from`. Each time round it asks the status, then the events after the cursor. With events, it moves the cursor to the last one and yields them, then goes round at once. With none, it returns if the run is gone or final, and otherwise sleeps `pollMs` (an abort cuts the sleep short and ends the loop).
 
 ## Why it works
 

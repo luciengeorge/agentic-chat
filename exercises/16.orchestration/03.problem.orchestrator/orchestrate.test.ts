@@ -223,7 +223,7 @@ describe("Grace's hotel comparison, recorded on gpt-6-luna", () => {
     const used = runUsage(run.events);
     expect(
       [used.tokens, used.toolCalls],
-      "the parent's 2,352 + 1,315 of its own, plus 6,394 + 6,722 from its children; 1 + 3 + 3 calls",
+      "the parent's 2,352 + 1,315 of its own, plus 6,394 + 6,722 from its children; 1 plan + 2 delegates + 2 + 2 from the children",
     ).toEqual([16_783, 7]);
     expect([DEFAULT_CAPS.tokens - used.tokens, DEFAULT_CAPS.toolCalls - used.toolCalls]).toEqual([43_217, 23]);
   });

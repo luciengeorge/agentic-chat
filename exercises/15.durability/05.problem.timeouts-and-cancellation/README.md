@@ -14,6 +14,7 @@ slots:
 
 - An **abort signal** tells work in flight to stop. The workflow has one `AbortController`; its signal goes into every step, and the loop hands it to the AI SDK as `abortSignal`, which closes the model's HTTP request. Workflow carries an abort from the body into a step that's running.
 - The **step timeout** is how long one model turn may take before the step gives up on it: `STEP_TIMEOUT_MS`, 120 seconds (300 ms in the test).
+- The **ownership lease** (section 15's README) is how long after a step starts Workflow assumes the process running it is still alive. Past it, Workflow runs the step again. It's 860 seconds by default (no Vercel function lives past 800) and 150 on this machine (`src/workflows/start-world.ts`): just above the 120-second step timeout, so a slow model turn gives up before Workflow would take it for dead and start a second copy beside it.
 - A **`RetryableError`** asks Workflow to run the step again after `retryAfter`; a **`FatalError`** ends the step for good. A model turn step tries up to `maxRetries` (3) more times.
 - **Backoff**: waiting longer before each retry, here `backoffMs`: 1 s, 2 s, 4 s.
 

@@ -9,17 +9,7 @@ import type { RunEvent, RunStatus } from "#learn/agent/types";
 export const STREAM_POLL_MS = 250;
 
 /** One event as an SSE message. `id` is its `seq`, so a client that reconnects sends it back as Last-Event-ID. */
-export const toSse = (event: RunEvent): string => {
-  // 🐨 Return one server-sent event: a line `id: <the event's seq>`, a line `data: <the event as JSON>`, and a
-  //    blank line to end it.
-  //
-  // 💰 `\n` is a newline in a template string. JSON.stringify never writes a raw newline, so the data is one line.
-  //
-  // 🦉 Why the id is the seq. The browser's EventSource keeps the `id` of the last event it got. When the
-  //    connection drops, it reconnects by itself and sends it back as the `Last-Event-ID` header. The seq is the
-  //    one number that says where in the log the page is, so that's what `resumeFrom` reads.
-  throw new Error(`toSse(seq ${event.seq}) isn't written yet`);
-};
+export const toSse = (event: RunEvent) => `id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`;
 
 /** A token line: no `id`, so a reconnect's `Last-Event-ID` stays the last event's seq. */
 export const toTokenSse = (delta: string) => `event: token\ndata: ${JSON.stringify({ delta })}\n\n`;
@@ -34,6 +24,13 @@ export function resumeFrom(lastEventId: string | null, after: string | null): nu
   //
   // 💰 /^\d{1,9}$/.test(value.trim()), Number(...)
   //
+  // 🦉 New in this file: `toSse`, written for you. It puts one event on the wire as `id: <its seq>`, then
+  //    `data: <the event as JSON>` (one line: JSON.stringify never writes a raw newline), then a blank line.
+  // 🦉 Why that id is the seq, and why it matters here. The browser's EventSource keeps the `id` of the last
+  //    message it got. When the connection drops, it reconnects by itself and sends that id back as the
+  //    `Last-Event-ID` header. The seq is the one number that says where in the log the page is, so the header
+  //    hands you back the seq of the last event the page holds. Token lines (`toTokenSse`) carry no id, so the
+  //    header always names a stored event.
   // 🦉 Why the header wins. Two things bring a page back. The browser reconnecting on its own sends
   //    `Last-Event-ID` and keeps the URL it first opened, `?after=` included. A reload opens a new EventSource,
   //    which can't send headers, so the page puts its last seq in `?after=` (section 12.4). If both arrive, the

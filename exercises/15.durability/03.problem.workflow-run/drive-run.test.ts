@@ -95,13 +95,15 @@ describe("driveRun: the run as a loop of steps", () => {
     ).toBe(false);
   });
 
-  it("sends a delegate call to the delegate step with its siblings and the turn's size, and a denied one to a tool step", async () => {
+  it("starts each call's step with stepFor: a delegate to the delegate step, a denied one to a tool step", async () => {
     const denied = { ...call("d2", "delegate"), denied: "a sub-agent can't delegate" } as ToolCall;
     const { log } = await drive([
       act(6, { kind: "tools", calls: [call("d1", "delegate"), denied, call("s1", "search_documents")] }),
       succeeded,
     ]);
-    expect(log).toContain("delegate d1 1/3");
+    expect(log, "start each call's step with `stepFor(steps, action.calls, controller.signal)`").toContain(
+      "delegate d1 1/3",
+    );
     expect(log.filter((l) => l.startsWith("tool"))).toEqual(["tool delegate", "tool search_documents"]);
     expect(log).toContain("record d1,d2,s1");
   });

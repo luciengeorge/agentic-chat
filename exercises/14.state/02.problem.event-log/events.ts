@@ -72,7 +72,8 @@ export async function append(
   options: AppendOptions = {},
 ): Promise<Appended> {
   // 🐨 Read the run's `status` and `version` (`SELECT ... FROM runs WHERE id = ...`). No row: throw a
-  //    RunNotFoundError (RLS hides other tenants' runs, so that's the answer for them too).
+  //    RunNotFoundError (row-level security, RLS: Postgres hides other tenants' rows, so another tenant's run
+  //    isn't found either, and that's the answer for them too).
   // 🐨 If its version isn't `expectedVersion`, throw a VersionConflictError(runId, expectedVersion, <its version>).
   // 🐨 Run the batch through the state machine, `applyStatus(<its status>, events)`: an illegal move throws before
   //    anything is written. Keep the status it returns. An empty batch writes nothing: return the run as it is.

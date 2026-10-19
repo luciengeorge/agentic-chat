@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Viewer } from "#learn/retrieve/types";
 
 import { dueFire, dueSlot, fireRun, RUN_NAMESPACE, runMessage } from "#learn/automations/automation";
-import { parseCron } from "#learn/automations/cron";
+import { latestSlot, parseCron } from "#learn/automations/cron";
 import { withTenantOn } from "@/db/tenant";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
 import { claimFire, createAutomation, dueScheduleFires } from "@/lib/automations";
@@ -14,6 +14,36 @@ const at = (iso: string) => new Date(iso);
 const MONDAY_9 = "0 9 * * 1";
 /** Made the Monday before, after its 09:00. */
 const made = at("2026-10-12T10:00:00Z");
+
+describe("latestSlot", () => {
+  const quarterly = parseCron("*/15 * * * *");
+
+  it("keeps the window half-open: a slot at `after` is out, a slot at `upTo` is in", () => {
+    expect(
+      latestSlot(parseCron(MONDAY_9), at("2026-10-19T09:00:00Z"), at("2026-10-19T09:30:00Z")),
+      "09:00 is `after`, the last fire: it's out, or every tick after 09:00 would fire it again",
+    ).toBeNull();
+    expect(
+      latestSlot(parseCron(MONDAY_9), at("2026-10-19T08:00:00Z"), at("2026-10-19T09:00:00Z")),
+      "09:00 is `upTo`, the tick's time: it's due now",
+    ).toEqual(at("2026-10-19T09:00:00Z"));
+  });
+
+  it("gives the latest of the slots in the window, and null when there are none", () => {
+    expect(
+      latestSlot(quarterly, at("2026-10-19T09:45:00Z"), at("2026-10-19T11:05:00Z")),
+      "five slots came due, 10:00 to 11:00: the latest is 11:00, not the first",
+    ).toEqual(at("2026-10-19T11:00:00Z"));
+    expect(
+      latestSlot(parseCron(MONDAY_9), made, at("2026-10-26T10:00:00Z")),
+      "two Mondays in the window, the 19th and the 26th: keep going past the first",
+    ).toEqual(at("2026-10-26T09:00:00Z"));
+    expect(
+      latestSlot(quarterly, at("2026-10-19T10:00:00Z"), at("2026-10-19T10:14:59Z")),
+      "nothing between 10:00 and 10:15",
+    ).toBeNull();
+  });
+});
 
 describe("dueSlot", () => {
   it("fires Monday's 09:00 slot once it's due, and not before", () => {
@@ -47,7 +77,7 @@ describe("dueSlot", () => {
         createdAt: made,
         lastFiredAt: at("2026-10-19T09:45:00Z"),
       }),
-      "down from 09:50 to 11:05, it missed 10:00 to 11:00: fire 11:00 alone, never the oldest",
+      "last fired 09:45, down from 09:50 to 11:05: five slots came due (10:00 to 11:00); fire 11:00 alone, never the oldest",
     ).toEqual(at("2026-10-19T11:00:00Z"));
   });
 

@@ -3,7 +3,9 @@
 //
 // 🦉 Already written in this file: the plan, `planningTurn` (step 2), `targetMatches` (a recipient's label
 //    against a planned target), `documentMatches` (an attachment's label against a planned document: every word
-//    of the planned name a whole word of the title) and `sameNote`. You write `uncovered`.
+//    of the planned name a whole word of the title) and `sameNote`. In `uncovered`, the plumbing around the mail:
+//    the plan's entries for the call's tool, `remember` (the note word for word) and `share_document` (its
+//    recipient and document from one entry). You write `uncovered`'s `send_mail` branch.
 
 /**
  * Plan-then-execute (section 17.3). Each user message starts with a planning turn: before the agent has read a
@@ -191,37 +193,58 @@ export const sameNote = (a: string, b: string) => noteKey(a) === noteKey(b);
  * the same planned share_document, a note word for word as a planned remember wrote it.
  */
 export function uncovered(plan: Plan, call: ToolCall): string | null {
-  // 🐨 Only the plan's entries for this call's tool count. None: "the plan has no <tool>."
-  // 🐨 `remember`: the call's `note` must equal a planned entry's `note` (`sameNote`). Else "the plan doesn't have
-  //    this note, word for word, from the user's request."
-  // 🐨 `send_mail`: one planned entry must cover the whole mail, every address in `input.to` (`targetMatches`
-  //    against that address's label in `call.screen.recipients`) and every attachment (`documentMatches` on each
-  //    label in `call.screen.documents`). If the screen resolved fewer attachments than the input names, refuse:
-  //    "the attachments weren't resolved, so they can't be checked."
-  // 🐨 A mail no entry covers gets the most useful reason: an address no entry names ("the plan doesn't name
-  //    <address> as a recipient."), else an attachment no entry names ("the plan doesn't name <label> as an
-  //    attachment."), else "no one planned mail has all these recipients and attachments together."
-  // 🐨 `share_document`: one planned entry must name its recipient and its document together. Else "the plan
-  //    doesn't name this document and recipient (<the documents and recipients, joined with ", ">)."
-  // 🐨 Covered: null.
-  // 🐨 The classic mistake: covering one call from several entries. Plan "mail Tom" and "mail Daniel the Heron
-  //    memo", and a mail to Tom with the memo attached passes recipient by recipient and attachment by attachment.
-  //    It's still a mail nobody planned.
-  //
-  // 💰 A recipient's label looks like "Tom Whitfield <tom.whitfield@kestrelpay.example>": an address's label is
-  //    the one containing `<address>`, in lower case (if none does, use the address). `array.every`, `.some`,
-  //    `.find`, `.filter`.
-  //
-  // 🦉 Why one entry per call. An entry is one thing the user asked for. Mixing entries lets a document rewire the
-  //    user's requests: move the memo from Daniel's mail onto Tom's, and every piece still looks planned.
-  // 🦉 Why titles and whole words. In M2's first plan check, "Q3 report" covered `/Exec/Reports/heron-memo.pdf`:
-  //    "report" was the start of a folder's name. `documentMatches` takes whole words of the title only, so a
-  //    folder or half a word can't make a document look planned.
-  // 🦉 Why the guardrails' labels. The model writes an address; the guardrails (step 4) look it up and say whose it
-  //    is. Matching the plan against that label means "Tom Whitfield" in the plan covers Tom's real address, and
-  //    "Tom (attacker@evil.example)" covers the attacker's alone.
-  //
-  // 🚨 The tests check Grace's recorded mail (covered), a colleague added, an attachment nobody planned, two entries
-  //    mixed into one mail, a path word, a share's pair, and a note.
-  throw new Error(`uncovered(${plan.writes.length} planned writes, ${call.tool}) isn't written yet`);
+  const planned = plan.writes.filter((w) => w.tool === call.tool);
+  if (planned.length === 0) return `the plan has no ${call.tool}.`;
+
+  if (call.tool === "remember") {
+    const note = (call.input as { note?: unknown }).note;
+    const ok = typeof note === "string" && planned.some((w) => w.note !== null && sameNote(w.note, note));
+    return ok ? null : "the plan doesn't have this note, word for word, from the user's request.";
+  }
+
+  const recipients = call.screen?.recipients ?? [];
+  if (call.tool === "send_mail") {
+    // 🐨 One entry of `planned` must cover the whole mail: every address in `input.to` (`targetMatches` against
+    //    that address's label in `recipients`) and every attachment (`documentMatches` on each label in
+    //    `call.screen.documents`). Covered: null.
+    // 🐨 If the screen resolved fewer attachments than `input.attachmentDocumentIds` names, refuse first: "the
+    //    attachments weren't resolved, so they can't be checked."
+    // 🐨 A mail no entry covers gets the most useful reason: an address no entry names ("the plan doesn't name
+    //    <address> as a recipient."), else an attachment no entry names ("the plan doesn't name <label> as an
+    //    attachment."), else "no one planned mail has all these recipients and attachments together."
+    // 🐨 The classic mistake: covering one call from several entries. Plan "mail Tom" and "mail Daniel the Heron
+    //    memo", and a mail to Tom with the memo attached passes recipient by recipient and attachment by
+    //    attachment. It's still a mail nobody planned.
+    //
+    // 💰 A recipient's label looks like "Tom Whitfield <tom.whitfield@kestrelpay.example>": an address's label is
+    //    the one containing `<address>`, in lower case (if none does, use the address). `array.every`, `.some`,
+    //    `.find`, `.filter`.
+    //
+    // 🦉 Why one entry per call. An entry is one thing the user asked for. Mixing entries lets a document rewire
+    //    the user's requests: move the memo from Daniel's mail onto Tom's, and every piece still looks planned.
+    // 🦉 Why titles and whole words. In M2's first plan check, "Q3 report" covered `/Exec/Reports/heron-memo.pdf`:
+    //    "report" was the start of a folder's name. `documentMatches` takes whole words of the title only, so a
+    //    folder or half a word can't make a document look planned.
+    // 🦉 Why the guardrails' labels. The model writes an address; the guardrails (step 4) look it up and say whose
+    //    it is. Matching the plan against that label means "Tom Whitfield" in the plan covers Tom's real address,
+    //    and "Tom (attacker@evil.example)" covers the attacker's alone.
+    //
+    // 🚨 The tests check Grace's recorded mail (covered), a colleague added, an attachment nobody planned, two
+    //    entries mixed into one mail, a path word, and attachments the guardrails didn't resolve.
+    throw new Error(
+      `uncovered's send_mail (${planned.length} planned mails, ${recipients.length} recipients) isn't written yet`,
+    );
+  }
+
+  if (call.tool === "share_document") {
+    const documents = call.screen?.documents ?? [];
+    const ok = planned.some(
+      (w) =>
+        w.targets.some((t) => targetMatches(t, recipients)) && w.documents.some((d) => documentMatches(d, documents)),
+    );
+    return ok
+      ? null
+      : `the plan doesn't name this document and recipient (${[...documents, ...recipients].join(", ")}).`;
+  }
+  return null;
 }

@@ -146,12 +146,13 @@ export function dueSlot(
   //    A slot exactly at `now` is in.
   // 🐨 Parse `cron` first when it's a string.
   //
-  // 💰 Add `latestSlot` to the `#learn/automations/cron` import: `latestSlot(cron, after, upTo)` gives the latest
-  //    slot in (after, upTo], or null. `Math.max(...)` of `getTime()`s, then `new Date(ms)`.
+  // 💰 Add `latestSlot` to the `#learn/automations/cron` import: it's yours, in `cron.ts`. `Math.max(...)` of
+  //    `getTime()`s, then `new Date(ms)`.
   //
-  // 🦉 Why the latest slot only. A schedule of every 15 minutes on a server that was down for an hour has missed
-  //    four slots. Firing all four would send the owner four digests of the same documents at once. The latest one
-  //    covers everything since the last fire (a fire over a folder reads what changed since then), so it's enough.
+  // 🦉 Why the latest slot only. An every-15-minutes schedule that last fired at 09:45, on a server down until
+  //    11:05, has five slots due: 10:00 to 11:00. Firing all five would send the owner five digests of the same
+  //    documents at once. The latest one covers everything since the last fire (a fire over a folder reads what
+  //    changed since then), so it's enough.
   // 🦉 Why look back 24 hours at most. A Monday digest that fires on Wednesday, because the server was off for two
   //    days, is news nobody asked for at that hour. A day's catch-up covers a restart or a deploy; anything older is
   //    dropped.

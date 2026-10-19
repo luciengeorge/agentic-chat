@@ -113,6 +113,20 @@ export async function waitForChange(
 }
 
 /**
+ * The step for each of a turn's calls (section 16.3's rule): a delegate the policy didn't deny becomes a child run,
+ * told how many of the turn's calls are delegates and how many calls there are; any other call is a tool step.
+ */
+export function stepFor(
+  steps: RunSteps,
+  calls: readonly ToolCall[],
+  signal: AbortSignal,
+): (call: ToolCall) => Promise<ToolOutcome> {
+  const delegated = (call: ToolCall) => call.tool === DELEGATE_TOOL && !("denied" in call);
+  const delegates = calls.filter(delegated).length;
+  return (call) => (delegated(call) ? steps.delegate(call, delegates, calls.length) : steps.tool(call, signal));
+}
+
+/**
  * The run as a loop of steps (section 15.3): plan, then the work the plan calls for, until the run is final. A
  * turn's tool calls run as parallel steps, and their results are recorded together, in call order, by one more
  * step. Returns the status the run ended with: `cancelled` when a cancel stopped it, `failed` when a step failed
@@ -132,17 +146,19 @@ export async function driveRun(
   //    - `act`, an `approval`: `steps.approval(call, version)`, then plan again.
   //    - `act`, a `model` turn: `steps.modelTurn(version, controller.signal)`, inside
   //      `unlessCancelled(work, signals, controller)`. Null from that means a cancel stopped the run: "cancelled".
-  //    - `act`, `tools`: every call at once, each its own step. A `delegate` call the policy didn't deny (it has no
-  //      `denied` field) goes to `steps.delegate(call, <how many such calls>, <how many calls>)`, every other call
-  //      to `steps.tool(call, controller.signal)`. Wait for them all inside `unlessCancelled`. If an outcome is
-  //      `halted`, `steps.fail(<its reason>)`. Otherwise `steps.record(<the result outcomes' results>)`, once, in
-  //      call order, unless there are none.
+  //    - `act`, `tools`: every call at once, each its own step: `stepFor(steps, action.calls, controller.signal)`
+  //      gives the function that starts a call's step. Wait for them all inside `unlessCancelled`; null is a cancel
+  //      again. If an outcome is `halted`, `steps.fail(<its reason>)`. Otherwise `steps.record(<the result
+  //      outcomes' results>)`, once, in call order, unless there are none.
   // 🐨 A step that throws has failed for good: Workflow has already retried it. Catch it around the whole loop,
   //    `steps.fail(<its message>)`, and the run ends "failed". Nothing throws out of the body.
   //
   // 💰 `Promise.all(calls.map(...))` gives the results in the calls' order, whatever order they finish in.
-  //    `outcomes.flatMap((o) => (o.kind === "result" ? [o.result] : []))`. `DELEGATE_TOOL` is the delegate's name.
+  //    `outcomes.flatMap((o) => (o.kind === "result" ? [o.result] : []))`.
   //
+  // 🦉 New in this file: `stepFor`, written for you. It sends a `delegate` call to `steps.delegate` (a child run,
+  //    section 16.3) and every other call to `steps.tool`. Which calls are delegates is section 16's business;
+  //    this step's is the loop around them.
   // 🦉 Why every branch is on a step's result. This function runs inside the workflow, and Workflow runs it again
   //    from the top on every wake-up: after each step, after an approval, after a restart. A step that already ran
   //    doesn't run again: its recorded result comes straight back. So the loop walks the same path to where it

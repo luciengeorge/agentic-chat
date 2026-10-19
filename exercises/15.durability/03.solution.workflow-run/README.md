@@ -7,7 +7,7 @@ slots:
 
 # The run as a Workflow: the solution
 
-`driveRun` loops on `steps.plan()`. `not-found` returns at once; `final` breaks with the plan's status; `waiting` goes to `waitForChange`, and a cancel there ends the run `cancelled`. For `act`: an approval is `steps.approval`; a model turn is `steps.modelTurn` inside `unlessCancelled`; a turn's tools all start at once with `Promise.all`, a live delegate call to `steps.delegate(call, delegates, calls.length)` and every other call to `steps.tool`, inside `unlessCancelled`. A halted outcome fails the run with its reason; otherwise the result outcomes go to one `steps.record`, in call order. The whole loop sits in a `try`: a step that failed for good is `steps.fail(message)` and the status `failed`.
+`driveRun` loops on `steps.plan()`. `not-found` returns at once; `final` breaks with the plan's status; `waiting` goes to `waitForChange`, and a cancel there ends the run `cancelled`. For `act`: an approval is `steps.approval`; a model turn is `steps.modelTurn` inside `unlessCancelled`; a turn's tools all start at once with `Promise.all` over `action.calls.map(stepFor(...))` (a live delegate call goes to `steps.delegate`, every other call to `steps.tool`), inside `unlessCancelled`. A halted outcome fails the run with its reason; otherwise the result outcomes go to one `steps.record`, in call order. The whole loop sits in a `try`: a step that failed for good is `steps.fail(message)` and the status `failed`.
 
 `kickAction` answers `start` with no workflow id, `leave` for a status it couldn't read, `reconcile` for `cancelled`, `replace` for `completed`, `failed` or `gone`, and `wake` for the rest.
 
