@@ -1,11 +1,10 @@
 import { sql } from "drizzle-orm";
 
+import type { WorkspaceWriter } from "#learn/agent/tools/workspace";
 import type { Retrieve } from "#learn/retrieve/types";
 import type { Tx } from "@/db/tenant";
 
 import { canRead } from "#learn/retrieve/acl";
-
-import type { WorkspaceWriter } from "./workspace";
 
 /** What the tools need from the app. Every one of them acts as `ctx.viewer`, never as a service account. */
 export interface ToolDeps {

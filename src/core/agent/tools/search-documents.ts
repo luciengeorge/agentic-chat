@@ -1,8 +1,7 @@
 import { z } from "zod";
 
+import type { ToolDeps } from "#learn/agent/tools/deps";
 import type { AgentTool } from "#learn/agent/types";
-
-import type { ToolDeps } from "./deps";
 
 const Input = z.object({
   query: z.string().min(1).max(500).describe("What to look for, in plain words."),

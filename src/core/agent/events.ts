@@ -109,6 +109,3 @@ export async function readEvents(tx: Tx, runId: string, afterSeq = 0, limit = 10
     LIMIT ${limit}`);
   return rows.map(toRunEvent);
 }
-
-/** One event as an SSE message. `id` is its `seq`, so a client that reconnects sends it back as Last-Event-ID. */
-export const toSse = (event: RunEvent) => `id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`;

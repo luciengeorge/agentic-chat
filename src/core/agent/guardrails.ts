@@ -12,12 +12,11 @@
  */
 import { sql } from "drizzle-orm";
 
+import type { Screen, ToolCall } from "#learn/agent/types";
 import type { Viewer } from "#learn/retrieve/types";
 import type { Tx } from "@/db/tenant";
 
 import { canRead } from "#learn/retrieve/acl";
-
-import type { Screen, ToolCall } from "./types";
 
 export interface GuardrailDeps {
   withTenant: <T>(tenantId: string, fn: (tx: Tx) => Promise<T>) => Promise<T>;
@@ -25,24 +24,28 @@ export interface GuardrailDeps {
 
 /** Runs of this many words from the body are looked for, word for word, in the documents. */
 export const QUOTE_MIN_WORDS = 8;
-const QUOTE_STEP = 4;
-const MAX_QUOTES = 60;
+/** A span starts every this many words. */
+export const QUOTE_STEP = 4;
+/** At most this many spans are looked for in one body. */
+export const MAX_QUOTES = 60;
 
-type Principal = { id: string; kind: "user" | "group"; name: string; email: string | null };
+export type Principal = { id: string; kind: "user" | "group"; name: string; email: string | null };
 
-const label = (p: Principal) => (p.email ? `${p.name} <${p.email.toLowerCase()}>` : p.name);
-const isUuid = (value: unknown): value is string =>
+/** "Name <address>", or the name of a group with no address. */
+export const label = (p: Principal) => (p.email ? `${p.name} <${p.email.toLowerCase()}>` : p.name);
+export const isUuid = (value: unknown): value is string =>
   typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 /** The tenant's own mail domains: the domains of its directory's users. */
-async function mailDomains(tx: Tx): Promise<Set<string>> {
+export async function mailDomains(tx: Tx): Promise<Set<string>> {
   const rows = await tx.execute<{ domain: string }>(sql`
     SELECT DISTINCT lower(split_part(email, '@', 2)) AS domain FROM principals
     WHERE kind = 'user' AND email IS NOT NULL`);
   return new Set(rows.map((r) => r.domain));
 }
 
-async function principalByEmail(tx: Tx, address: string): Promise<Principal | null> {
+/** The enabled person or group with this address, in the tenant. */
+export async function principalByEmail(tx: Tx, address: string): Promise<Principal | null> {
   const [row] = await tx.execute<Principal>(sql`
     SELECT id, kind, display_name AS name, email FROM principals
     WHERE lower(email) = lower(${address}) AND enabled`);
@@ -56,7 +59,8 @@ async function principalById(tx: Tx, tenantId: string, id: string): Promise<Prin
   return row ?? null;
 }
 
-async function documentLabel(tx: Tx, id: string): Promise<string> {
+/** "Title (/path)", how the plan and the approval card name a document. */
+export async function documentLabel(tx: Tx, id: string): Promise<string> {
   const [row] = await tx.execute<{ title: string; path: string }>(sql`
     SELECT title, path FROM documents WHERE id = ${id}`);
   return row ? `${row.title} (${row.path})` : id;
@@ -81,7 +85,7 @@ export function quotableSpans(body: string): string[] {
 }
 
 /** The documents (current versions, anywhere in the tenant) whose text contains one of the spans word for word. */
-async function quotedDocuments(tx: Tx, spans: readonly string[]): Promise<Array<{ id: string; title: string }>> {
+export async function quotedDocuments(tx: Tx, spans: readonly string[]): Promise<Array<{ id: string; title: string }>> {
   if (spans.length === 0) return [];
   const rows = await tx.execute<{ id: string; title: string }>(sql`
     SELECT DISTINCT d.id, d.title FROM chunks c JOIN documents d ON d.id = c.document_id AND c.document_version = d.version
@@ -93,7 +97,7 @@ async function quotedDocuments(tx: Tx, spans: readonly string[]): Promise<Array<
 }
 
 /** Can this principal read the document? A group stands for its members, so it can only if each of them can. */
-async function principalCanRead(tx: Tx, principal: Principal, documentId: string): Promise<boolean> {
+export async function principalCanRead(tx: Tx, principal: Principal, documentId: string): Promise<boolean> {
   if (principal.kind === "user") return canRead(tx, principal.id, documentId);
   const members = await tx.execute<{ id: string }>(sql`
     SELECT gc.member_id AS id FROM group_closure gc JOIN principals p ON p.id = gc.member_id
@@ -102,7 +106,12 @@ async function principalCanRead(tx: Tx, principal: Principal, documentId: string
   return true;
 }
 
-async function screenMail(tx: Tx, viewer: Viewer, input: Record<string, unknown>): Promise<Screen> {
+/**
+ * One mail's screen: denied when an address is outside the company's domains or nobody's in the directory, or an
+ * attachment isn't one the sender can read; flagged when a recipient can't open an attachment, or the body quotes
+ * a document a recipient can't read; otherwise the recipients and attachments by name, for the plan.
+ */
+export async function screenMail(tx: Tx, viewer: Viewer, input: Record<string, unknown>): Promise<Screen> {
   const to = Array.isArray(input.to) ? input.to.map(String) : [];
   const attachments = Array.isArray(input.attachmentDocumentIds) ? input.attachmentDocumentIds : [];
   const body = typeof input.body === "string" ? input.body : "";

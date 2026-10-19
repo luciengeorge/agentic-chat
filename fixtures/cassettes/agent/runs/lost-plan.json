@@ -1,0 +1,796 @@
+{
+  "exported": "2026-10-19",
+  "source": "the dev database (run and run_events rows, as the app wrote them)",
+  "run": {
+    "id": "c600f552-a019-4f5d-a831-02b5896632b3",
+    "user": "tom.whitfield",
+    "userId": "e8a6bf31-0196-5c63-8cb6-9db675db14fa",
+    "kind": "chat",
+    "status": "succeeded",
+    "version": 21,
+    "createdAt": "2026-10-14T13:40:32.081159+00:00"
+  },
+  "events": [
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 1,
+      "at": "2026-10-14T13:40:32.084Z",
+      "stepKey": null,
+      "data": {
+        "text": "Email Daniel Reyes (daniel.reyes@kestrelpay.example) a two-line summary of the INC-2026-0817 postmortem.",
+        "type": "user_message",
+        "messageId": "smoke-c600f552"
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 2,
+      "at": "2026-10-14T13:40:32.194Z",
+      "stepKey": null,
+      "data": {
+        "to": "running",
+        "from": "queued",
+        "type": "status"
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 3,
+      "at": "2026-10-14T13:40:34.610Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE23:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 1870,
+          "outputTokens": 119,
+          "reasoningTokens": 0
+        },
+        "toolCalls": [
+          {
+            "tool": "make_plan",
+            "input": {
+              "goal": "Find the INC-2026-0817 postmortem, prepare a two-line summary, and email it to Daniel Reyes at the address the user provided.",
+              "steps": [
+                "Search company documents for the INC-2026-0817 postmortem.",
+                "Read the relevant document and distill it into exactly two lines.",
+                "Send the two-line summary to Daniel Reyes."
+              ],
+              "writes": [
+                {
+                  "tool": "send_mail",
+                  "targets": [
+                    "Daniel Reyes (daniel.reyes@kestrelpay.example)"
+                  ],
+                  "documents": []
+                }
+              ]
+            },
+            "callId": "call_4OPecZV5y1VLYzaMC6mmEfYO"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 4,
+      "at": "2026-10-14T13:40:34.713Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE26:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_4OPecZV5y1VLYzaMC6mmEfYO",
+        "output": {
+          "planned": 1
+        }
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 5,
+      "at": "2026-10-14T13:40:35.980Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE28:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 2005,
+          "outputTokens": 31,
+          "reasoningTokens": 0
+        },
+        "toolCalls": [
+          {
+            "tool": "search_documents",
+            "input": {
+              "k": 5,
+              "query": "INC-2026-0817 postmortem"
+            },
+            "callId": "call_lSBn6LgICDQLIF2GnfSTAlSS"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 6,
+      "at": "2026-10-14T13:40:50.819Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2B:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_lSBn6LgICDQLIF2GnfSTAlSS",
+        "output": {
+          "passages": [
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 1. Summary\n\nTable 1: Income summary, £000\n\n| Line | August 2026 | August budget | Variance | July 2026 | Q3 to date | Q3 to date budget |\n| --- | --- | --- | --- | --- | --- | --- |\n| Revenue | 13,401 | 13,650 | (249) | 13,520 | 26,921 | 27,350 |\n| Gross profit | 7,746 | 7,990 | (244) | 7,815 | 15,561 | 16,000 |\n| Gross margin | 57.8% | 58.5% | (0.7) pts | 57.8% | 57.8% | 58.5% |\n| Operating costs | (7,156) | (7,230) | 74 | (7,114) | (14,270) | (14,460) |\n| EBITDA | 590 | 760 | (170) | 701 | 1,291 | 1,540 |\n\n- Revenue was £249k (1.8%) below budget. UK card volume fell more than usual in August: Checkout payment volume was £1.58bn against £1.66bn in July. The 47-minute Checkout outage on 17 August (INC-2026-0817) cost about £7,900 of revenue, and the service credits to Checkout Pro merchants (about £2,650) are netted off August revenue. Payouts was flat on July; the two payroll bureaus went live on 1 September.\n\n- Gross margin was 57.8%. Two merchant fraud cases added £61k of losses, of which £12k has been recovered so far.\n\n- Operating costs were £74k under budget. Staff costs were under because headcount is 597 against a budget of 611; professional fees were over, mainly Carrow Finch's fees on the Dublin office lease (£85k).\n\n- Year to date (January to August) revenue is £104.0m against a budget of £104.9m.",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "f36c9388-cd9a-4821-a4e0-3a9bb15adeb7",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+              "text": "## Deadlines in the next six months\n\n| Date | Contract no. | Counterparty | What happens | Owner |\n| --- | --- | --- | --- | --- |\n| 30/09/2026 | KPC-2025-0204 | Brindle Print & Post Ltd | Contract expires. Renewal KPC-2026-0458 not yet agreed | Hannah Kim |\n| 01/10/2026 | KPC-2024-0166 | Peopleline HR Ltd | Last day to give notice if we do not want it to renew on 30/11/2026 | Marco Bianchi |\n| 31/10/2026 | KPC-2025-0008 | Pelham Studio Ltd | Last day to give 3 months' notice before 31/01/2027 | Jake Morrison |\n| 31/10/2026 | KPC-2026-0301 | Ostrander Tax Advisers LLP | Engagement ends | Tom Whitfield |\n| 30/11/2026 | KPC-2025-0262 | Halden Insurance Brokers Ltd | 2027 insurance terms due | Daniel Reyes |\n| 30/11/2026 | KPC-2026-0429 | Liffey Office Interiors Ltd | Order ends; last delivery due | Ella Brooks |\n| 31/12/2026 | KPC-2024-0031 | Oakmere Payroll Services Ltd | Last day to give 3 months' notice before 31/03/2027 | Marco Bianchi |\n| 01/03/2027 | KPC-2025-0093 | Helmsley Support Software Ltd | Last day to give 60 days' notice before 30/04/2027 | Hannah Kim |\n| 31/03/2027 | KPC-2026-0071 | Quarry Lane Recruitment Ltd | Fixed term ends | Marco Bianchi |\n| 31/03/2027 | KPC-2026-0326 | Fernside & Co LLP | Safeguarding audit engagement ends | Sofia Lindqvist |",
+              "title": "Contract Register 2026-09-28.pdf",
+              "chunkId": "2c8582bf-2bc7-4aa9-9133-a5e370a2b610",
+              "pageEnd": 6,
+              "pageStart": 6,
+              "documentId": "3d90b6c8-e446-4f9e-9279-d3b4c72a02ae"
+            },
+            {
+              "path": "/Finance/Safeguarding Reconciliation Procedure.md",
+              "text": "## 6. What changed in version 3.1\n\nThe FCA's new safeguarding rules apply from 7 May 2026. Because of them:\n\n- the monthly safeguarding return to the FCA was added;\n\n- the resolution pack is now checked every month instead of every year;\n\n- the 15:00 statement file check, started after breach SG-2026-01 in March, is now part of the written procedure.",
+              "title": "Safeguarding Reconciliation Procedure.md",
+              "chunkId": "138b0023-bc52-42ed-8d03-a0d3d520cd9c",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "64f67362-6d6a-4923-be7a-4121a2436ff8"
+            },
+            {
+              "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+              "text": "## 5. Timeline\n\n| Milestone | Date | Owner |\n| --- | --- | --- |\n| Sandbox credentials issued to Brightwell | 14 September 2026 | Kestrel (Ravi Shah) |\n| Security questionnaire returned | 25 September 2026 | Brightwell (Dev Malhotra) |\n| Integration review | 5 October 2026 | Both |\n| Pilot with 25 Brightwell customers | 12 October 2026 | Both |\n| Pilot review and go or no-go | 6 November 2026 | Both |\n| General availability | 16 November 2026 | Both |",
+              "title": "Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+              "chunkId": "0b272fee-e62c-488d-b6d0-606269235044",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "81a20785-70e1-494e-9a47-f352817e0ba2"
+            },
+            {
+              "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+              "text": "## 6. Key dates\n\n| Date | Milestone |\n| --- | --- |\n| 20 October 2026 | Board vote |\n| 23 October 2026 | Signing; W&I insurance bound; founders sign service agreements |\n| 30 November 2026 | Completion accounts date |\n| 1 December 2026 | Completion (Day 1) |\n| 9 December 2026 | FY2027 budget, including Lumen, to the board |\n| 15 December 2026 | Deadline for the FCA close-link notice |\n| 29 January 2027 | Completion accounts agreed |\n| 28 February 2027 | Purchase price allocation delivered |\n| 10 March 2027 | Day 100 review at the steering group |\n| 30 June 2027 | Lumen payroll moves to the Kestrel provider |\n| 31 December 2027 | Earn-out measurement date |",
+              "title": "Project Heron Integration Plan v0.4.docx",
+              "chunkId": "ca010491-296b-4244-a063-41b33f630d5e",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "d253138b-6415-46a4-8aa5-1621858e9ba9"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 7,
+      "at": "2026-10-14T13:40:53.742Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2D:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 3862,
+          "outputTokens": 60,
+          "reasoningTokens": 17
+        },
+        "toolCalls": [
+          {
+            "tool": "search_documents",
+            "input": {
+              "k": 8,
+              "query": "incident postmortem INC-2026-0817 Checkout outage 17 August root cause impact remediation"
+            },
+            "callId": "call_fSaFURdcxn9LdSaI8kgVkFzE"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 8,
+      "at": "2026-10-14T13:41:17.221Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2G:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_fSaFURdcxn9LdSaI8kgVkFzE",
+        "output": {
+          "passages": [
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 1. Summary\n\nTable 1: Income summary, £000\n\n| Line | August 2026 | August budget | Variance | July 2026 | Q3 to date | Q3 to date budget |\n| --- | --- | --- | --- | --- | --- | --- |\n| Revenue | 13,401 | 13,650 | (249) | 13,520 | 26,921 | 27,350 |\n| Gross profit | 7,746 | 7,990 | (244) | 7,815 | 15,561 | 16,000 |\n| Gross margin | 57.8% | 58.5% | (0.7) pts | 57.8% | 57.8% | 58.5% |\n| Operating costs | (7,156) | (7,230) | 74 | (7,114) | (14,270) | (14,460) |\n| EBITDA | 590 | 760 | (170) | 701 | 1,291 | 1,540 |\n\n- Revenue was £249k (1.8%) below budget. UK card volume fell more than usual in August: Checkout payment volume was £1.58bn against £1.66bn in July. The 47-minute Checkout outage on 17 August (INC-2026-0817) cost about £7,900 of revenue, and the service credits to Checkout Pro merchants (about £2,650) are netted off August revenue. Payouts was flat on July; the two payroll bureaus went live on 1 September.\n\n- Gross margin was 57.8%. Two merchant fraud cases added £61k of losses, of which £12k has been recovered so far.\n\n- Operating costs were £74k under budget. Staff costs were under because headcount is 597 against a budget of 611; professional fees were over, mainly Carrow Finch's fees on the Dublin office lease (£85k).\n\n- Year to date (January to August) revenue is £104.0m against a budget of £104.9m.",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "f36c9388-cd9a-4821-a4e0-3a9bb15adeb7",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 3. Key measures at 31 August 2026\n\n| Measure | 31 August 2026 | 31 July 2026 |\n| --- | --- | --- |\n| Merchant customers | 49,310 | 48,790 |\n| Checkout payment volume in the month | £1.58bn | £1.66bn |\n| Payouts volume in the month | £0.63bn | £0.64bn |\n| Business accounts open | 31,050 | 30,820 |\n| Customer funds safeguarded | £1.26bn | £1.25bn |\n| Headcount | 597 | 593 |\n| Kestrel's own cash | £70.8m | £71.0m |",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "12ba889a-8c8f-4e8b-8519-50be07f3a620",
+              "pageEnd": 2,
+              "pageStart": 2,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "## 1. Summary\n\n| Measure | Q3 2026 | Q3 2025 | Change | YTD 2026 | YTD budget |\n| --- | --- | --- | --- | --- | --- |\n| Revenue | £41.2m | £35.2m | +17.0% | £118.3m | £119.0m |\n| Gross margin | 58.0% | 56.1% | +1.9 pts | 57.5% | 58.0% |\n| EBITDA | £2.1m | £0.9m | +£1.2m | £5.4m | £6.1m |\n| Merchant customers at quarter end | 49,870 | 43,950 | +13.5% |  |  |\n| Headcount at quarter end | 604 | 548 | +56 |  |  |\n\n- Revenue was £41.2m, up 17.0% on Q3 2025 and 4.3% on Q2 2026. It was £313k (0.8%) below the budget of £41.5m: Checkout and Payouts were slightly behind in July and August, and September beat budget once the two payroll bureaus went live on Payouts on 1 September.\n\n- Gross margin was 58.0%, up 0.6 points on Q2 and 1.9 points on a year ago, and 0.5 points below budget. Fraud losses (£83k over budget) and hosting usage above our committed capacity (£36k over) explain most of the gap.\n\n- EBITDA was £2.1m (5.2% of revenue) against a budget of £2.4m. Operating costs were £145k under budget: staff costs were £310k under because hiring is behind plan, and professional fees were £305k over.\n\n- Headcount was 604 against a budget of 618. Following the exec decision of 11 September, non-critical backfills are paused from 1 October, and we now forecast 625 at year end against a budget of 640.\n\n- Cash was £70.1m at 30 September (£71.3m at 30 June). This excludes customer funds, which are held in safeguarding accounts.",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "89059ddf-301c-43b3-b3cd-2058a541902a",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "| Line | Q3 2026 | Q2 2026 | Q3 2025 | Q3 2026 budget | Variance to budget |\n| --- | --- | --- | --- | --- | --- |\n| Operating profit (loss) | 723 | 455 | (305) | 930 | (207) |\n| Net finance income | 310 | 290 | 260 | 280 | 30 |\n| Profit (loss) before tax | 1,033 | 745 | (45) | 1,210 | (177) |\n| Tax | (258) | (186) | 0 | (303) | 45 |\n| Profit (loss) after tax | 775 | 559 | (45) | 907 | (132) |\n\nBrackets show costs, losses and adverse variances. There was no tax charge in Q3 2025 because of losses brought forward.\n\nCommentary on the income statement\n\n- Cost of revenue was £79k over budget. Fraud losses and chargebacks were £83k over, mostly two merchant fraud cases in August (£61k, of which £12k has been recovered so far). Processing and hosting was £36k over because Payouts traffic in September pushed usage above the committed capacity in our hosting contract with Ashgrove Cloud Services (KPC-2026-0142). Interchange and scheme fees were £60k under, in line with lower Checkout volume.\n\n- Staff costs were £310k under budget. Average headcount in the quarter was 597 against a budgeted 608.\n\n- Professional fees were £305k over budget, for three reasons: interim fieldwork for the 2026 safeguarding audit by Fernside & Co LLP (£140k, KPC-2026-0326), brought forward from Q4; legal fees for the Dublin office lease (£85k); and EU VAT and OSS registration advice from Ostrander Tax Advisers LLP (£80k, KPC-2026-0301).\n\n- Sales and marketing rose £180k on Q2 because of the September merchant acquisition campaign in Ireland, but stayed £40k under budget.\n\n- Net finance income is interest on Kestrel's own cash. It does not include any return on customer funds.",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "1a0a9f6f-3570-4fc0-9baa-7a8626b006a8",
+              "pageEnd": 3,
+              "pageStart": 3,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "text": "## 5. Service levels\n\n5.1 The Production Environment will be available at least 99.95% of each month. Priority 1 incidents get a response within 15 minutes, 24 hours a day.\n\n5.2 For each 0.1% of availability below the target in a month, Kestrel gets a service credit of 5% of that month's platform fee, up to 25% of the fee.\n\n5.3 Kestrel may terminate under clause 10.3 if availability falls below 99.5% in any two consecutive months, or in any three months within a 12-month period.",
+              "title": "KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "chunkId": "5c65c57c-44c4-4b96-a997-fcd16fc0f36f",
+              "pageEnd": 2,
+              "pageStart": 1,
+              "documentId": "ab8c3047-7d49-4f3f-87a1-47aceb15df22"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "## 4. Key measures\n\nTable 6: Key measures\n\n| Measure | Q3 2026 | Q2 2026 | Q3 2025 |\n| --- | --- | --- | --- |\n| Merchant customers at quarter end | 49,870 | 48,210 | 43,950 |\n| Net new merchants in the quarter | 1,660 | 1,330 | 1,410 |\n| Average monthly merchant churn | 0.9% | 1.0% | 1.1% |\n| Kestrel Checkout payment volume | £4.91bn | £4.76bn | £4.27bn |\n| Checkout take rate | 0.46% | 0.46% | 0.46% |\n| Kestrel Payouts volume | £1.93bn | £1.76bn | £1.44bn |\n| Total payment volume | £6.84bn | £6.52bn | £5.71bn |\n| Business accounts open at quarter end | 31,400 | 30,600 | 27,900 |\n| Customer funds safeguarded at quarter end | £1.27bn | £1.24bn | £1.08bn |",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "28cc53a6-d08c-4829-a556-f0d8d2e4df28",
+              "pageEnd": 5,
+              "pageStart": 5,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 2. Revenue by product\n\nTable 2: Revenue by product, £000\n\n| Product | August 2026 | July 2026 | August 2025 | Change on August 2025 |\n| --- | --- | --- | --- | --- |\n| Kestrel Checkout | 7,298 | 7,431 | 6,420 | +13.7% |\n| Kestrel Accounts | 3,402 | 3,398 | 2,951 | +15.3% |\n| Kestrel Payouts | 2,701 | 2,691 | 2,160 | +25.0% |\n| Total | 13,401 | 13,520 | 11,531 | +16.2% |",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "17d6466b-a601-446c-8ad7-f695b6ebb532",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/Month-End Close Checklist.md",
+              "text": "## Problems in recent closes\n\n| Month | Problem | Fix |\n| --- | --- | --- |\n| August 2026 | Portuguese payroll file arrived on WD3, so the payroll journal was a day late | Provider now sends the file on WD1; Tom chases at 15:00 if it hasn't arrived |\n| July 2026 | Two Ashgrove usage invoices missed the AP cut-off and were accrued at estimate | Grace now asks Ashgrove for usage figures on WD-1 |\n| June 2026 | Northbridge's monthly settlement report arrived late on WD1, which delayed the revenue cut-off check | Chris Dunn now pulls the report from Northbridge's API at 06:00 on WD1 |",
+              "title": "Month-End Close Checklist.md",
+              "chunkId": "dd61b7b0-d250-4fd6-a92c-9b04c9121ac1",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "a5fcaf65-d0ee-434d-b0ab-fa055c9d43fc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 9,
+      "at": "2026-10-14T13:41:20.017Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2J:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 7019,
+          "outputTokens": 85,
+          "reasoningTokens": 43
+        },
+        "toolCalls": [
+          {
+            "tool": "search_documents",
+            "input": {
+              "k": 8,
+              "query": "postmortem August 17 Checkout 47-minute outage incident root cause resolution actions 2026"
+            },
+            "callId": "call_ekZyj8VK0DFxxkOQcFEQHyA9"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 10,
+      "at": "2026-10-14T13:41:22.631Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2N:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_ekZyj8VK0DFxxkOQcFEQHyA9",
+        "output": {
+          "passages": [
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 1. Summary\n\nTable 1: Income summary, £000\n\n| Line | August 2026 | August budget | Variance | July 2026 | Q3 to date | Q3 to date budget |\n| --- | --- | --- | --- | --- | --- | --- |\n| Revenue | 13,401 | 13,650 | (249) | 13,520 | 26,921 | 27,350 |\n| Gross profit | 7,746 | 7,990 | (244) | 7,815 | 15,561 | 16,000 |\n| Gross margin | 57.8% | 58.5% | (0.7) pts | 57.8% | 57.8% | 58.5% |\n| Operating costs | (7,156) | (7,230) | 74 | (7,114) | (14,270) | (14,460) |\n| EBITDA | 590 | 760 | (170) | 701 | 1,291 | 1,540 |\n\n- Revenue was £249k (1.8%) below budget. UK card volume fell more than usual in August: Checkout payment volume was £1.58bn against £1.66bn in July. The 47-minute Checkout outage on 17 August (INC-2026-0817) cost about £7,900 of revenue, and the service credits to Checkout Pro merchants (about £2,650) are netted off August revenue. Payouts was flat on July; the two payroll bureaus went live on 1 September.\n\n- Gross margin was 57.8%. Two merchant fraud cases added £61k of losses, of which £12k has been recovered so far.\n\n- Operating costs were £74k under budget. Staff costs were under because headcount is 597 against a budget of 611; professional fees were over, mainly Carrow Finch's fees on the Dublin office lease (£85k).\n\n- Year to date (January to August) revenue is £104.0m against a budget of £104.9m.",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "f36c9388-cd9a-4821-a4e0-3a9bb15adeb7",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 3. Key measures at 31 August 2026\n\n| Measure | 31 August 2026 | 31 July 2026 |\n| --- | --- | --- |\n| Merchant customers | 49,310 | 48,790 |\n| Checkout payment volume in the month | £1.58bn | £1.66bn |\n| Payouts volume in the month | £0.63bn | £0.64bn |\n| Business accounts open | 31,050 | 30,820 |\n| Customer funds safeguarded | £1.26bn | £1.25bn |\n| Headcount | 597 | 593 |\n| Kestrel's own cash | £70.8m | £71.0m |",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "12ba889a-8c8f-4e8b-8519-50be07f3a620",
+              "pageEnd": 2,
+              "pageStart": 2,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "## 1. Summary\n\n| Measure | Q3 2026 | Q3 2025 | Change | YTD 2026 | YTD budget |\n| --- | --- | --- | --- | --- | --- |\n| Revenue | £41.2m | £35.2m | +17.0% | £118.3m | £119.0m |\n| Gross margin | 58.0% | 56.1% | +1.9 pts | 57.5% | 58.0% |\n| EBITDA | £2.1m | £0.9m | +£1.2m | £5.4m | £6.1m |\n| Merchant customers at quarter end | 49,870 | 43,950 | +13.5% |  |  |\n| Headcount at quarter end | 604 | 548 | +56 |  |  |\n\n- Revenue was £41.2m, up 17.0% on Q3 2025 and 4.3% on Q2 2026. It was £313k (0.8%) below the budget of £41.5m: Checkout and Payouts were slightly behind in July and August, and September beat budget once the two payroll bureaus went live on Payouts on 1 September.\n\n- Gross margin was 58.0%, up 0.6 points on Q2 and 1.9 points on a year ago, and 0.5 points below budget. Fraud losses (£83k over budget) and hosting usage above our committed capacity (£36k over) explain most of the gap.\n\n- EBITDA was £2.1m (5.2% of revenue) against a budget of £2.4m. Operating costs were £145k under budget: staff costs were £310k under because hiring is behind plan, and professional fees were £305k over.\n\n- Headcount was 604 against a budget of 618. Following the exec decision of 11 September, non-critical backfills are paused from 1 October, and we now forecast 625 at year end against a budget of 640.\n\n- Cash was £70.1m at 30 September (£71.3m at 30 June). This excludes customer funds, which are held in safeguarding accounts.",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "89059ddf-301c-43b3-b3cd-2058a541902a",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "## 4. Key measures\n\nTable 6: Key measures\n\n| Measure | Q3 2026 | Q2 2026 | Q3 2025 |\n| --- | --- | --- | --- |\n| Merchant customers at quarter end | 49,870 | 48,210 | 43,950 |\n| Net new merchants in the quarter | 1,660 | 1,330 | 1,410 |\n| Average monthly merchant churn | 0.9% | 1.0% | 1.1% |\n| Kestrel Checkout payment volume | £4.91bn | £4.76bn | £4.27bn |\n| Checkout take rate | 0.46% | 0.46% | 0.46% |\n| Kestrel Payouts volume | £1.93bn | £1.76bn | £1.44bn |\n| Total payment volume | £6.84bn | £6.52bn | £5.71bn |\n| Business accounts open at quarter end | 31,400 | 30,600 | 27,900 |\n| Customer funds safeguarded at quarter end | £1.27bn | £1.24bn | £1.08bn |",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "28cc53a6-d08c-4829-a556-f0d8d2e4df28",
+              "pageEnd": 5,
+              "pageStart": 5,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "| Line | Q3 2026 | Q2 2026 | Q3 2025 | Q3 2026 budget | Variance to budget |\n| --- | --- | --- | --- | --- | --- |\n| Operating profit (loss) | 723 | 455 | (305) | 930 | (207) |\n| Net finance income | 310 | 290 | 260 | 280 | 30 |\n| Profit (loss) before tax | 1,033 | 745 | (45) | 1,210 | (177) |\n| Tax | (258) | (186) | 0 | (303) | 45 |\n| Profit (loss) after tax | 775 | 559 | (45) | 907 | (132) |\n\nBrackets show costs, losses and adverse variances. There was no tax charge in Q3 2025 because of losses brought forward.\n\nCommentary on the income statement\n\n- Cost of revenue was £79k over budget. Fraud losses and chargebacks were £83k over, mostly two merchant fraud cases in August (£61k, of which £12k has been recovered so far). Processing and hosting was £36k over because Payouts traffic in September pushed usage above the committed capacity in our hosting contract with Ashgrove Cloud Services (KPC-2026-0142). Interchange and scheme fees were £60k under, in line with lower Checkout volume.\n\n- Staff costs were £310k under budget. Average headcount in the quarter was 597 against a budgeted 608.\n\n- Professional fees were £305k over budget, for three reasons: interim fieldwork for the 2026 safeguarding audit by Fernside & Co LLP (£140k, KPC-2026-0326), brought forward from Q4; legal fees for the Dublin office lease (£85k); and EU VAT and OSS registration advice from Ostrander Tax Advisers LLP (£80k, KPC-2026-0301).\n\n- Sales and marketing rose £180k on Q2 because of the September merchant acquisition campaign in Ireland, but stayed £40k under budget.\n\n- Net finance income is interest on Kestrel's own cash. It does not include any return on customer funds.",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "1a0a9f6f-3570-4fc0-9baa-7a8626b006a8",
+              "pageEnd": 3,
+              "pageStart": 3,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Month-End Close Checklist.md",
+              "text": "## Problems in recent closes\n\n| Month | Problem | Fix |\n| --- | --- | --- |\n| August 2026 | Portuguese payroll file arrived on WD3, so the payroll journal was a day late | Provider now sends the file on WD1; Tom chases at 15:00 if it hasn't arrived |\n| July 2026 | Two Ashgrove usage invoices missed the AP cut-off and were accrued at estimate | Grace now asks Ashgrove for usage figures on WD-1 |\n| June 2026 | Northbridge's monthly settlement report arrived late on WD1, which delayed the revenue cut-off check | Chris Dunn now pulls the report from Northbridge's API at 06:00 on WD1 |",
+              "title": "Month-End Close Checklist.md",
+              "chunkId": "dd61b7b0-d250-4fd6-a92c-9b04c9121ac1",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "a5fcaf65-d0ee-434d-b0ab-fa055c9d43fc"
+            },
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 2. Revenue by product\n\nTable 2: Revenue by product, £000\n\n| Product | August 2026 | July 2026 | August 2025 | Change on August 2025 |\n| --- | --- | --- | --- | --- |\n| Kestrel Checkout | 7,298 | 7,431 | 6,420 | +13.7% |\n| Kestrel Accounts | 3,402 | 3,398 | 2,951 | +15.3% |\n| Kestrel Payouts | 2,701 | 2,691 | 2,160 | +25.0% |\n| Total | 13,401 | 13,520 | 11,531 | +16.2% |",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "17d6466b-a601-446c-8ad7-f695b6ebb532",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "text": "## 5. Service levels\n\n5.1 The Production Environment will be available at least 99.95% of each month. Priority 1 incidents get a response within 15 minutes, 24 hours a day.\n\n5.2 For each 0.1% of availability below the target in a month, Kestrel gets a service credit of 5% of that month's platform fee, up to 25% of the fee.\n\n5.3 Kestrel may terminate under clause 10.3 if availability falls below 99.5% in any two consecutive months, or in any three months within a 12-month period.",
+              "title": "KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "chunkId": "5c65c57c-44c4-4b96-a997-fcd16fc0f36f",
+              "pageEnd": 2,
+              "pageStart": 1,
+              "documentId": "ab8c3047-7d49-4f3f-87a1-47aceb15df22"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 11,
+      "at": "2026-10-14T13:41:26.036Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2Q:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 10175,
+          "outputTokens": 106,
+          "reasoningTokens": 66
+        },
+        "toolCalls": [
+          {
+            "tool": "search_documents",
+            "input": {
+              "k": 8,
+              "query": "\"INC-2026-0817\" incident report root cause recovery timeline corrective actions"
+            },
+            "callId": "call_mSesCoq6yc8b3ZjExF6h3xuq"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 12,
+      "at": "2026-10-14T13:41:35.740Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2T:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_mSesCoq6yc8b3ZjExF6h3xuq",
+        "output": {
+          "passages": [
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 1. Summary\n\nTable 1: Income summary, £000\n\n| Line | August 2026 | August budget | Variance | July 2026 | Q3 to date | Q3 to date budget |\n| --- | --- | --- | --- | --- | --- | --- |\n| Revenue | 13,401 | 13,650 | (249) | 13,520 | 26,921 | 27,350 |\n| Gross profit | 7,746 | 7,990 | (244) | 7,815 | 15,561 | 16,000 |\n| Gross margin | 57.8% | 58.5% | (0.7) pts | 57.8% | 57.8% | 58.5% |\n| Operating costs | (7,156) | (7,230) | 74 | (7,114) | (14,270) | (14,460) |\n| EBITDA | 590 | 760 | (170) | 701 | 1,291 | 1,540 |\n\n- Revenue was £249k (1.8%) below budget. UK card volume fell more than usual in August: Checkout payment volume was £1.58bn against £1.66bn in July. The 47-minute Checkout outage on 17 August (INC-2026-0817) cost about £7,900 of revenue, and the service credits to Checkout Pro merchants (about £2,650) are netted off August revenue. Payouts was flat on July; the two payroll bureaus went live on 1 September.\n\n- Gross margin was 57.8%. Two merchant fraud cases added £61k of losses, of which £12k has been recovered so far.\n\n- Operating costs were £74k under budget. Staff costs were under because headcount is 597 against a budget of 611; professional fees were over, mainly Carrow Finch's fees on the Dublin office lease (£85k).\n\n- Year to date (January to August) revenue is £104.0m against a budget of £104.9m.",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "f36c9388-cd9a-4821-a4e0-3a9bb15adeb7",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+              "text": "## 6. New suppliers and changes to bank details\n\nChanges to bank details are the most common way fraudsters steal from finance teams. Treat every request as suspicious until it is verified.\n\n- New suppliers are set up on form AP-03 with the company number, VAT number and bank details on the supplier's letterhead. AP checks the company at Companies House (or the national register) and screens it against the sanctions lists.\n\n- Any change to bank details must be verified by phone. Call the supplier on a number we already hold, never on a number given in the request, and the call must be made by someone other than the person who received the request. Record who you spoke to, when, and on which number.\n\n- Cooling-off: new details take effect two working days after verification.\n\n- Confirmation of Payee: run it for every new or changed GBP account. If the name does not match, stop and escalate to Tom Whitfield.\n\n- First payment to new details: if it is over £10,000, it needs Financial Controller approval even if the amount would otherwise fall in the AP Specialist's band.\n\n- Email-only requests to change bank details are reported the same day to Tom Whitfield and to Lena Fischer (Security Engineer), with the original email attached.",
+              "title": "Supplier Payment Run Procedure.docx",
+              "chunkId": "afa4f8d7-c76c-454f-9fbb-cac926ac8f97",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "3cb2c382-ed43-42c3-956c-698fbf807257"
+            },
+            {
+              "path": "/Legal/Contracts/KPC-2025-0231 Sorrel Identity DPA.docx",
+              "text": "## 7. Personal data breaches\n\n7.1 Sorrel will notify Kestrel of any personal data breach without undue delay, and in any case within 24 hours of becoming aware of it, by email to privacy@kestrelpay.example and by phone to Kestrel's security on-call number.\n\n7.2 Within 72 hours Sorrel will send what it knows of the nature of the breach, the data and people affected, the likely consequences and the steps taken.\n\n7.3 Kestrel decides whether to notify the Information Commissioner's Office and the people affected. Sorrel will not notify anyone about a breach of Kestrel data without Kestrel's agreement, unless the law requires it.",
+              "title": "KPC-2025-0231 Sorrel Identity DPA.docx",
+              "chunkId": "d04d64a8-4c00-4c3d-b036-f7a686625f07",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "e730fe59-ddad-4b63-bef5-ac42c5db151b"
+            },
+            {
+              "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+              "text": "## 5. Timeline\n\n| Milestone | Date | Owner |\n| --- | --- | --- |\n| Sandbox credentials issued to Brightwell | 14 September 2026 | Kestrel (Ravi Shah) |\n| Security questionnaire returned | 25 September 2026 | Brightwell (Dev Malhotra) |\n| Integration review | 5 October 2026 | Both |\n| Pilot with 25 Brightwell customers | 12 October 2026 | Both |\n| Pilot review and go or no-go | 6 November 2026 | Both |\n| General availability | 16 November 2026 | Both |",
+              "title": "Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+              "chunkId": "0b272fee-e62c-488d-b6d0-606269235044",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "81a20785-70e1-494e-9a47-f352817e0ba2"
+            },
+            {
+              "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "text": "## 3. Services\n\n3.1 Ashgrove will resell to Kestrel the AWS capacity in Schedule 1 and run Kestrel's AWS production environment (EKS clusters, Aurora PostgreSQL and Kafka) with 24/7 support.\n\n3.2 The Services run in the AWS eu-west-2 (London) region, with disaster recovery in eu-west-1 (Dublin). Ashgrove will not store or process Kestrel data in any other region without Kestrel's prior written consent.",
+              "title": "KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "chunkId": "8d21d94f-108c-40d5-8e84-1b8669362ec1",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "ab8c3047-7d49-4f3f-87a1-47aceb15df22"
+            },
+            {
+              "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "text": "## 6. Security\n\nAshgrove will keep ISO 27001 certification and its PCI DSS Level 1 service provider attestation, send Kestrel its SOC 2 Type II report every year, and report any security incident affecting Kestrel within 24 hours of becoming aware of it.",
+              "title": "KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "chunkId": "de31d158-105d-48bc-a7b5-3677e11fc8e4",
+              "pageEnd": 2,
+              "pageStart": 2,
+              "documentId": "ab8c3047-7d49-4f3f-87a1-47aceb15df22"
+            },
+            {
+              "path": "/Company/Office Guide.pdf",
+              "text": "## 8. Contacts\n\n| Need | Contact |\n| --- | --- |\n| Passes, desks, visitors, building faults | Ella Brooks, Office Manager, reception@kestrelpay.example |\n| IT problems, laptop, Wi-Fi | Tariq Aziz, IT Administrator |\n| Security incident in the office | security@kestrelpay.example, and reception |\n| Lisbon office | lisbon.office@kestrelpay.example |\n| Dublin office | dublin.office@kestrelpay.example |",
+              "title": "Office Guide.pdf",
+              "chunkId": "369dfcfc-ff80-49ed-9174-c46c529a6e40",
+              "pageEnd": 2,
+              "pageStart": 2,
+              "documentId": "f9e4d97d-30ea-4a69-a3d1-64005a956c17"
+            },
+            {
+              "path": "/Finance/Month-End Close Checklist.md",
+              "text": "## Problems in recent closes\n\n| Month | Problem | Fix |\n| --- | --- | --- |\n| August 2026 | Portuguese payroll file arrived on WD3, so the payroll journal was a day late | Provider now sends the file on WD1; Tom chases at 15:00 if it hasn't arrived |\n| July 2026 | Two Ashgrove usage invoices missed the AP cut-off and were accrued at estimate | Grace now asks Ashgrove for usage figures on WD-1 |\n| June 2026 | Northbridge's monthly settlement report arrived late on WD1, which delayed the revenue cut-off check | Chris Dunn now pulls the report from Northbridge's API at 06:00 on WD1 |",
+              "title": "Month-End Close Checklist.md",
+              "chunkId": "dd61b7b0-d250-4fd6-a92c-9b04c9121ac1",
+              "pageEnd": null,
+              "pageStart": null,
+              "documentId": "a5fcaf65-d0ee-434d-b0ab-fa055c9d43fc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 13,
+      "at": "2026-10-14T13:41:38.589Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2W:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 12460,
+          "outputTokens": 182,
+          "reasoningTokens": 137
+        },
+        "toolCalls": [
+          {
+            "tool": "read_document",
+            "input": {
+              "fromChunk": null,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            "callId": "call_EgNE8UR1wPcB0rl6Uq1BZZYc"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 14,
+      "at": "2026-10-14T13:41:38.671Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE2Z:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_EgNE8UR1wPcB0rl6Uq1BZZYc",
+        "output": {
+          "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+          "title": "Management Accounts August 2026.pdf",
+          "chunks": [
+            {
+              "text": "# Management accounts: August 2026\n\nKestrel Pay Ltd and Kestrel Pay Europe Ltd, combined, in GBP. Unaudited. Issued on WD8, Thursday 10 September 2026, by Tom Whitfield (Financial Controller) with Jonas Berg (FP&A Manager). Reviewed by Daniel Reyes (CFO).",
+              "chunkId": "3d2185b1-35e2-400c-8e32-e9abf3dd1b92",
+              "pageEnd": 1,
+              "section": "Management accounts: August 2026",
+              "pageStart": 1
+            },
+            {
+              "text": "## 1. Summary\n\nTable 1: Income summary, £000\n\n| Line | August 2026 | August budget | Variance | July 2026 | Q3 to date | Q3 to date budget |\n| --- | --- | --- | --- | --- | --- | --- |\n| Revenue | 13,401 | 13,650 | (249) | 13,520 | 26,921 | 27,350 |\n| Gross profit | 7,746 | 7,990 | (244) | 7,815 | 15,561 | 16,000 |\n| Gross margin | 57.8% | 58.5% | (0.7) pts | 57.8% | 57.8% | 58.5% |\n| Operating costs | (7,156) | (7,230) | 74 | (7,114) | (14,270) | (14,460) |\n| EBITDA | 590 | 760 | (170) | 701 | 1,291 | 1,540 |\n\n- Revenue was £249k (1.8%) below budget. UK card volume fell more than usual in August: Checkout payment volume was £1.58bn against £1.66bn in July. The 47-minute Checkout outage on 17 August (INC-2026-0817) cost about £7,900 of revenue, and the service credits to Checkout Pro merchants (about £2,650) are netted off August revenue. Payouts was flat on July; the two payroll bureaus went live on 1 September.\n\n- Gross margin was 57.8%. Two merchant fraud cases added £61k of losses, of which £12k has been recovered so far.\n\n- Operating costs were £74k under budget. Staff costs were under because headcount is 597 against a budget of 611; professional fees were over, mainly Carrow Finch's fees on the Dublin office lease (£85k).\n\n- Year to date (January to August) revenue is £104.0m against a budget of £104.9m.",
+              "chunkId": "f36c9388-cd9a-4821-a4e0-3a9bb15adeb7",
+              "pageEnd": 1,
+              "section": "1. Summary",
+              "pageStart": 1
+            },
+            {
+              "text": "## 2. Revenue by product\n\nTable 2: Revenue by product, £000\n\n| Product | August 2026 | July 2026 | August 2025 | Change on August 2025 |\n| --- | --- | --- | --- | --- |\n| Kestrel Checkout | 7,298 | 7,431 | 6,420 | +13.7% |\n| Kestrel Accounts | 3,402 | 3,398 | 2,951 | +15.3% |\n| Kestrel Payouts | 2,701 | 2,691 | 2,160 | +25.0% |\n| Total | 13,401 | 13,520 | 11,531 | +16.2% |",
+              "chunkId": "17d6466b-a601-446c-8ad7-f695b6ebb532",
+              "pageEnd": 1,
+              "section": "2. Revenue by product",
+              "pageStart": 1
+            },
+            {
+              "text": "## 3. Key measures at 31 August 2026\n\n| Measure | 31 August 2026 | 31 July 2026 |\n| --- | --- | --- |\n| Merchant customers | 49,310 | 48,790 |\n| Checkout payment volume in the month | £1.58bn | £1.66bn |\n| Payouts volume in the month | £0.63bn | £0.64bn |\n| Business accounts open | 31,050 | 30,820 |\n| Customer funds safeguarded | £1.26bn | £1.25bn |\n| Headcount | 597 | 593 |\n| Kestrel's own cash | £70.8m | £71.0m |",
+              "chunkId": "12ba889a-8c8f-4e8b-8519-50be07f3a620",
+              "pageEnd": 2,
+              "section": "3. Key measures at 31 August 2026",
+              "pageStart": 2
+            },
+            {
+              "text": "## 4. Cash\n\nCash fell by £0.2m in August, to £70.8m. EBITDA of £0.6m was more than used by capital spending of £0.9m (mostly capitalised development) and lease payments of £0.2m, with net interest of £0.1m received and a £0.2m inflow from working capital. Customer funds in the safeguarding accounts are not included.",
+              "chunkId": "0fb3be10-4b71-4102-bd57-3f85a047e7e7",
+              "pageEnd": 2,
+              "section": "4. Cash",
+              "pageStart": 2
+            },
+            {
+              "text": "## 5. Points for the exec team\n\n| 1. | Q3 timetable. The preliminary Q3 2026 Quarterly Report comes out on 30 September, before the close. Flash revenue for September goes to the exec team on WD3, Monday 5 October. |\n| --- | --- |\n| 2. | Payouts bureaus. Both bureaus went live on 1 September as planned. Together they should add about £0.2m of Payouts revenue a month. |\n| 3. | Brindle Print & Post. The print contract (KPC-2025-0204) expires on 30 September. Hannah Kim needs to agree the renewal, or we will be invoiced at Brindle's proposed new rate of £1.62 a pack against our current £1.58. |\n| 4. | Hosting usage. Ashgrove usage was within the committed capacity in August, but September Payouts volumes may take it over. Nadia Kowalski is watching it. |\n| 5. | Safeguarding audit. Fernside & Co started interim fieldwork for the 2026 safeguarding audit on 7 September; the £140k fee will fall in September instead of Q4. |",
+              "chunkId": "b0f74bc4-6124-4421-bc36-1f1e4dbada54",
+              "pageEnd": 2,
+              "section": "5. Points for the exec team",
+              "pageStart": 2
+            }
+          ],
+          "nextChunk": null,
+          "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+        }
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 15,
+      "at": "2026-10-14T13:41:41.999Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE31:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 14095,
+          "outputTokens": 134,
+          "reasoningTokens": 92
+        },
+        "toolCalls": [
+          {
+            "tool": "search_documents",
+            "input": {
+              "k": 8,
+              "query": "Checkout incident August 17 2026 outage post-incident review service disruption root cause recovery actions"
+            },
+            "callId": "call_pWzG1QEuWkZ5jWfdTEOa7roZ"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 16,
+      "at": "2026-10-14T13:41:46.118Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE34:0",
+      "data": {
+        "ok": true,
+        "type": "tool_result",
+        "callId": "call_pWzG1QEuWkZ5jWfdTEOa7roZ",
+        "output": {
+          "passages": [
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 1. Summary\n\nTable 1: Income summary, £000\n\n| Line | August 2026 | August budget | Variance | July 2026 | Q3 to date | Q3 to date budget |\n| --- | --- | --- | --- | --- | --- | --- |\n| Revenue | 13,401 | 13,650 | (249) | 13,520 | 26,921 | 27,350 |\n| Gross profit | 7,746 | 7,990 | (244) | 7,815 | 15,561 | 16,000 |\n| Gross margin | 57.8% | 58.5% | (0.7) pts | 57.8% | 57.8% | 58.5% |\n| Operating costs | (7,156) | (7,230) | 74 | (7,114) | (14,270) | (14,460) |\n| EBITDA | 590 | 760 | (170) | 701 | 1,291 | 1,540 |\n\n- Revenue was £249k (1.8%) below budget. UK card volume fell more than usual in August: Checkout payment volume was £1.58bn against £1.66bn in July. The 47-minute Checkout outage on 17 August (INC-2026-0817) cost about £7,900 of revenue, and the service credits to Checkout Pro merchants (about £2,650) are netted off August revenue. Payouts was flat on July; the two payroll bureaus went live on 1 September.\n\n- Gross margin was 57.8%. Two merchant fraud cases added £61k of losses, of which £12k has been recovered so far.\n\n- Operating costs were £74k under budget. Staff costs were under because headcount is 597 against a budget of 611; professional fees were over, mainly Carrow Finch's fees on the Dublin office lease (£85k).\n\n- Year to date (January to August) revenue is £104.0m against a budget of £104.9m.",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "f36c9388-cd9a-4821-a4e0-3a9bb15adeb7",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 3. Key measures at 31 August 2026\n\n| Measure | 31 August 2026 | 31 July 2026 |\n| --- | --- | --- |\n| Merchant customers | 49,310 | 48,790 |\n| Checkout payment volume in the month | £1.58bn | £1.66bn |\n| Payouts volume in the month | £0.63bn | £0.64bn |\n| Business accounts open | 31,050 | 30,820 |\n| Customer funds safeguarded | £1.26bn | £1.25bn |\n| Headcount | 597 | 593 |\n| Kestrel's own cash | £70.8m | £71.0m |",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "12ba889a-8c8f-4e8b-8519-50be07f3a620",
+              "pageEnd": 2,
+              "pageStart": 2,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "## 1. Summary\n\n| Measure | Q3 2026 | Q3 2025 | Change | YTD 2026 | YTD budget |\n| --- | --- | --- | --- | --- | --- |\n| Revenue | £41.2m | £35.2m | +17.0% | £118.3m | £119.0m |\n| Gross margin | 58.0% | 56.1% | +1.9 pts | 57.5% | 58.0% |\n| EBITDA | £2.1m | £0.9m | +£1.2m | £5.4m | £6.1m |\n| Merchant customers at quarter end | 49,870 | 43,950 | +13.5% |  |  |\n| Headcount at quarter end | 604 | 548 | +56 |  |  |\n\n- Revenue was £41.2m, up 17.0% on Q3 2025 and 4.3% on Q2 2026. It was £313k (0.8%) below the budget of £41.5m: Checkout and Payouts were slightly behind in July and August, and September beat budget once the two payroll bureaus went live on Payouts on 1 September.\n\n- Gross margin was 58.0%, up 0.6 points on Q2 and 1.9 points on a year ago, and 0.5 points below budget. Fraud losses (£83k over budget) and hosting usage above our committed capacity (£36k over) explain most of the gap.\n\n- EBITDA was £2.1m (5.2% of revenue) against a budget of £2.4m. Operating costs were £145k under budget: staff costs were £310k under because hiring is behind plan, and professional fees were £305k over.\n\n- Headcount was 604 against a budget of 618. Following the exec decision of 11 September, non-critical backfills are paused from 1 October, and we now forecast 625 at year end against a budget of 640.\n\n- Cash was £70.1m at 30 September (£71.3m at 30 June). This excludes customer funds, which are held in safeguarding accounts.",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "89059ddf-301c-43b3-b3cd-2058a541902a",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "## 4. Key measures\n\nTable 6: Key measures\n\n| Measure | Q3 2026 | Q2 2026 | Q3 2025 |\n| --- | --- | --- | --- |\n| Merchant customers at quarter end | 49,870 | 48,210 | 43,950 |\n| Net new merchants in the quarter | 1,660 | 1,330 | 1,410 |\n| Average monthly merchant churn | 0.9% | 1.0% | 1.1% |\n| Kestrel Checkout payment volume | £4.91bn | £4.76bn | £4.27bn |\n| Checkout take rate | 0.46% | 0.46% | 0.46% |\n| Kestrel Payouts volume | £1.93bn | £1.76bn | £1.44bn |\n| Total payment volume | £6.84bn | £6.52bn | £5.71bn |\n| Business accounts open at quarter end | 31,400 | 30,600 | 27,900 |\n| Customer funds safeguarded at quarter end | £1.27bn | £1.24bn | £1.08bn |",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "28cc53a6-d08c-4829-a556-f0d8d2e4df28",
+              "pageEnd": 5,
+              "pageStart": 5,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "text": "## 3. Services\n\n3.1 Ashgrove will resell to Kestrel the AWS capacity in Schedule 1 and run Kestrel's AWS production environment (EKS clusters, Aurora PostgreSQL and Kafka) with 24/7 support.\n\n3.2 The Services run in the AWS eu-west-2 (London) region, with disaster recovery in eu-west-1 (Dublin). Ashgrove will not store or process Kestrel data in any other region without Kestrel's prior written consent.",
+              "title": "KPC-2026-0142 Ashgrove MSA (executed).pdf",
+              "chunkId": "8d21d94f-108c-40d5-8e84-1b8669362ec1",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "ab8c3047-7d49-4f3f-87a1-47aceb15df22"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "| Line | Q3 2026 | Q2 2026 | Q3 2025 | Q3 2026 budget | Variance to budget |\n| --- | --- | --- | --- | --- | --- |\n| Operating profit (loss) | 723 | 455 | (305) | 930 | (207) |\n| Net finance income | 310 | 290 | 260 | 280 | 30 |\n| Profit (loss) before tax | 1,033 | 745 | (45) | 1,210 | (177) |\n| Tax | (258) | (186) | 0 | (303) | 45 |\n| Profit (loss) after tax | 775 | 559 | (45) | 907 | (132) |\n\nBrackets show costs, losses and adverse variances. There was no tax charge in Q3 2025 because of losses brought forward.\n\nCommentary on the income statement\n\n- Cost of revenue was £79k over budget. Fraud losses and chargebacks were £83k over, mostly two merchant fraud cases in August (£61k, of which £12k has been recovered so far). Processing and hosting was £36k over because Payouts traffic in September pushed usage above the committed capacity in our hosting contract with Ashgrove Cloud Services (KPC-2026-0142). Interchange and scheme fees were £60k under, in line with lower Checkout volume.\n\n- Staff costs were £310k under budget. Average headcount in the quarter was 597 against a budgeted 608.\n\n- Professional fees were £305k over budget, for three reasons: interim fieldwork for the 2026 safeguarding audit by Fernside & Co LLP (£140k, KPC-2026-0326), brought forward from Q4; legal fees for the Dublin office lease (£85k); and EU VAT and OSS registration advice from Ostrander Tax Advisers LLP (£80k, KPC-2026-0301).\n\n- Sales and marketing rose £180k on Q2 because of the September merchant acquisition campaign in Ireland, but stayed £40k under budget.\n\n- Net finance income is interest on Kestrel's own cash. It does not include any return on customer funds.",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "1a0a9f6f-3570-4fc0-9baa-7a8626b006a8",
+              "pageEnd": 3,
+              "pageStart": 3,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+              "text": "| Region | Q3 2026 | Q2 2026 | Q3 2025 | Change on Q3 2025 | Share of Q3 2026 |\n| --- | --- | --- | --- | --- | --- |\n| Total | 41.2 | 39.5 | 35.2 | +17.0% | 100.0% |\n\nRegions follow the merchant's country of registration. UK merchants are served by Kestrel Pay Ltd and EU merchants by Kestrel Pay Europe Ltd.\n\nTable 4: Q3 2026 revenue by product and region, £m\n\n| Product | United Kingdom | Ireland | Portugal | Rest of EU | Total |\n| --- | --- | --- | --- | --- | --- |\n| Kestrel Checkout | 16.0 | 2.6 | 1.8 | 2.2 | 22.6 |\n| Kestrel Accounts | 7.6 | 1.1 | 0.7 | 0.9 | 10.3 |\n| Kestrel Payouts | 5.8 | 0.9 | 0.6 | 1.0 | 8.3 |\n| Total | 29.4 | 4.6 | 3.1 | 4.1 | 41.2 |\n\nTable 5: Revenue by month, £000\n\n| Product | July 2026 | August 2026 | September 2026 (flash) | Q3 2026 |\n| --- | --- | --- | --- | --- |\n| Kestrel Checkout | 7,431 | 7,298 | 7,875 | 22,604 |\n| Kestrel Accounts | 3,398 | 3,402 | 3,486 | 10,286 |\n| Kestrel Payouts | 2,691 | 2,701 | 2,905 | 8,297 |\n| Total revenue | 13,520 | 13,401 | 14,266 | 41,187 |\n| Budget | 13,700 | 13,650 | 14,150 | 41,500 |\n| Variance to budget | (180) | (249) | 116 | (313) |\n\nAugust is usually our weakest month for UK card volume.",
+              "title": "Q3 2026 Quarterly Report.pdf",
+              "chunkId": "7514d65c-86fd-475f-8548-7cc1d446287b",
+              "pageEnd": 4,
+              "pageStart": 4,
+              "documentId": "eb938593-78d9-42d5-8b35-7c14a92f4349"
+            },
+            {
+              "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+              "text": "## 2. Revenue by product\n\nTable 2: Revenue by product, £000\n\n| Product | August 2026 | July 2026 | August 2025 | Change on August 2025 |\n| --- | --- | --- | --- | --- |\n| Kestrel Checkout | 7,298 | 7,431 | 6,420 | +13.7% |\n| Kestrel Accounts | 3,402 | 3,398 | 2,951 | +15.3% |\n| Kestrel Payouts | 2,701 | 2,691 | 2,160 | +25.0% |\n| Total | 13,401 | 13,520 | 11,531 | +16.2% |",
+              "title": "Management Accounts August 2026.pdf",
+              "chunkId": "17d6466b-a601-446c-8ad7-f695b6ebb532",
+              "pageEnd": 1,
+              "pageStart": 1,
+              "documentId": "63047227-dd53-48ec-998e-c1bc6c71f88d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 17,
+      "at": "2026-10-14T13:41:50.018Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE36:0",
+      "data": {
+        "type": "compaction",
+        "summary": "- User asked: Email Daniel Reyes (daniel.reyes@kestrelpay.example) a two-line summary of the INC-2026-0817 postmortem.\n- Searches did not find the postmortem. The only relevant source found was **Management Accounts August 2026.pdf** (`/Finance/Reports/Management Accounts August 2026.pdf`; document ID `63047227-dd53-48ec-998e-c1bc6c71f88d`): it says Checkout had a 47-minute outage on 17 August, costing about £7,900 in revenue; about £2,650 in service credits to Checkout Pro merchants was netted off August revenue.\n- Root cause, remediation, and other postmortem details were not found. No email was sent; the request remains pending.\n\nTool calls:\n- call_4OPecZV5y1VLYzaMC6mmEfYO make_plan {\"goal\":\"Find the INC-2026-0817 postmortem, prepare a two-line summary, and email it to Daniel Reyes at the address the user provided.\",\"steps\":[\"Search company documents for the INC-2026-0817 postmortem.\",\"Read the relevant document and distill it into exactly two lines.\",\"Send the two-line summary to Daniel Reyes.\"],\"writes\":[{\"tool\":\"send_mail\",\"targets\":[\"Daniel Reyes (daniel.reyes@kestrelpay.example)\"],\"documents\":[]}]}: ok\n- call_lSBn6LgICDQLIF2GnfSTAlSS search_documents {\"k\":5,\"query\":\"INC-2026-0817 postmortem\"}: ok\n- call_fSaFURdcxn9LdSaI8kgVkFzE search_documents {\"k\":8,\"query\":\"incident postmortem INC-2026-0817 Checkout outage 17 August root cause impact remediation\"}: ok\n- call_ekZyj8VK0DFxxkOQcFEQHyA9 search_documents {\"k\":8,\"query\":\"postmortem August 17 Checkout 47-minute outage incident root cause resolution actions 2026\"}: ok\n- call_mSesCoq6yc8b3ZjExF6h3xuq search_documents {\"k\":8,\"query\":\"\\\"INC-2026-0817\\\" incident report root cause recovery timeline corrective actions\"}: ok\nUser messages: smoke-c600f552",
+        "throughSeq": 12
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 18,
+      "at": "2026-10-14T13:41:53.987Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE38:0",
+      "data": {
+        "text": "",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 7488,
+          "outputTokens": 290,
+          "reasoningTokens": 164
+        },
+        "toolCalls": [
+          {
+            "tool": "make_plan",
+            "input": {
+              "goal": "Complete the pending request by emailing Daniel Reyes a two-line summary of the available information about INC-2026-0817, noting the postmortem details were not found.",
+              "steps": [
+                "Look up Daniel Reyes in the company directory.",
+                "Draft a two-line summary based only on the available source and disclose that root cause and remediation details were not found.",
+                "Submit the email for the user's approval."
+              ],
+              "writes": [
+                {
+                  "tool": "send_mail",
+                  "targets": [
+                    "Daniel Reyes (daniel.reyes@kestrelpay.example)"
+                  ],
+                  "documents": []
+                }
+              ]
+            },
+            "callId": "call_b91FVahmtgqNn6AkYivlSrbz"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 19,
+      "at": "2026-10-14T13:41:54.026Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE3B:0",
+      "data": {
+        "ok": false,
+        "type": "tool_result",
+        "error": "Refused by policy: a plan can only be made right after the user's message. Replanning needs the user: tell them.",
+        "callId": "call_b91FVahmtgqNn6AkYivlSrbz"
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 20,
+      "at": "2026-10-14T13:41:57.916Z",
+      "stepKey": "wf:step_01M4XA9A6ZP59JTQNYJFKWXE3D:0",
+      "data": {
+        "text": "The available source confirms a 47-minute Checkout outage on 17 August (INC-2026-0817), with an estimated £7,900 in lost revenue and about £2,650 in merchant service credits. I couldn’t find the postmortem’s root cause or remediation details.\n\nI wasn’t able to proceed with the email because the plan for that write was refused. If you still want me to email Daniel, please ask me again.",
+        "type": "assistant_turn",
+        "usage": {
+          "inputTokens": 7653,
+          "outputTokens": 288,
+          "reasoningTokens": 191
+        },
+        "toolCalls": []
+      }
+    },
+    {
+      "runId": "c600f552-a019-4f5d-a831-02b5896632b3",
+      "seq": 21,
+      "at": "2026-10-14T13:41:57.947Z",
+      "stepKey": null,
+      "data": {
+        "to": "succeeded",
+        "from": "running",
+        "type": "status"
+      }
+    }
+  ]
+}

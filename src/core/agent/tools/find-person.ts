@@ -1,9 +1,8 @@
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
+import type { ToolDeps } from "#learn/agent/tools/deps";
 import type { AgentTool } from "#learn/agent/types";
-
-import type { ToolDeps } from "./deps";
 
 const Input = z.object({
   query: z.string().min(2).max(100).describe("Part of a name, a username, an email address or a group path."),

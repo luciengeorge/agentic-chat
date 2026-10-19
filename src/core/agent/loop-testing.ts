@@ -1,3 +1,4 @@
+import type { AgentTool, RunEvent, RunEventData, ToolCall } from "#learn/agent/types";
 /**
  * A runner for tests and scripts: the loop over an in-memory event log, with no database. It shows the shape every
  * runner has: decide, do the work, append, until the action is to wait or finish.
@@ -5,13 +6,19 @@
 import type { ChatMessage, ChatModel, ReasoningEffort } from "#learn/model/types";
 import type { Viewer } from "#learn/retrieve/types";
 
-import type { AgentTool, RunEvent, RunEventData, ToolCall } from "./types";
-
-import { type Caps, DEFAULT_CAPS } from "./caps";
-import { supersededApprovals } from "./checkpoint";
-import { buildContext } from "./context";
-import { approvalNeeded, decide, declinedResult, modelTurn, type RunGuard, RunHalted, runTools } from "./loop";
-import { type Policy } from "./policy";
+import { type Caps, DEFAULT_CAPS } from "#learn/agent/caps";
+import { supersededApprovals } from "#learn/agent/checkpoint";
+import { buildContext } from "#learn/agent/context";
+import {
+  approvalNeeded,
+  decide,
+  declinedResult,
+  modelTurn,
+  type RunGuard,
+  RunHalted,
+  runTools,
+} from "#learn/agent/loop";
+import { type Policy } from "#learn/agent/policy";
 
 export interface InMemoryRun {
   runId: string;
@@ -71,6 +78,8 @@ export interface DriveOptions {
   /** Answers each approval at once; without it the run stops at the first one. */
   approve?: (call: ToolCall) => "approved" | "rejected";
   onTextDelta?: (delta: string) => void;
+  /** Per tool call (`runTool`'s 30 s unless set). */
+  toolTimeoutMs?: number;
 }
 
 /** Runs until the loop says wait or finish, and returns that last action. The context is `buildContext`'s, as the
@@ -97,7 +106,13 @@ export async function drive(run: InMemoryRun, options: DriveOptions) {
           );
           break;
         case "tools": {
-          const results = await runTools(action.calls, { tools, viewer, runId: run.runId, guard });
+          const results = await runTools(action.calls, {
+            tools,
+            viewer,
+            runId: run.runId,
+            guard,
+            timeoutMs: options.toolTimeoutMs,
+          });
           run.append(...supersededApprovals(run.events, results), ...results);
           break;
         }

@@ -15,6 +15,13 @@ import { backoffMs, isRetryable, withIdempotencyKey } from "#learn/agent/durable
 import { append, readEvents, VersionConflictError } from "#learn/agent/events";
 import { approvalNeeded, decide, declinedResult, modelTurn, type RunGuard, runTools } from "#learn/agent/loop";
 import { listNotes } from "#learn/agent/memory";
+import {
+  addMessage,
+  appendRetrying,
+  MAX_CONFLICT_RETRIES,
+  type MessageResult,
+  type NewMessage,
+} from "#learn/agent/messages";
 import { subagentPolicy, subagentTools } from "#learn/agent/policy";
 import { isFinal } from "#learn/agent/state";
 import { approvals, runs } from "@/db/schema";
@@ -23,6 +30,7 @@ import { createLogger } from "@/lib/logger";
 
 export { append, readEvents, VersionConflictError } from "#learn/agent/events";
 export { IllegalTransitionError } from "#learn/agent/state";
+export { addMessage, type MessageResult, type NewMessage };
 
 const logger = createLogger("agent.runs");
 
@@ -53,8 +61,6 @@ export interface RunState {
 
 /** Seven days, as section 15's approval hooks. */
 export const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-const MAX_CONFLICT_RETRIES = 20;
 
 function pgCode(error: unknown): string | undefined {
   for (let e = error; e && typeof e === "object"; e = (e as { cause?: unknown }).cause) {
@@ -103,72 +109,6 @@ export async function loadState(tx: Tx, viewer: Viewer, runId: string): Promise<
     events.push(...page);
   }
   return { run, events };
-}
-
-export interface NewMessage {
-  /** The client's id for the message: its idempotency key. */
-  messageId: string;
-  text: string;
-}
-
-export type MessageResult =
-  | { kind: "not-found" }
-  | { kind: "finished"; status: RunStatus }
-  | { kind: "added" | "duplicate"; seq: number; status: RunStatus };
-
-/** Appends `events`, re-reading and trying again while other writers get in first. For events that stay true
- * whatever was appended meanwhile (a user message, a tool result). */
-async function appendRetrying(
-  tx: Tx,
-  runId: string,
-  build: (state: { version: number; status: RunStatus }) => RunEventData[] | null,
-  activeMs = 0,
-) {
-  for (let attempt = 0; ; attempt++) {
-    const [run] = await tx.execute<{ status: RunStatus; version: number }>(
-      sql`SELECT status, version FROM runs WHERE id = ${runId}`,
-    );
-    const events = build(run);
-    if (!events) return null;
-    try {
-      return await append(tx, runId, run.version, events, { activeMs });
-    } catch (error) {
-      if (!(error instanceof VersionConflictError) || attempt >= MAX_CONFLICT_RETRIES) throw error;
-    }
-  }
-}
-
-async function messageSeq(tx: Tx, runId: string, messageId: string): Promise<number | null> {
-  const [row] = await tx.execute<{ seq: number }>(sql`
-    SELECT seq FROM run_events
-    WHERE run_id = ${runId} AND type = 'user_message' AND data ->> 'messageId' = ${messageId}`);
-  return row ? Number(row.seq) : null;
-}
-
-/**
- * Adds a user message to a live run, once per `messageId`: a resend finds the first one and stores nothing.
- * Messages that arrive together all land, in `seq` order: a writer that loses the version race reads again and
- * appends after the winner. A message can't go into a finished run.
- */
-export async function addMessage(db: Db, viewer: Viewer, runId: string, message: NewMessage): Promise<MessageResult> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await inTenant(db, viewer, async (tx) => {
-        const run = await loadRun(tx, viewer, runId);
-        if (!run) return { kind: "not-found" } as const;
-        const seen = await messageSeq(tx, runId, message.messageId);
-        if (seen !== null) return { kind: "duplicate", seq: seen, status: run.status } as const;
-        const appended = await appendRetrying(tx, runId, ({ status }) =>
-          isFinal(status) ? null : [{ type: "user_message", messageId: message.messageId, text: message.text }],
-        );
-        if (!appended) return { kind: "finished", status: (await loadRun(tx, viewer, runId))!.status } as const;
-        return { kind: "added", seq: appended.events[0].seq, status: appended.status } as const;
-      });
-    } catch (error) {
-      // The same message sent twice at once: the second insert hits the unique index. Try again to find the first.
-      if (pgCode(error) !== "23505" || attempt >= 2) throw error;
-    }
-  }
 }
 
 export interface StartRun {

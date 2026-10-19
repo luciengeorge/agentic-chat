@@ -25,10 +25,13 @@ import { Route as LabsBoundaryRouteImport } from './routes/labs/boundary'
 import { Route as LabsChunkingRouteImport } from './routes/labs/chunking'
 import { Route as LabsConnectorsRouteImport } from './routes/labs/connectors'
 import { Route as LabsLexicalRouteImport } from './routes/labs/lexical'
+import { Route as LabsLoopRouteImport } from './routes/labs/loop'
 import { Route as LabsModelsRouteImport } from './routes/labs/models'
 import { Route as LabsParsingRouteImport } from './routes/labs/parsing'
 import { Route as LabsPromptRouteImport } from './routes/labs/prompt'
 import { Route as LabsRerankRouteImport } from './routes/labs/rerank'
+import { Route as LabsSafetyRouteImport } from './routes/labs/safety'
+import { Route as LabsStateRouteImport } from './routes/labs/state'
 import { Route as LabsVectorsRouteImport } from './routes/labs/vectors'
 import { Route as ApiApprovalsIndexRouteImport } from './routes/api/approvals/index'
 import { Route as ApiApprovalsApprovalIdRouteImport } from './routes/api/approvals/$approvalId'
@@ -133,6 +136,11 @@ const LabsLexicalRoute = LabsLexicalRouteImport.update({
   path: '/labs/lexical',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LabsLoopRoute = LabsLoopRouteImport.update({
+  id: '/labs/loop',
+  path: '/labs/loop',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabsModelsRoute = LabsModelsRouteImport.update({
   id: '/labs/models',
   path: '/labs/models',
@@ -151,6 +159,16 @@ const LabsPromptRoute = LabsPromptRouteImport.update({
 const LabsRerankRoute = LabsRerankRouteImport.update({
   id: '/labs/rerank',
   path: '/labs/rerank',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsSafetyRoute = LabsSafetyRouteImport.update({
+  id: '/labs/safety',
+  path: '/labs/safety',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsStateRoute = LabsStateRouteImport.update({
+  id: '/labs/state',
+  path: '/labs/state',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabsVectorsRoute = LabsVectorsRouteImport.update({
@@ -287,10 +305,13 @@ export interface FileRoutesByFullPath {
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
   '/labs/lexical': typeof LabsLexicalRoute
+  '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
+  '/labs/safety': typeof LabsSafetyRoute
+  '/labs/state': typeof LabsStateRoute
   '/labs/vectors': typeof LabsVectorsRoute
   '/chat/': typeof ChatIndexRoute
   '/labs/': typeof LabsIndexRoute
@@ -331,10 +352,13 @@ export interface FileRoutesByTo {
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
   '/labs/lexical': typeof LabsLexicalRoute
+  '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
+  '/labs/safety': typeof LabsSafetyRoute
+  '/labs/state': typeof LabsStateRoute
   '/labs/vectors': typeof LabsVectorsRoute
   '/chat': typeof ChatIndexRoute
   '/labs': typeof LabsIndexRoute
@@ -377,10 +401,13 @@ export interface FileRoutesById {
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
   '/labs/lexical': typeof LabsLexicalRoute
+  '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
   '/labs/rerank': typeof LabsRerankRoute
+  '/labs/safety': typeof LabsSafetyRoute
+  '/labs/state': typeof LabsStateRoute
   '/labs/vectors': typeof LabsVectorsRoute
   '/chat/': typeof ChatIndexRoute
   '/labs/': typeof LabsIndexRoute
@@ -424,10 +451,13 @@ export interface FileRouteTypes {
     | '/labs/chunking'
     | '/labs/connectors'
     | '/labs/lexical'
+    | '/labs/loop'
     | '/labs/models'
     | '/labs/parsing'
     | '/labs/prompt'
     | '/labs/rerank'
+    | '/labs/safety'
+    | '/labs/state'
     | '/labs/vectors'
     | '/chat/'
     | '/labs/'
@@ -468,10 +498,13 @@ export interface FileRouteTypes {
     | '/labs/chunking'
     | '/labs/connectors'
     | '/labs/lexical'
+    | '/labs/loop'
     | '/labs/models'
     | '/labs/parsing'
     | '/labs/prompt'
     | '/labs/rerank'
+    | '/labs/safety'
+    | '/labs/state'
     | '/labs/vectors'
     | '/chat'
     | '/labs'
@@ -513,10 +546,13 @@ export interface FileRouteTypes {
     | '/labs/chunking'
     | '/labs/connectors'
     | '/labs/lexical'
+    | '/labs/loop'
     | '/labs/models'
     | '/labs/parsing'
     | '/labs/prompt'
     | '/labs/rerank'
+    | '/labs/safety'
+    | '/labs/state'
     | '/labs/vectors'
     | '/chat/'
     | '/labs/'
@@ -558,10 +594,13 @@ export interface RootRouteChildren {
   LabsChunkingRoute: typeof LabsChunkingRoute
   LabsConnectorsRoute: typeof LabsConnectorsRoute
   LabsLexicalRoute: typeof LabsLexicalRoute
+  LabsLoopRoute: typeof LabsLoopRoute
   LabsModelsRoute: typeof LabsModelsRoute
   LabsParsingRoute: typeof LabsParsingRoute
   LabsPromptRoute: typeof LabsPromptRoute
   LabsRerankRoute: typeof LabsRerankRoute
+  LabsSafetyRoute: typeof LabsSafetyRoute
+  LabsStateRoute: typeof LabsStateRoute
   LabsVectorsRoute: typeof LabsVectorsRoute
   LabsIndexRoute: typeof LabsIndexRoute
   ApiApprovalsApprovalIdRoute: typeof ApiApprovalsApprovalIdRoute
@@ -701,6 +740,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabsLexicalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/labs/loop': {
+      id: '/labs/loop'
+      path: '/labs/loop'
+      fullPath: '/labs/loop'
+      preLoaderRoute: typeof LabsLoopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/labs/models': {
       id: '/labs/models'
       path: '/labs/models'
@@ -727,6 +773,20 @@ declare module '@tanstack/react-router' {
       path: '/labs/rerank'
       fullPath: '/labs/rerank'
       preLoaderRoute: typeof LabsRerankRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/safety': {
+      id: '/labs/safety'
+      path: '/labs/safety'
+      fullPath: '/labs/safety'
+      preLoaderRoute: typeof LabsSafetyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/state': {
+      id: '/labs/state'
+      path: '/labs/state'
+      fullPath: '/labs/state'
+      preLoaderRoute: typeof LabsStateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/labs/vectors': {
@@ -935,10 +995,13 @@ const rootRouteChildren: RootRouteChildren = {
   LabsChunkingRoute: LabsChunkingRoute,
   LabsConnectorsRoute: LabsConnectorsRoute,
   LabsLexicalRoute: LabsLexicalRoute,
+  LabsLoopRoute: LabsLoopRoute,
   LabsModelsRoute: LabsModelsRoute,
   LabsParsingRoute: LabsParsingRoute,
   LabsPromptRoute: LabsPromptRoute,
   LabsRerankRoute: LabsRerankRoute,
+  LabsSafetyRoute: LabsSafetyRoute,
+  LabsStateRoute: LabsStateRoute,
   LabsVectorsRoute: LabsVectorsRoute,
   LabsIndexRoute: LabsIndexRoute,
   ApiApprovalsApprovalIdRoute: ApiApprovalsApprovalIdRoute,

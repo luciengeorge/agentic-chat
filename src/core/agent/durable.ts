@@ -1,10 +1,10 @@
+import { RunHalted } from "#learn/agent/loop";
+
 /**
  * What every durable runner (the job queue, Workflow) needs to decide about a failure, and how a side effect
  * stays single when its step runs again.
  */
 import type { AgentTool } from "./types";
-
-import { RunHalted } from "./loop";
 
 const NETWORK_CODES = new Set([
   "ECONNRESET",
