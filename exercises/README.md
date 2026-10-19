@@ -41,11 +41,11 @@ Sign in as `leo.martin@kestrelpay.example` with the password `dev-password`. Leo
 | 10  | Generation and citations  | Fit the sources into a prompt, answer only from them, stream the answer, and check every citation                                                 |
 | 11  | Auth and the API boundary | Sessions with organisations as tenants, one middleware for every request, input checks, a rate limiter, streams that stop when the client leaves  |
 | 12  | Frontend                  | Server functions in components, a streaming chat with `useChat`, citations that open the page, and an agent run's timeline that survives a reload |
-| 13  | Agents: the loop          | Coming. Tool calls by hand, a typed tool registry, caps and budgets, errors fed back to the model                                                 |
-| 14  | Agents: state             | Coming. The run as a state machine over an event log, context rebuilt from it, two messages at once, compaction                                   |
-| 15  | Agents: durability        | Coming. Checkpoints and resume, side effects that happen once, approvals that wait days, cancelling a live call                                   |
-| 16  | Agents: orchestration     | Coming. Workflows against agents, routing, sub-agents, schedules, fan-out with backpressure                                                       |
-| 17  | Safety                    | Coming. Acting as the user, the poisoned document, plan then execute, guardrails at the boundary                                                  |
+| 13  | Agents: the loop          | Tool calls by hand, a typed tool registry, per-run caps, errors fed back to the model, parallel calls, daily budgets and the kill switch          |
+| 14  | Agents: state             | The run as a state machine over an event log, context rebuilt from it, streaming it, two messages at once, compaction and memory                  |
+| 15  | Agents: durability        | Checkpoints and resume, idempotent side effects, the run as a Workflow, approvals that wait days, timeouts and cancellation, a replayer by hand   |
+| 16  | Agents: orchestration     | Workflows against agents, routing, read-only sub-agents that spend from their parent, schedules that fire once, fan-out with backpressure         |
+| 17  | Safety                    | Acting as the user, the poisoned document, plan then execute with an allowlist, guardrails at the server boundary                                 |
 | 18  | Evals                     | Coming. A golden set, ranking metrics, claim checks, a calibrated judge, agent evals in CI                                                        |
 | 19  | Observability             | Coming. Traces, metrics and dashboards, the cost of each request                                                                                  |
 | 20  | Debugging drills          | Coming. A broken system and a symptom, five times: find the cause                                                                                 |
@@ -83,7 +83,7 @@ Other commands: `pnpm ex list` (every step, with your progress), `pnpm ex reset 
 ## Step types
 
 - **graded**: the tests decide when you're done. Most steps are this.
-- **guided**: a walkthrough or a comparison, with no pass or fail (the tour, docling in 03.5).
+- **guided**: a walkthrough or a comparison, with no pass or fail (the tour, docling in 03.5, workflows against agents in 16.1, `WorkflowAgent` in 16.6).
 - **lab**: done when something shows in the app; the README says exactly what.
 
 ## The labs

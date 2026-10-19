@@ -12,8 +12,7 @@ import type { ToolCall } from "#learn/agent/types";
 import type { Viewer } from "#learn/retrieve/types";
 
 import { type Caps, DEFAULT_CAPS, runUsage } from "#learn/agent/caps";
-import { childCaps, childOutcome, childRunId, delegateResult, DelegateSchema } from "#learn/agent/orchestrate";
-import { subagentMessage } from "#learn/agent/prompt";
+import { childOutcome, childStart, delegateResult } from "#learn/agent/orchestrate";
 import { isFinal } from "#learn/agent/state";
 import { withTenantOn } from "@/db/tenant";
 import { loadRun, loadState, startRun } from "@/lib/agent-runs";
@@ -56,29 +55,27 @@ export async function prepareChildStep(
   });
   const parent = await withTenantOn(db, ref.tenantId, (tx) => loadRun(tx, viewer, ref.runId));
   if (!parent || isFinal(parent.status)) return { kind: "skipped" };
-  if (parent.kind === "subagent") return fail("A sub-agent can't hand work to another sub-agent.");
-  const input = DelegateSchema.safeParse(call.input);
-  if (!input.success) return fail("Invalid input: delegate takes { task }.");
+  // The children share what the parent has left: its own spend and earlier children's are already in its log.
+  const state = await withTenantOn(db, ref.tenantId, (tx) => loadState(tx, viewer, ref.runId));
+  const child = childStart(
+    { runId: ref.runId, kind: parent.kind, caps: { ...DEFAULT_CAPS, ...(parent.caps as Partial<Caps>) } },
+    call,
+    runUsage(state?.events ?? []),
+    siblings,
+    batch,
+  );
+  if (child.kind === "refused") return fail(child.error);
   const halted = await admit?.(viewer);
   if (halted) return { kind: "halted", reason: halted };
 
-  const id = childRunId(ref.runId, call.callId);
-  // The children share what the parent has left: its own spend and earlier children's are already in its log.
-  const state = await withTenantOn(db, ref.tenantId, (tx) => loadState(tx, viewer, ref.runId));
-  const caps = childCaps(
-    { ...DEFAULT_CAPS, ...(parent.caps as Partial<Caps>) },
-    siblings,
-    runUsage(state?.events ?? []),
-    batch,
-  );
   await startRun(db, viewer, {
-    runId: id,
+    runId: child.runId,
     kind: "subagent",
     parentRunId: ref.runId,
-    caps: { ...caps },
-    message: { messageId: "task", text: subagentMessage(input.data.task) },
+    caps: { ...child.caps },
+    message: child.message,
   });
-  return { kind: "child", childRunId: id };
+  return { kind: "child", childRunId: child.runId };
 }
 
 /** The child's outcome as the parent's tool result: its final answer, or a failure. */

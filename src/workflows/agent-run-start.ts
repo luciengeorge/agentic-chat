@@ -10,6 +10,7 @@ import { HookNotFoundError, WorkflowRunNotFoundError } from "workflow/errors";
 import type { Viewer } from "#learn/retrieve/types";
 import type { Db } from "@/db/create";
 
+import { kickAction } from "#learn/agent/durable-run";
 import { withTenantOn } from "@/db/tenant";
 import { cancelRun, loadRun, type RunWaker } from "@/lib/agent-runs";
 import { createLogger } from "@/lib/logger";
@@ -21,7 +22,6 @@ import { doneToken, type RunDone } from "./orchestrator-steps";
 
 const logger = createLogger("workflows.agent-run");
 
-const FINAL_WORKFLOW = new Set(["completed", "failed", "cancelled"]);
 const RESUME_TRIES = 15;
 const RESUME_WAIT_MS = 200;
 
@@ -42,25 +42,7 @@ async function resume(token: string, payload: unknown, tries = RESUME_TRIES): Pr
   }
 }
 
-export type KickAction = "start" | "wake" | "reconcile" | "replace" | "leave";
-
-/**
- * What a kick does, from the run's workflow id and that workflow's status (`gone`: Workflow has no such run; null:
- * the status couldn't be read). Only a workflow that has surely ended is replaced: two live workflows driving one
- * run would each send its writes under their own step keys, so a write could go out twice.
- * - no workflow yet: start one;
- * - running or pending: wake it (a missing hook means it hasn't made it yet, and it reads the log once it has);
- * - cancelled outside the app: cancel the run to match;
- * - completed, failed or gone: replace it;
- * - status unknown: leave it, and let the next kick try again.
- */
-export function kickAction(workflowRunId: string | null, status: string | null): KickAction {
-  if (!workflowRunId) return "start";
-  if (status === null) return "leave";
-  if (status === "cancelled") return "reconcile";
-  if (status === "gone" || FINAL_WORKFLOW.has(status)) return "replace";
-  return "wake";
-}
+export { type KickAction, kickAction } from "#learn/agent/durable-run";
 
 /** The workflow's status, `gone` if Workflow has no such run, or null if it couldn't be read. */
 async function workflowStatus(workflowRunId: string): Promise<string | null> {

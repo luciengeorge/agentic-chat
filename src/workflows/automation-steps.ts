@@ -3,12 +3,11 @@
  * ready. A fire's runs act as the automation's owner, so their approvals land in the owner's inbox.
  */
 import { eq } from "drizzle-orm";
-import { v5 as uuidv5 } from "uuid";
 import { start } from "workflow/api";
 
 import type { Admission } from "#learn/agent/fanout";
 
-import { changeFireKey, runMessage } from "#learn/automations/automation";
+import { changeFireKey, fireRun } from "#learn/automations/automation";
 import { automations, documents } from "@/db/schema";
 import { withTenantOn } from "@/db/tenant";
 import { startRun } from "@/lib/agent-runs";
@@ -19,8 +18,6 @@ import { createLogger } from "@/lib/logger";
 import { automationWorkflow } from "./automation";
 
 const logger = createLogger("workflows.automation");
-
-const NAMESPACE = "3d1f0f5c-8a7e-4f0b-9b44-2e6c5a1d9f30";
 
 /** Claims the fire, once. Everyone else who sees the same key gets `duplicate`. */
 export async function claimFireStep(
@@ -57,17 +54,8 @@ export async function createRunStep(
 ): Promise<string> {
   "use step";
   const { db } = agentRuntime();
-  const runId = uuidv5(`${automationId}:${fireKey}:${item.document?.id ?? "-"}`, NAMESPACE);
-  await startRun(
-    db,
-    { tenantId, userId: ownerId },
-    {
-      runId,
-      kind: "automation",
-      automationId,
-      message: { messageId: "automation", text: runMessage(prompt, item.document?.id ?? null) },
-    },
-  );
+  const { runId, message } = fireRun(automationId, fireKey, prompt, item);
+  await startRun(db, { tenantId, userId: ownerId }, { runId, kind: "automation", automationId, message });
   await withTenantOn(db, tenantId, (tx) =>
     tx.update(automations).set({ lastRunId: runId }).where(eq(automations.id, automationId)),
   );

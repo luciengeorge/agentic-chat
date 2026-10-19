@@ -8,8 +8,8 @@ import type { Viewer } from "#learn/retrieve/types";
 import type { Db } from "@/db/create";
 import type { Tx } from "@/db/tenant";
 
-import { advance, failRun } from "#learn/agent/checkpoint";
-import { backoffMs, isRetryable } from "#learn/agent/durable";
+import { backoffMs } from "#learn/agent/durable";
+import { type AgentJob, checkpointJob } from "#learn/queue/agent-runner";
 import { enqueue, type Exec, type Job } from "#learn/queue/queue";
 import { runWorker } from "#learn/queue/worker";
 import { withTenantOn } from "@/db/tenant";
@@ -21,9 +21,7 @@ const logger = createLogger("agent.queue");
 
 export const AGENT_QUEUE = "agent-runs";
 
-export type AgentJob =
-  | { kind: "step"; runId: string; userId: string }
-  | { kind: "expire"; runId: string; userId: string; approvalId: string };
+export type { AgentJob };
 
 const KICKS = Symbol.for("agentic-chat.agent-queue-kicks");
 
@@ -45,35 +43,23 @@ export async function kickQueued(db: Db, viewer: Viewer, runId: string): Promise
   kickWorkers();
 }
 
-/** Does one agent job. Never throws for a failure that retrying can't fix: it fails the run instead. */
+/** Does one agent job (`checkpointJob`, `#learn/queue/agent-runner`), bound to the app's database and runtime. */
 export function agentJobHandler(runtime: () => AgentRuntime = agentRuntime) {
-  return async (job: Job<AgentJob>, signal: AbortSignal): Promise<void> => {
+  return (job: Job<AgentJob>, signal: AbortSignal): Promise<void> => {
     const { db, approvalTtlMs } = runtime();
-    const viewer: Viewer = { tenantId: job.tenantId, userId: job.payload.userId };
-    const { runId } = job.payload;
-    const tx = <T>(fn: (tx: Tx) => Promise<T>) => withTenantOn(db, viewer.tenantId, fn);
-
-    if (job.payload.kind === "expire") {
-      const { approvalId } = job.payload;
-      if (await tx((t) => expireApproval(t, approvalId, { timerFired: true })))
-        await tx((t) => enqueueStep(t, viewer, runId));
-      return;
-    }
-
-    const run = await tx((t) => loadRun(t, viewer, runId));
-    if (!run) return;
-    const store = runStore(db, viewer, runId, { approvalTtlMs });
-    const live = holdLive(runId);
-    const both = AbortSignal.any([signal, live.signal]);
-    try {
-      const outcome = await advance(store, stepLoop(runtime().loop(viewer), viewer, run), {
-        stepKey: `job:${job.id}`,
-        signal: both,
-      });
-      if (outcome.kind === "continue") await tx((t) => enqueueStep(t, viewer, runId));
-      if (outcome.kind === "waiting" && outcome.approval) {
-        const { approvalId, expiresAt } = outcome.approval;
-        await tx((t) =>
+    const tx = <T>(viewer: Viewer, fn: (tx: Tx) => Promise<T>) => withTenantOn(db, viewer.tenantId, fn);
+    return checkpointJob(job, signal, {
+      async open(viewer, runId) {
+        const run = await tx(viewer, (t) => loadRun(t, viewer, runId));
+        if (!run) return null;
+        return {
+          store: runStore(db, viewer, runId, { approvalTtlMs }),
+          loop: stepLoop(runtime().loop(viewer), viewer, run),
+        };
+      },
+      queueStep: (viewer, runId) => tx(viewer, (t) => enqueueStep(t, viewer, runId)).then(() => {}),
+      queueExpiry: (viewer, runId, { approvalId, expiresAt }) =>
+        tx(viewer, (t) =>
           enqueue(
             t,
             viewer.tenantId,
@@ -81,22 +67,17 @@ export function agentJobHandler(runtime: () => AgentRuntime = agentRuntime) {
             { kind: "expire", runId, userId: viewer.userId, approvalId },
             { key: `expire:${approvalId}`, delayMs: Date.parse(expiresAt) - Date.now() },
           ),
-        );
-      }
-      kickWorkers();
-    } catch (error) {
-      // Cancelled: the run is already final.
-      if (live.signal.aborted) return;
-      // The worker stopped or lost its lease: the job comes back.
-      if (signal.aborted) throw error;
-      if (isRetryable(error) && job.attempts < job.maxAttempts) {
-        logger.warn("checkpoint failed; the job will retry", { runId, error, attempt: job.attempts });
-        throw error;
-      }
-      await failRun(store, error instanceof Error ? error.message : String(error));
-    } finally {
-      live.release();
-    }
+        ).then(() => {}),
+      expire: (viewer, approvalId) => tx(viewer, (t) => expireApproval(t, approvalId, { timerFired: true })),
+      hold: holdLive,
+      kick: kickWorkers,
+      onRetry: (error, job) =>
+        logger.warn("checkpoint failed; the job will retry", {
+          runId: job.payload.runId,
+          error,
+          attempt: job.attempts,
+        }),
+    });
   };
 }
 
