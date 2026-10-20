@@ -15,6 +15,7 @@ import { Route as ChatRouteRouteImport } from './routes/chat/route'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MeRouteImport } from './routes/me'
+import { Route as WorkshopRouteRouteImport } from './routes/workshop/route'
 import { Route as ApiMeRouteImport } from './routes/api/me'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversationId'
@@ -35,6 +36,8 @@ import { Route as LabsRerankRouteImport } from './routes/labs/rerank'
 import { Route as LabsSafetyRouteImport } from './routes/labs/safety'
 import { Route as LabsStateRouteImport } from './routes/labs/state'
 import { Route as LabsVectorsRouteImport } from './routes/labs/vectors'
+import { Route as WorkshopIndexRouteImport } from './routes/workshop/index'
+import { Route as WorkshopStepIdRouteImport } from './routes/workshop/$stepId'
 import { Route as ApiApprovalsIndexRouteImport } from './routes/api/approvals/index'
 import { Route as ApiApprovalsApprovalIdRouteImport } from './routes/api/approvals/$approvalId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -50,6 +53,8 @@ import { Route as ApiRunsIndexRouteImport } from './routes/api/runs/index'
 import { Route as ApiSpikeIndexRouteImport } from './routes/api/spike/index'
 import { Route as ApiSpikeResumeRouteImport } from './routes/api/spike/resume'
 import { Route as ApiWebhooksWorkspaceRouteImport } from './routes/api/webhooks/workspace'
+import { Route as WorkshopApiRunRouteImport } from './routes/workshop/api.run'
+import { Route as WorkshopSectionsSectionIdRouteImport } from './routes/workshop/sections.$sectionId'
 import { Route as ApiAutomationsAutomationIdRunRouteImport } from './routes/api/automations/$automationId.run'
 import { Route as ApiChatDocumentsDocumentIdRouteImport } from './routes/api/chat/documents.$documentId'
 import { Route as ApiRunsRunIdCancelRouteImport } from './routes/api/runs/$runId.cancel'
@@ -57,6 +62,7 @@ import { Route as ApiRunsRunIdMessagesRouteImport } from './routes/api/runs/$run
 import { Route as ApiRunsRunIdStreamRouteImport } from './routes/api/runs/$runId.stream'
 import { Route as ApiSpikeRunIdIndexRouteImport } from './routes/api/spike/$runId/index'
 import { Route as ApiSpikeRunIdStreamRouteImport } from './routes/api/spike/$runId/stream'
+import { Route as WorkshopApiJobsJobIdRouteImport } from './routes/workshop/api.jobs.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -86,6 +92,11 @@ const LoginRoute = LoginRouteImport.update({
 const MeRoute = MeRouteImport.update({
   id: '/me',
   path: '/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkshopRouteRoute = WorkshopRouteRouteImport.update({
+  id: '/workshop',
+  path: '/workshop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMeRoute = ApiMeRouteImport.update({
@@ -188,6 +199,16 @@ const LabsVectorsRoute = LabsVectorsRouteImport.update({
   path: '/labs/vectors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkshopIndexRoute = WorkshopIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WorkshopRouteRoute,
+} as any)
+const WorkshopStepIdRoute = WorkshopStepIdRouteImport.update({
+  id: '/$stepId',
+  path: '/$stepId',
+  getParentRoute: () => WorkshopRouteRoute,
+} as any)
 const ApiApprovalsIndexRoute = ApiApprovalsIndexRouteImport.update({
   id: '/api/approvals/',
   path: '/api/approvals/',
@@ -264,6 +285,17 @@ const ApiWebhooksWorkspaceRoute = ApiWebhooksWorkspaceRouteImport.update({
   path: '/api/webhooks/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkshopApiRunRoute = WorkshopApiRunRouteImport.update({
+  id: '/api/run',
+  path: '/api/run',
+  getParentRoute: () => WorkshopRouteRoute,
+} as any)
+const WorkshopSectionsSectionIdRoute =
+  WorkshopSectionsSectionIdRouteImport.update({
+    id: '/sections/$sectionId',
+    path: '/sections/$sectionId',
+    getParentRoute: () => WorkshopRouteRoute,
+  } as any)
 const ApiAutomationsAutomationIdRunRoute =
   ApiAutomationsAutomationIdRunRouteImport.update({
     id: '/run',
@@ -301,10 +333,16 @@ const ApiSpikeRunIdStreamRoute = ApiSpikeRunIdStreamRouteImport.update({
   path: '/api/spike/$runId/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkshopApiJobsJobIdRoute = WorkshopApiJobsJobIdRouteImport.update({
+  id: '/api/jobs/$jobId',
+  path: '/api/jobs/$jobId',
+  getParentRoute: () => WorkshopRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteRouteWithChildren
+  '/workshop': typeof WorkshopRouteRouteWithChildren
   '/automations': typeof AutomationsRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
@@ -327,8 +365,10 @@ export interface FileRoutesByFullPath {
   '/labs/safety': typeof LabsSafetyRoute
   '/labs/state': typeof LabsStateRoute
   '/labs/vectors': typeof LabsVectorsRoute
+  '/workshop/$stepId': typeof WorkshopStepIdRoute
   '/chat/': typeof ChatIndexRoute
   '/labs/': typeof LabsIndexRoute
+  '/workshop/': typeof WorkshopIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -338,6 +378,8 @@ export interface FileRoutesByFullPath {
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
+  '/workshop/api/run': typeof WorkshopApiRunRoute
+  '/workshop/sections/$sectionId': typeof WorkshopSectionsSectionIdRoute
   '/api/approvals/': typeof ApiApprovalsIndexRoute
   '/api/automations/': typeof ApiAutomationsIndexRoute
   '/api/chat/': typeof ApiChatIndexRoute
@@ -350,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
   '/api/runs/$runId/stream': typeof ApiRunsRunIdStreamRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
+  '/workshop/api/jobs/$jobId': typeof WorkshopApiJobsJobIdRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -376,8 +419,10 @@ export interface FileRoutesByTo {
   '/labs/safety': typeof LabsSafetyRoute
   '/labs/state': typeof LabsStateRoute
   '/labs/vectors': typeof LabsVectorsRoute
+  '/workshop/$stepId': typeof WorkshopStepIdRoute
   '/chat': typeof ChatIndexRoute
   '/labs': typeof LabsIndexRoute
+  '/workshop': typeof WorkshopIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -387,6 +432,8 @@ export interface FileRoutesByTo {
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
+  '/workshop/api/run': typeof WorkshopApiRunRoute
+  '/workshop/sections/$sectionId': typeof WorkshopSectionsSectionIdRoute
   '/api/approvals': typeof ApiApprovalsIndexRoute
   '/api/automations': typeof ApiAutomationsIndexRoute
   '/api/chat': typeof ApiChatIndexRoute
@@ -399,12 +446,14 @@ export interface FileRoutesByTo {
   '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
   '/api/runs/$runId/stream': typeof ApiRunsRunIdStreamRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
+  '/workshop/api/jobs/$jobId': typeof WorkshopApiJobsJobIdRoute
   '/api/spike/$runId': typeof ApiSpikeRunIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteRouteWithChildren
+  '/workshop': typeof WorkshopRouteRouteWithChildren
   '/automations': typeof AutomationsRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
@@ -427,8 +476,10 @@ export interface FileRoutesById {
   '/labs/safety': typeof LabsSafetyRoute
   '/labs/state': typeof LabsStateRoute
   '/labs/vectors': typeof LabsVectorsRoute
+  '/workshop/$stepId': typeof WorkshopStepIdRoute
   '/chat/': typeof ChatIndexRoute
   '/labs/': typeof LabsIndexRoute
+  '/workshop/': typeof WorkshopIndexRoute
   '/api/approvals/$approvalId': typeof ApiApprovalsApprovalIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
@@ -438,6 +489,8 @@ export interface FileRoutesById {
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
   '/api/spike/resume': typeof ApiSpikeResumeRoute
   '/api/webhooks/workspace': typeof ApiWebhooksWorkspaceRoute
+  '/workshop/api/run': typeof WorkshopApiRunRoute
+  '/workshop/sections/$sectionId': typeof WorkshopSectionsSectionIdRoute
   '/api/approvals/': typeof ApiApprovalsIndexRoute
   '/api/automations/': typeof ApiAutomationsIndexRoute
   '/api/chat/': typeof ApiChatIndexRoute
@@ -450,6 +503,7 @@ export interface FileRoutesById {
   '/api/runs/$runId/messages': typeof ApiRunsRunIdMessagesRoute
   '/api/runs/$runId/stream': typeof ApiRunsRunIdStreamRoute
   '/api/spike/$runId/stream': typeof ApiSpikeRunIdStreamRoute
+  '/workshop/api/jobs/$jobId': typeof WorkshopApiJobsJobIdRoute
   '/api/spike/$runId/': typeof ApiSpikeRunIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -457,6 +511,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chat'
+    | '/workshop'
     | '/automations'
     | '/inbox'
     | '/login'
@@ -479,8 +534,10 @@ export interface FileRouteTypes {
     | '/labs/safety'
     | '/labs/state'
     | '/labs/vectors'
+    | '/workshop/$stepId'
     | '/chat/'
     | '/labs/'
+    | '/workshop/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -490,6 +547,8 @@ export interface FileRouteTypes {
     | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
+    | '/workshop/api/run'
+    | '/workshop/sections/$sectionId'
     | '/api/approvals/'
     | '/api/automations/'
     | '/api/chat/'
@@ -502,6 +561,7 @@ export interface FileRouteTypes {
     | '/api/runs/$runId/messages'
     | '/api/runs/$runId/stream'
     | '/api/spike/$runId/stream'
+    | '/workshop/api/jobs/$jobId'
     | '/api/spike/$runId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -528,8 +588,10 @@ export interface FileRouteTypes {
     | '/labs/safety'
     | '/labs/state'
     | '/labs/vectors'
+    | '/workshop/$stepId'
     | '/chat'
     | '/labs'
+    | '/workshop'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -539,6 +601,8 @@ export interface FileRouteTypes {
     | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
+    | '/workshop/api/run'
+    | '/workshop/sections/$sectionId'
     | '/api/approvals'
     | '/api/automations'
     | '/api/chat'
@@ -551,11 +615,13 @@ export interface FileRouteTypes {
     | '/api/runs/$runId/messages'
     | '/api/runs/$runId/stream'
     | '/api/spike/$runId/stream'
+    | '/workshop/api/jobs/$jobId'
     | '/api/spike/$runId'
   id:
     | '__root__'
     | '/'
     | '/chat'
+    | '/workshop'
     | '/automations'
     | '/inbox'
     | '/login'
@@ -578,8 +644,10 @@ export interface FileRouteTypes {
     | '/labs/safety'
     | '/labs/state'
     | '/labs/vectors'
+    | '/workshop/$stepId'
     | '/chat/'
     | '/labs/'
+    | '/workshop/'
     | '/api/approvals/$approvalId'
     | '/api/auth/$'
     | '/api/automations/$automationId'
@@ -589,6 +657,8 @@ export interface FileRouteTypes {
     | '/api/memory/$noteId'
     | '/api/spike/resume'
     | '/api/webhooks/workspace'
+    | '/workshop/api/run'
+    | '/workshop/sections/$sectionId'
     | '/api/approvals/'
     | '/api/automations/'
     | '/api/chat/'
@@ -601,12 +671,14 @@ export interface FileRouteTypes {
     | '/api/runs/$runId/messages'
     | '/api/runs/$runId/stream'
     | '/api/spike/$runId/stream'
+    | '/workshop/api/jobs/$jobId'
     | '/api/spike/$runId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRouteRoute: typeof ChatRouteRouteWithChildren
+  WorkshopRouteRoute: typeof WorkshopRouteRouteWithChildren
   AutomationsRoute: typeof AutomationsRoute
   InboxRoute: typeof InboxRoute
   LoginRoute: typeof LoginRoute
@@ -694,6 +766,13 @@ declare module '@tanstack/react-router' {
       path: '/me'
       fullPath: '/me'
       preLoaderRoute: typeof MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workshop': {
+      id: '/workshop'
+      path: '/workshop'
+      fullPath: '/workshop'
+      preLoaderRoute: typeof WorkshopRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/me': {
@@ -836,6 +915,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabsVectorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workshop/': {
+      id: '/workshop/'
+      path: '/'
+      fullPath: '/workshop/'
+      preLoaderRoute: typeof WorkshopIndexRouteImport
+      parentRoute: typeof WorkshopRouteRoute
+    }
+    '/workshop/$stepId': {
+      id: '/workshop/$stepId'
+      path: '/$stepId'
+      fullPath: '/workshop/$stepId'
+      preLoaderRoute: typeof WorkshopStepIdRouteImport
+      parentRoute: typeof WorkshopRouteRoute
+    }
     '/api/approvals/': {
       id: '/api/approvals/'
       path: '/api/approvals'
@@ -941,6 +1034,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workshop/api/run': {
+      id: '/workshop/api/run'
+      path: '/api/run'
+      fullPath: '/workshop/api/run'
+      preLoaderRoute: typeof WorkshopApiRunRouteImport
+      parentRoute: typeof WorkshopRouteRoute
+    }
+    '/workshop/sections/$sectionId': {
+      id: '/workshop/sections/$sectionId'
+      path: '/sections/$sectionId'
+      fullPath: '/workshop/sections/$sectionId'
+      preLoaderRoute: typeof WorkshopSectionsSectionIdRouteImport
+      parentRoute: typeof WorkshopRouteRoute
+    }
     '/api/automations/$automationId/run': {
       id: '/api/automations/$automationId/run'
       path: '/run'
@@ -990,6 +1097,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSpikeRunIdStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workshop/api/jobs/$jobId': {
+      id: '/workshop/api/jobs/$jobId'
+      path: '/api/jobs/$jobId'
+      fullPath: '/workshop/api/jobs/$jobId'
+      preLoaderRoute: typeof WorkshopApiJobsJobIdRouteImport
+      parentRoute: typeof WorkshopRouteRoute
+    }
   }
 }
 
@@ -1005,6 +1119,26 @@ const ChatRouteRouteChildren: ChatRouteRouteChildren = {
 
 const ChatRouteRouteWithChildren = ChatRouteRoute._addFileChildren(
   ChatRouteRouteChildren,
+)
+
+interface WorkshopRouteRouteChildren {
+  WorkshopStepIdRoute: typeof WorkshopStepIdRoute
+  WorkshopIndexRoute: typeof WorkshopIndexRoute
+  WorkshopApiRunRoute: typeof WorkshopApiRunRoute
+  WorkshopSectionsSectionIdRoute: typeof WorkshopSectionsSectionIdRoute
+  WorkshopApiJobsJobIdRoute: typeof WorkshopApiJobsJobIdRoute
+}
+
+const WorkshopRouteRouteChildren: WorkshopRouteRouteChildren = {
+  WorkshopStepIdRoute: WorkshopStepIdRoute,
+  WorkshopIndexRoute: WorkshopIndexRoute,
+  WorkshopApiRunRoute: WorkshopApiRunRoute,
+  WorkshopSectionsSectionIdRoute: WorkshopSectionsSectionIdRoute,
+  WorkshopApiJobsJobIdRoute: WorkshopApiJobsJobIdRoute,
+}
+
+const WorkshopRouteRouteWithChildren = WorkshopRouteRoute._addFileChildren(
+  WorkshopRouteRouteChildren,
 )
 
 interface ApiAutomationsAutomationIdRouteChildren {
@@ -1024,6 +1158,7 @@ const ApiAutomationsAutomationIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRouteRoute: ChatRouteRouteWithChildren,
+  WorkshopRouteRoute: WorkshopRouteRouteWithChildren,
   AutomationsRoute: AutomationsRoute,
   InboxRoute: InboxRoute,
   LoginRoute: LoginRoute,

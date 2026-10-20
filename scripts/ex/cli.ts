@@ -1,20 +1,19 @@
 import type { ParseArgsOptionsConfig } from "node:util";
 
-import { existsSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import type { Step } from "./catalog";
+import type { Next } from "./list";
 import type { SmokeTargets } from "./smoke";
 import type { SlotSwitch, Switched } from "./switch";
-import type { StepRun, Target } from "./testing";
+import type { StepRun, Target, TestProgress } from "./testing";
 
-import { SECTION_DIR, SlotError, STEP_README } from "../../vite-plugins/learn-slots";
-import { findStep, loadCatalog } from "./catalog";
-import { localEnv } from "./env";
+import { SlotError } from "../../vite-plugins/learn-slots";
+import { findStep } from "./catalog";
 import { ExError } from "./errors";
 import { runGate } from "./gate";
+import { listSections, nextFor } from "./list";
 import { compose, up } from "./services";
 import { runChecks, smokeChecks, smokeTargets } from "./smoke";
 import { readState } from "./state";
@@ -49,19 +48,6 @@ const NEXT = [
   "pnpm ex smoke         # then check the whole stack",
 ];
 
-function stepJson(step: Step, root: string, state: { activeStep: string | null; passed: string[] }) {
-  const status = step.id === state.activeStep ? "active" : state.passed.includes(step.id) ? "passed" : "not_started";
-  return {
-    id: step.id,
-    slug: step.slug,
-    title: step.title,
-    type: step.type,
-    problem_dir: relative(root, step.problemDir),
-    solution_dir: relative(root, step.solutionDir),
-    status,
-  };
-}
-
 /** Refuses when playground/ holds changes to the active step (other than `step`) that `command` would discard. */
 function refuseToDiscard(root: string, command: string, step: Step | null): void {
   const active = readState(root).activeStep;
@@ -78,20 +64,6 @@ function refuseToDiscard(root: string, command: string, step: Step | null): void
       `\`pnpm ex diff ${active}\` shows them; \`pnpm ex ${command} --force\` discards them`,
     );
   }
-}
-
-export type Next = { readme: string; test: string | null; lab: string | null };
-
-/** What to do once a step is active: read its README, run its tests, open its section's lab if it has one. */
-function nextFor(root: string, step: Step): Next {
-  const section = SECTION_DIR.exec(basename(dirname(step.problemDir)))?.groups;
-  const slug = section?.slug ?? null;
-  const app = (localEnv(root).BETTER_AUTH_URL || "http://localhost:3000").replace(/\/$/, "");
-  return {
-    readme: relative(root, join(step.problemDir, STEP_README)),
-    test: step.type === "graded" ? `pnpm ex test ${step.id}` : null,
-    lab: slug && existsSync(join(root, "src/routes/labs", `${slug}.tsx`)) ? `${app}/labs/${slug}` : null,
-  };
 }
 
 function nextText(next: Next): string[] {
@@ -121,6 +93,8 @@ async function switchTo(context: Context, step: Step, { restart, force }: { rest
     ok: true,
   };
 }
+
+const MARKS = { passed: "✓", failed: "✗", skipped: "-", error: "✗" } as const;
 
 /** A test run, short: each failing test's name and the first lines of its message. */
 function runText(run: StepRun, where: string): string {
@@ -155,23 +129,11 @@ const COMMANDS: Record<string, Command> = {
     summary: "List sections and steps with your progress (--all includes hidden ones)",
     options: { all: { type: "boolean", default: false } },
     async run({ root }, _, { all }) {
-      const state = readState(root);
-      const sections = [];
-      const lines: string[] = [];
-      for (const section of loadCatalog(root)) {
-        const steps = section.steps.filter((step) => all || !step.hidden);
-        if ((section.hidden && !all) || steps.length === 0) continue;
-        const rows = steps.map((step) => stepJson(step, root, state));
-        sections.push({
-          id: section.id,
-          slug: section.slug,
-          title: section.title,
-          hidden: section.hidden,
-          steps: rows,
-        });
-        lines.push(`${section.id} ${section.title}`);
-        lines.push(...rows.map((row) => `  ${row.id.padEnd(8)} ${row.title}  [${row.type}, ${row.status}]`));
-      }
+      const sections = listSections(root, { all: !!all });
+      const lines = sections.flatMap((section) => [
+        `${section.id} ${section.title}`,
+        ...section.steps.map((row) => `  ${row.id.padEnd(8)} ${row.title}  [${row.type}, ${row.status}]`),
+      ]);
       return { payload: { sections }, text: lines.join("\n"), ok: true };
     },
   },
@@ -213,10 +175,11 @@ const COMMANDS: Record<string, Command> = {
     },
   },
   test: {
-    usage: "test <step> [--target playground|problem|solution]",
-    summary: "Run a step's tests against your playground (or the problem or solution code)",
+    usage: "test <step> [--target playground|problem|solution] [--progress]",
+    summary:
+      "Run a step's tests against your playground (or the problem or solution code); --progress reports each test as it ends",
     args: ["step"],
-    options: { target: { type: "string", default: "playground" } },
+    options: { target: { type: "string", default: "playground" }, progress: { type: "boolean", default: false } },
     async run({ root, json, io }, [id], values) {
       const target = values.target as Target;
       if (!TARGETS.includes(target)) throw new ExError(`--target must be one of ${TARGETS.join(", ")}`);
@@ -224,7 +187,16 @@ const COMMANDS: Record<string, Command> = {
       if (step.type !== "graded") throw new ExError(`${step.id} is a ${step.type} step; it has no tests`);
       if (target === "playground") requireActive(root, step);
       if (!json) io.out(`running ${step.id}'s tests...`);
-      const result = await runStepTests(root, step, target, { capture: true });
+      // With --json, one JSON line per event on stderr, so stdout keeps its one document.
+      const onProgress = !values.progress
+        ? undefined
+        : json
+          ? (event: TestProgress) => io.err(JSON.stringify(event))
+          : (event: TestProgress) => {
+              if (event.event === "test")
+                io.out(`${MARKS[event.test.outcome]} ${event.test.nodeid.split(" > ").at(-1)}`);
+            };
+      const result = await runStepTests(root, step, target, { capture: true, onProgress });
       if (result.passed && target === "playground") markPassed(root, step);
       const where = target === "playground" ? "playground/" : `its ${target} code`;
       return { payload: result, text: runText(result, where), ok: result.passed };

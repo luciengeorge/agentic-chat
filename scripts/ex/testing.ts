@@ -11,6 +11,7 @@ import { REFERENCE_DIR } from "../../vite-plugins/learn-slots";
 import { codeFiles, isTestFile, isWorkflowTestFile, stepFiles } from "./catalog";
 import { ExError } from "./errors";
 import { run } from "./process";
+import { progressLines } from "./progress";
 import { playground } from "./workspace";
 
 export const TARGETS = ["playground", "problem", "solution"] as const;
@@ -22,6 +23,9 @@ export type TestResult = {
   duration_s: number;
   message: string | null;
 };
+
+/** What `onProgress` hears while a run goes: the tests each file holds, once it's collected, then each test as it ends. */
+export type TestProgress = { event: "collected"; nodeids: string[] } | { event: "test"; test: TestResult };
 
 /** `warnings` are things worth fixing that didn't fail the run: Postgres down, so the step's database tests skipped. */
 export type StepRun = { step: string; target: Target; passed: boolean; tests: TestResult[]; warnings: string[] };
@@ -136,6 +140,27 @@ export function parseReport(root: string, report: JsonReport): TestResult[] {
     });
 }
 
+/** Turns `vitest-run.ts --progress` lines into events, named as `parseReport` names them. */
+function progressOf(root: string, onProgress: (event: TestProgress) => void) {
+  const nodeid = ({ file, name }: { file: string; name: string }) => `${relative(root, file)} > ${name}`;
+  return progressLines((raw) => {
+    if ("collected" in raw) {
+      onProgress({ event: "collected", nodeids: raw.collected.map(nodeid) });
+      return;
+    }
+    const outcome = raw.state === "passed" ? "passed" : raw.state === "failed" ? "failed" : "skipped";
+    onProgress({
+      event: "test",
+      test: {
+        nodeid: nodeid(raw),
+        outcome,
+        duration_s: Math.round(raw.duration_ms * 10) / 10_000,
+        message: outcome === "failed" ? firstMessage(raw.message ?? undefined) : null,
+      },
+    });
+  });
+}
+
 /** What global setup prints when it can't reach Postgres (`src/db/test/global-setup.ts`). */
 const POSTGRES_DOWN = "Postgres is unreachable";
 
@@ -156,7 +181,7 @@ export async function runStepTests(
   root: string,
   step: Step,
   target: Target,
-  { capture }: { capture: boolean },
+  { capture, onProgress }: { capture: boolean; onProgress?: (event: TestProgress) => void },
 ): Promise<StepRun> {
   if (!stepFiles(step.problemDir).some(isTestFile)) {
     throw new ExError(`no *.test.ts in ${relative(root, step.problemDir)}`);
@@ -189,7 +214,10 @@ export async function runStepTests(
       ...(workflowRoot ? { AC_WORKFLOW_TEST_ROOT: workflowRoot } : {}),
     };
     const args = ["--import", TSX, RUNNER, "--root", root, "--tests", step.problemDir, "--report", report];
-    const result = await run(process.execPath, capture ? [...args, "--quiet"] : args, { cwd: root, env, capture });
+    if (capture) args.push("--quiet");
+    const progress = capture && onProgress ? progressOf(realpathSync(root), onProgress) : undefined;
+    if (progress) args.push("--progress");
+    const result = await run(process.execPath, args, { cwd: root, env, capture, onStdout: progress });
     if (!existsSync(report)) {
       throw new ExError("vitest did not produce a report", capture ? `${result.stdout}${result.stderr}` : null);
     }
