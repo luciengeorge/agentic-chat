@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-20",
+  "models": {
+    "baseURL": "http://127.0.0.1:1234/v1",
+    "chatModel": "qwen/qwen3-8b",
+    "embeddingModel": "text-embedding-nomic-embed-text-v1.5",
+    "embeddingDimensions": 768,
+    "rerankerModel": "Xenova/bge-reranker-base",
+    "rerankerDtype": "q8",
+    "weightsDir": "/Users/lucien/src/luciengeorge/agentic-chat/vendor/models"
+  },
+  "retrieval": {
+    "questions": 10,
+    "rerankerLoadMs": 1592,
+    "medianMs": {
+      "total": 3161,
+      "queryEmbedding": 30,
+      "rerank": 3022,
+      "rest": 94
+    },
+    "medianPairs": 30
+  },
+  "rerankBatchMs": {
+    "pairs": 30,
+    "byBatchSize": {
+      "1": 2336,
+      "4": 4609,
+      "8": 6799,
+      "16": 5811,
+      "30": 5614
+    }
+  },
+  "chat": {
+    "model": "qwen/qwen3-8b",
+    "pending": "LM Studio doesn't have qwen/qwen3-8b loaded"
+  }
+}

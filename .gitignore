@@ -24,3 +24,6 @@ coverage
 playground/
 .ex/
 /.swc
+
+# Section 21: vendored model weights, pnpm store and images (scripts/local-weights.ts, scripts/vendor.ts)
+/vendor/

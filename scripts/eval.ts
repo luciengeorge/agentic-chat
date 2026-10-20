@@ -7,6 +7,11 @@
  *   pnpm eval --only a,b         just these questions; prints, writes no report
  *   pnpm eval --hyde             also search a model-written answer passage (HyDE); the report's mode says so
  *   pnpm eval --route N          search chunks of only the N documents routing picks first
+ *   pnpm eval --no-rewrite       search the question alone, with no rewritten queries
+ *   pnpm eval --out DIR          write the report to DIR instead of fixtures/golden/reports
+ *
+ * With MODEL_PROVIDER=local (section 21, `pnpm local:eval`) every model is local: LM Studio for embeddings,
+ * rewrites and answers, the transformers.js cross-encoder for reranking. The mode then ends in `-local`.
  *
  * It runs `retrieve()` and `answer()` in-process against the database `pnpm dev` uses, as the app role, the way
  * `POST /api/chat` does: retrieval at k = 10 for the metrics, and the first 8 of those (the app's k) to the model.
@@ -26,11 +31,13 @@ import { checkAnswer, checkGates, type CheckResult } from "#learn/eval/checks";
 import { judge, ndcgAtK, recallAtK, reciprocalRank } from "#learn/eval/metrics";
 import { BAR, summarize, type Scores, type Summary } from "#learn/eval/summary";
 import { answer, type AnswerResult } from "#learn/generate/answer";
+import { localConfig, modelProvider } from "#learn/local/config";
+import { lmStudio } from "#learn/local/lmstudio";
 import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
 import { costOf } from "#learn/observability/prices";
 import { modelHypothesis } from "#learn/query/hyde";
-import { modelRewriter } from "#learn/query/rewrite";
+import { modelRewriter, noRewriter } from "#learn/query/rewrite";
 import { createRetrieve, DEFAULT_SETTINGS } from "#learn/retrieve/retrieve";
 import { closeDb, dbFor } from "@/db/pool";
 import { withTenantOn } from "@/db/tenant";
@@ -96,6 +103,8 @@ function parseArgs(argv: string[]) {
   let only: string[] | null = null;
   let hyde = false;
   let route = 0;
+  let rewrite = true;
+  let out = REPORTS;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--retrieval-only") retrievalOnly = true;
@@ -103,10 +112,13 @@ function parseArgs(argv: string[]) {
     else if (arg.startsWith("--only=")) only = arg.slice("--only=".length).split(",").filter(Boolean);
     else if (arg === "--hyde") hyde = true;
     else if (arg === "--route") route = Number(argv[++i]);
+    else if (arg === "--no-rewrite") rewrite = false;
+    else if (arg === "--out") out = argv[++i] ?? "";
     else throw new Error(`unknown argument ${arg}; try --retrieval-only, --only id,id, --hyde or --route N`);
   }
   if (!Number.isInteger(route) || route < 0) throw new Error("--route takes a whole number of documents");
-  return { retrievalOnly, only, hyde, route };
+  if (!out) throw new Error("--out takes a directory");
+  return { retrievalOnly, only, hyde, route, rewrite, out };
 }
 
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
@@ -136,20 +148,22 @@ const pages = (chunk: Pick<RetrievedChunk, "pageStart" | "pageEnd">) =>
       : String(chunk.pageStart);
 
 /** Priced from the one table (`#learn/observability/prices`). Answer usage has no cache split, so it's priced uncached. */
-function cost(usage: Usage) {
-  const chat = (r: ModelUsage) => costOf(CHAT_MODEL, r).usd;
+function cost(usage: Usage, chatModel: string) {
+  const chat = (r: ModelUsage) => costOf(chatModel, r).usd;
   const a = usage.answer;
   const rewrite = chat(usage.rewrite);
   const hyde = chat(usage.hyde);
-  const answers = costOf(CHAT_MODEL, { inputTokens: a.inputTokens, outputTokens: a.outputTokens }).usd;
+  const answers = costOf(chatModel, { inputTokens: a.inputTokens, outputTokens: a.outputTokens }).usd;
   const embeddings = costOf(EMBEDDING_MODEL, { inputTokens: usage.embeddingTokens }).usd;
   return { rewrite, hyde, answers, embeddings, total: rewrite + hyde + answers + embeddings };
 }
 
 async function main() {
-  const { retrievalOnly, only, hyde, route } = parseArgs(process.argv.slice(2));
+  const { retrievalOnly, only, hyde, route, rewrite, out } = parseArgs(process.argv.slice(2));
   if (acEnv() !== "dev") throw new Error(`pnpm eval runs against the dev stack; AC_ENV is ${acEnv()}`);
-  if (!process.env.OPENAI_API_KEY)
+  const local = modelProvider() === "local";
+  const chatModel = local ? localConfig().chatModel : CHAT_MODEL;
+  if (!local && !process.env.OPENAI_API_KEY)
     throw new Error("pnpm eval needs OPENAI_API_KEY: fake models would score nothing real");
   const databaseUrl = process.env.DATABASE_URL;
   const adminUrl = process.env.DATABASE_ADMIN_URL;
@@ -175,9 +189,9 @@ async function main() {
   const reports: QuestionReport[] = [];
   const started = new Date();
   const models: Record<string, string | null> = {
-    rewriter: `${CHAT_MODEL} (${CHAT_REASONING_EFFORT})`,
-    answer: retrievalOnly ? null : `${CHAT_MODEL} (${CHAT_REASONING_EFFORT})`,
-    hyde: hyde ? `${CHAT_MODEL} (${CHAT_REASONING_EFFORT})` : null,
+    rewriter: rewrite ? `${chatModel} (${CHAT_REASONING_EFFORT})` : null,
+    answer: retrievalOnly ? null : `${chatModel} (${CHAT_REASONING_EFFORT})`,
+    hyde: hyde ? `${chatModel} (${CHAT_REASONING_EFFORT})` : null,
   };
   try {
     const tenantIds = new Map(
@@ -194,7 +208,9 @@ async function main() {
       ]),
     );
 
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const chatLanguageModel = local
+      ? () => lmStudio(localConfig()).chatModel(chatModel)
+      : () => createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(CHAT_MODEL);
     const countInto = (bucket: ModelUsage): LanguageModelMiddleware => ({
       wrapGenerate: async ({ doGenerate }) => {
         const result = await doGenerate();
@@ -206,10 +222,15 @@ async function main() {
       },
     });
     const countedModel = (bucket: ModelUsage) =>
-      wrapLanguageModel({ model: openai(CHAT_MODEL), middleware: countInto(bucket) });
+      wrapLanguageModel({ model: chatLanguageModel(), middleware: countInto(bucket) });
     // The same rewriter `rewriterFromEnv` builds, with its usage counted.
-    const rewriter = modelRewriter(aiSdkChatModel(countedModel(usage.rewrite)), CHAT_REASONING_EFFORT);
-    const embedder = embedderFromEnv(process.env, { onUsage: (tokens) => (usage.embeddingTokens += tokens) });
+    const rewriter = rewrite
+      ? modelRewriter(aiSdkChatModel(countedModel(usage.rewrite)), CHAT_REASONING_EFFORT)
+      : noRewriter;
+    const embedder = embedderFromEnv(process.env, {
+      purpose: "query",
+      onUsage: (tokens) => (usage.embeddingTokens += tokens),
+    });
     const reranker = counted(rerankerFromEnv(), usage);
     models.embedder = embedder.version;
     models.reranker = reranker.name;
@@ -223,7 +244,7 @@ async function main() {
       },
       { routeDocuments: route },
     );
-    const model = aiSdkChatModel(openai(CHAT_MODEL));
+    const model = aiSdkChatModel(chatLanguageModel());
 
     for (const [n, q] of questions.entries()) {
       const t0 = performance.now();
@@ -345,17 +366,22 @@ async function main() {
   const run = {
     date: started.toISOString().slice(0, 10),
     startedAt: started.toISOString(),
-    mode: (retrievalOnly ? "retrieval-only" : "full") + (hyde ? "-hyde" : "") + (route ? `-route${route}` : ""),
+    mode:
+      (retrievalOnly ? "retrieval-only" : "full") +
+      (hyde ? "-hyde" : "") +
+      (route ? `-route${route}` : "") +
+      (rewrite ? "" : "-norewrite") +
+      (local ? "-local" : ""),
     models,
     settings: { ...DEFAULT_SETTINGS, k: K, answerK: ANSWER_K, routeDocuments: route },
     bar: BAR,
     usage,
-    costUsd: cost(usage),
+    costUsd: cost(usage, chatModel),
   };
   const markdown = renderMarkdown(run, summary, reports);
   if (!only) {
-    mkdirSync(REPORTS, { recursive: true });
-    const base = join(REPORTS, `${run.date}-${run.mode}`);
+    mkdirSync(out, { recursive: true });
+    const base = join(out, `${run.date}-${run.mode}`);
     writeFileSync(`${base}.json`, `${JSON.stringify({ run, summary, questions: reports }, null, 2)}\n`);
     writeFileSync(`${base}.md`, markdown);
     process.stderr.write(`wrote ${base}.md and .json\n`);

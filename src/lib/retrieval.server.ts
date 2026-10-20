@@ -5,6 +5,10 @@ import type { Retrieve } from "#learn/retrieve/types";
 
 import { aiSdkEmbedder, EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, type Embedder } from "#learn/embed/embed";
 import { hashingEmbedder } from "#learn/embed/fake";
+import { localConfig, modelProvider } from "#learn/local/config";
+import { type EmbedPurpose, localEmbedder } from "#learn/local/embed";
+import { lmStudio, localChatModel } from "#learn/local/lmstudio";
+import { localReranker } from "#learn/local/rerank";
 import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
 import { modelRewriter, noRewriter, type QueryRewriter } from "#learn/query/rewrite";
@@ -28,16 +32,28 @@ function warnFake(what: string) {
   logger.warn("no OPENAI_API_KEY: using deterministic fakes", { what });
 }
 
+/** With MODEL_PROVIDER=local (section 21), outside tests: every model on this machine, and no hosted client. */
+const local = (env: Env) => acEnv(env) !== "test" && modelProvider(env) === "local";
+
 /**
  * OpenAI's text-embedding-3-small at 1,536 dimensions when OPENAI_API_KEY is set. Tests always get the hashing
  * fake, so they never call out; dev without a key gets it too. Production without a key refuses to start
- * embedding: fake vectors would make search look like it works.
+ * embedding: fake vectors would make search look like it works. With MODEL_PROVIDER=local, LM Studio's embedding
+ * model, which marks a query and a document differently: `purpose` says which these texts are.
  */
 export function embedderFromEnv(
   env: Env = process.env,
-  options: { onUsage?: (tokens: number) => void } = {},
+  options: { onUsage?: (tokens: number) => void; purpose?: EmbedPurpose } = {},
 ): Embedder {
   const mode = acEnv(env);
+  if (local(env)) {
+    const config = localConfig(env);
+    return localEmbedder(lmStudio(config).embeddingModel(config.embeddingModel), {
+      modelId: config.embeddingModel,
+      dimensions: config.embeddingDimensions,
+      purpose: options.purpose ?? "document",
+    });
+  }
   if (mode !== "test" && env.OPENAI_API_KEY) {
     const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
     return aiSdkEmbedder(openai.embedding(EMBEDDING_MODEL), {
@@ -51,8 +67,10 @@ export function embedderFromEnv(
   return hashingEmbedder(EMBEDDING_DIMENSIONS);
 }
 
-/** Cohere when COHERE_API_KEY is set (never in tests), else the deterministic overlap reranker. */
+/** Cohere when COHERE_API_KEY is set (never in tests), else the deterministic overlap reranker. Local: the
+ * cross-encoder on transformers.js. */
 export function rerankerFromEnv(env: Env = process.env): Reranker {
+  if (local(env)) return localReranker(localConfig(env));
   if (acEnv(env) !== "test" && env.COHERE_API_KEY) {
     const cohere = createCohere({ apiKey: env.COHERE_API_KEY });
     return aiSdkReranker(cohere.reranking(COHERE_RERANK_MODEL), `cohere/${COHERE_RERANK_MODEL}`);
@@ -63,6 +81,7 @@ export function rerankerFromEnv(env: Env = process.env): Reranker {
 /** The chat model, at its explicit effort, rewrites queries when OPENAI_API_KEY is set (never in tests).
  * Otherwise retrieval searches the question alone. */
 export function rewriterFromEnv(env: Env = process.env): QueryRewriter {
+  if (local(env)) return modelRewriter(localChatModel(localConfig(env)), CHAT_REASONING_EFFORT);
   if (acEnv(env) !== "test" && env.OPENAI_API_KEY) {
     const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
     return modelRewriter(aiSdkChatModel(openai(CHAT_MODEL)), CHAT_REASONING_EFFORT);
@@ -74,7 +93,7 @@ export function rewriterFromEnv(env: Env = process.env): QueryRewriter {
 export const retrieve: Retrieve = (viewer, query, options) =>
   createRetrieve({
     withTenant,
-    embedder: embedderFromEnv(),
+    embedder: embedderFromEnv(process.env, { purpose: "query" }),
     reranker: rerankerFromEnv(),
     rewriter: rewriterFromEnv(),
   })(viewer, query, options);
