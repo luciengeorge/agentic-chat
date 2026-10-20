@@ -160,6 +160,36 @@ This lane builds reference code only. The steps come in wave 3.
 
 **Rules for this wave:** each lane runs only its own tests; main runs the full suite and the gate. No live model calls in tests. Never plant a drill or start a step in the real repo.
 
+## Wave 4: section 22, the front door, the labs index (one lane, G)
+
+Section 22 is about shipping, and Lucien deploys it himself. The lane writes the steps and builds what a deploy needs. It verifies everything locally, and never deploys, links a project, logs in, buys anything or creates a cloud resource.
+
+**What a deploy needs (reference code):**
+- **Cron routes.** Locally the outbox relay, the scheduler, the periodic sync and the job-queue worker run as dev-only server plugins, so in production nothing drains them. Add cron routes for each of them, protected by `CRON_SECRET` and refusing every other caller, plus a `vercel.json` with their schedules. Tests cover the auth and that each route does one bounded pass.
+- **Environment.** `.env.example` complete for prod. Every secret is named, with where it comes from: `DATABASE_URL` for the app role, `DATABASE_ADMIN_URL` for migrations, `BETTER_AUTH_SECRET`, `TOAST_SECRET`, the OpenAI and Cohere keys, `CRON_SECRET`, and the workspace connector settings. The app boots in prod only with the required ones set: an explicit check that names what's missing.
+- **Migrations.** A `pnpm db:migrate` path that runs against a remote database with the admin URL, the `ac_app` role and grants included, plus the `pg_search` / `vector` extension notes for a hosted ParadeDB.
+- **CI and CD.** `.github/workflows/ci.yml` already runs lint, types, tests and the gate. Add the preview and production deploy shape as documentation and an optional workflow that only runs when the Vercel secrets exist, so nothing runs today.
+
+**Section 22 steps** (all `guided`, as `PLAN.md` says):
+1. **The app and workflows to Vercel.** Linking, the build, function regions, Workflow's Vercel world, why `onnxruntime-node` stays out of the hosted build (`pnpm build:local`).
+2. **ParadeDB in the cloud, secrets and migrations.** Fly, Railway or ParadeDB Cloud compared, with real prices where they're published, and a recommendation (Fly, since its CLI is installed). Running migrations with the admin role, and the app role.
+3. **Hooks and streams on a Vercel preview.** What differs from the local world, and a checklist that runs `ex smoke`-style checks against a preview URL. Add a `pnpm ex smoke --target <url>` mode if it's small.
+4. **CI and CD.** Previews per PR, production on main, the gate in CI, and the cron routes.
+
+Each README is a walkthrough Lucien follows with his own accounts, with commands to copy and what he should see at each point.
+
+**The front door and labs index:**
+- `exercises/README.md` marks 18 to 22 as available, one line each, with no drill answers.
+- The `/labs` index lists `evals`, `observability`, `drills` and `airgap`, with dev-only marked.
+- `PLAN.md`'s guided list is checked against the steps' real types.
+
+**G owns:**
+- `exercises/22.*/**`, `exercises/README.md`, `src/routes/labs/index.tsx`;
+- `src/routes/api/cron/**` (new), `vercel.json`, `.env.example`, `src/lib/env*.ts` (the prod boot check);
+- `scripts/` for the remote migration, and the smoke target mode in `scripts/ex/smoke*.ts`;
+- `.github/workflows/**`;
+- `PLAN.md` (the guided list only), `README.md` (a deploy section).
+
 ## Settled during the build
 
 (Lanes add what they decided here: one bullet per decision, plain words.)
