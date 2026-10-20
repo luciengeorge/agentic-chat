@@ -8,20 +8,23 @@ import { createGuardrails } from "#learn/agent/guardrails";
 import { createAgentTools } from "#learn/agent/tools/index";
 import { createWorkspaceWriter } from "#learn/agent/tools/workspace";
 import { withTenant } from "@/db/tenant";
+import { observedRetrieve, observedTools } from "@/lib/observability.server";
 import { retrieve } from "@/lib/retrieval.server";
 import { tenantSlug, workspaceToken, workspaceUrl } from "@/workflows/sync-common";
 
 let tools: AgentTool[] | undefined;
 
 export function agentTools(): AgentTool[] {
-  tools ??= createAgentTools({
-    withTenant,
-    retrieve,
-    workspace: async (tenantId) => {
-      const site = await tenantSlug(tenantId);
-      return createWorkspaceWriter({ baseUrl: workspaceUrl(), site, token: workspaceToken(site) });
-    },
-  });
+  tools ??= observedTools(
+    createAgentTools({
+      withTenant,
+      retrieve: observedRetrieve(retrieve),
+      workspace: async (tenantId) => {
+        const site = await tenantSlug(tenantId);
+        return createWorkspaceWriter({ baseUrl: workspaceUrl(), site, token: workspaceToken(site) });
+      },
+    }),
+  );
   return tools;
 }
 
