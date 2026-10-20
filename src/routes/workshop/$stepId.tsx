@@ -5,17 +5,18 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import type { SwapCommand } from "@/components/workshop/workshop-server";
+import type { DrillCommand, SwapCommand } from "@/components/workshop/workshop-server";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { DrillPanel } from "@/components/workshop/drill-panel";
 import { HintsPanel } from "@/components/workshop/hints-panel";
 import { Readme } from "@/components/workshop/readme";
 import { SolutionDiff } from "@/components/workshop/solution-diff";
 import { StepActions, StepLink, SwapStatus, useSwapJob } from "@/components/workshop/swap";
 import { TestRunner } from "@/components/workshop/test-runner";
 
-import { getDiff, startSwapFn } from "./-functions";
+import { checkDrillFn, getDiff, startDrillFn, startSwapFn } from "./-functions";
 import { stepQuery } from "./-queries";
 
 export const Route = createFileRoute("/workshop/$stepId")({
@@ -72,6 +73,19 @@ function StepPage() {
       else await navigate({ to: "/workshop/$stepId", params: { stepId: target }, search: { job: id! } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The switch didn't start.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const drillJob = async (command: DrillCommand) => {
+    setSending(true);
+    try {
+      const { jobId: id, busy } = await startDrillFn({ data: { command, stepId: step.id } });
+      if (busy) toast.error(busy);
+      else await navigate({ to: "/workshop/$stepId", params: { stepId: step.id }, search: { job: id! } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The drill didn't start.");
     } finally {
       setSending(false);
     }
@@ -138,8 +152,29 @@ function StepPage() {
             </a>
           ) : null}
         </Panel>
+        {page.drill ? (
+          <Panel title="Drill">
+            <DrillPanel
+              key={`${page.drill.id}-${page.drill.planted}`}
+              drill={page.drill}
+              busy={sending || switching}
+              onPlant={() => drillJob("plant")}
+              onReset={() => drillJob("reset")}
+              check={async () => {
+                const outcome = await checkDrillFn();
+                void client.invalidateQueries({ queryKey: ["workshop"] });
+                return outcome;
+              }}
+            />
+          </Panel>
+        ) : null}
         <Panel title="Tests">
-          {step.type === "graded" ? (
+          {page.drill ? (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              A drill is graded by <code>pnpm ex drill check</code>, the Check button above: the symptom gone, and the
+              fault's own test passing.
+            </p>
+          ) : step.type === "graded" ? (
             <TestRunner
               key={`${step.id}-${active}`}
               stepId={step.id}

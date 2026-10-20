@@ -1,6 +1,8 @@
 import { start } from "workflow/api";
 
+import { CONVERSATION_LOG_KIND, deliverConversationLog, type Exporter } from "#learn/observability/conversation-log";
 import { type OutboxRow, OutageError, UndeliverableError } from "@/db/outbox";
+import { processConversationLog } from "@/lib/observability.server";
 import { ingestWorkflow } from "@/workflows/ingest";
 import { syncWorkflow } from "@/workflows/sync";
 
@@ -23,8 +25,15 @@ function isOutage(error: unknown): boolean {
   return code === "ECONNREFUSED" || code === "ECONNRESET" || code === "ETIMEDOUT";
 }
 
-/** Starts the workflow an outbox row asks for. The run's first step claims the row, so a second start is harmless. */
-export async function deliver(row: OutboxRow): Promise<void> {
+/**
+ * Starts the workflow an outbox row asks for, or hands a conversation log row to the exporter (`conversationLog`,
+ * this process's unless given). The run's first step, or the exporter, claims the row, so a second delivery is
+ * harmless.
+ */
+export async function deliver(
+  row: OutboxRow,
+  conversationLog: () => Exporter | null = processConversationLog,
+): Promise<void> {
   try {
     if (row.kind === "sync") {
       const payload = SyncPayload(row.payload);
@@ -34,6 +43,8 @@ export async function deliver(row: OutboxRow): Promise<void> {
       const payload = IngestPayload(row.payload);
       if (!payload) throw new UndeliverableError(`bad ingest payload ${JSON.stringify(row.payload)}`);
       await start(ingestWorkflow, [row.tenantId, payload.documentId, payload.version, row.id]);
+    } else if (row.kind === CONVERSATION_LOG_KIND) {
+      deliverConversationLog(row, conversationLog());
     } else {
       throw new UndeliverableError(`unknown kind ${row.kind}`);
     }

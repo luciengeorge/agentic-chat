@@ -89,11 +89,17 @@ export function rewriterFromEnv(env: Env = process.env): QueryRewriter {
   return noRewriter;
 }
 
+/** What retrieval needs from the environment, for a search: the embedder marks its texts as queries (section 21's
+ * nomic model embeds a query and a document differently), the reranker and the rewriter. Every search path takes
+ * these: the chat, the labs, `ex smoke`. */
+export function retrievalDepsFromEnv(env: Env = process.env) {
+  return {
+    embedder: embedderFromEnv(env, { purpose: "query" }),
+    reranker: rerankerFromEnv(env),
+    rewriter: rewriterFromEnv(env),
+  };
+}
+
 /** `retrieve` for the app: the viewer from `getViewer()`, the dependencies from the environment. Server only. */
 export const retrieve: Retrieve = (viewer, query, options) =>
-  createRetrieve({
-    withTenant,
-    embedder: embedderFromEnv(process.env, { purpose: "query" }),
-    reranker: rerankerFromEnv(),
-    rewriter: rewriterFromEnv(),
-  })(viewer, query, options);
+  createRetrieve({ withTenant, ...retrievalDepsFromEnv() })(viewer, query, options);

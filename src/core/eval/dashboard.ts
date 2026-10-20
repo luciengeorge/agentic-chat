@@ -15,10 +15,11 @@ import {
 } from "#learn/eval/faithfulness";
 import { CHAT_REASONING_EFFORT } from "#learn/model/config";
 
+import { GOLDEN_REPORTS } from "./golden-report";
 import { loadJudgeSet } from "./judge-set";
 import { evalRecording, replayEvalModel } from "./recorded";
 
-export const GOLDEN_REPORTS = join(import.meta.dirname, "../../../fixtures/golden/reports");
+export { GOLDEN_REPORTS };
 
 /** One `pnpm eval` run, as its JSON report summarised it. */
 export interface GoldenRun {

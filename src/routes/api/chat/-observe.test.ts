@@ -16,10 +16,12 @@ import {
   fileSink,
   type Sink,
 } from "#learn/observability/conversation-log";
+import { type Exporter } from "#learn/observability/conversation-log";
 import { testTelemetry } from "#learn/observability/testing";
 import { relayOnce } from "#learn/queue/outbox";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
 import { chatObserver } from "@/lib/observability.server";
+import { deliver } from "@/server/plugins/relay-deliver";
 
 import { handleChat, type ChatDeps } from "./-chat";
 
@@ -101,6 +103,9 @@ describe.skipIf(!postgresAvailable)("observing POST /api/chat", () => {
     await t.sql`DELETE FROM rate_limit_buckets`;
   });
 
+  /** One relay pass, handing log rows to `exporter`. */
+  const relay = (exporter: Exporter | null) => relayOnce(t.db, (row) => deliver(row, () => exporter));
+
   it("answers at full speed while a slow sink takes its time, and the line arrives after", async () => {
     const exporter = conversationLogExporter(t.db, slowSink(fileSink(file), 1500));
     const started = performance.now();
@@ -110,6 +115,8 @@ describe.skipIf(!postgresAvailable)("observing POST /api/chat", () => {
     expect(answered).toBeLessThan(1000);
     expect(lines()).toEqual([]);
 
+    const { published } = await relay(exporter);
+    expect(published).toHaveLength(1);
     await exporter.idle();
     const [line] = lines();
     expect(line).toMatchObject({
@@ -122,19 +129,43 @@ describe.skipIf(!postgresAvailable)("observing POST /api/chat", () => {
     expect(line.reply.sources).toEqual([{ label: "S1", path: POLICY_V2.path, page: 3 }]);
     const [row] =
       await t.sql`SELECT claimed_by, published_at, attempts FROM outbox WHERE kind = ${CONVERSATION_LOG_KIND}`;
-    expect(row).toMatchObject({ claimed_by: "conversation-log", attempts: 1 });
+    // One attempt by the relay (the hand-over), one by the exporter (the write).
+    expect(row).toMatchObject({ claimed_by: "conversation-log", attempts: 2 });
     expect(row.published_at).not.toBeNull();
   });
 
-  it("writes the log row with the reply, and the relay that starts workflows never picks it up", async () => {
+  it("writes the log row with the reply, unpublished, for the relay to deliver like any other", async () => {
+    const kicks: string[] = [];
+    const exporter: Exporter = { kick: () => void kicks.push("kick"), idle: async () => {} };
+    await (await ask(deps(chatObserver({}, null, exporter)), "Meals?")).text();
+    const [row] = await t.sql`SELECT id, published_at, claimed_by FROM outbox WHERE kind = ${CONVERSATION_LOG_KIND}`;
+    expect(row).toMatchObject({ published_at: null, claimed_by: null });
+    expect(kicks, "the chat kicks the relay, never the exporter").toEqual([]);
+
+    expect(await relay(exporter)).toMatchObject({ published: [row.id], failed: [] });
+    expect(kicks, "delivering the row hands it to the exporter").toEqual(["kick"]);
+  });
+
+  it("fails a log row at once where the log is off, since nothing here can ever write it", async () => {
     const observe = chatObserver({}, null, { kick: () => {}, idle: async () => {} });
     await (await ask(deps(observe), "Meals?")).text();
-    const delivered: string[] = [];
-    await relayOnce(t.db, async (row) => void delivered.push(row.kind));
-    expect(delivered).toEqual([]);
-    const [{ count }] =
-      await t.sql`SELECT count(*)::int AS count FROM outbox WHERE kind = ${CONVERSATION_LOG_KIND} AND claimed_by IS NULL`;
-    expect(count).toBe(1);
+    const { failed } = await relay(null);
+    expect(failed).toHaveLength(1);
+    const [row] = await t.sql`SELECT attempts, last_error, failed_at FROM outbox WHERE id = ${failed[0]}`;
+    expect(row.last_error).toMatch(/^UndeliverableError: the conversation log is off/);
+    expect(row.failed_at).not.toBeNull();
+  });
+
+  it("exports the row the relay hands over while the relay's transaction still holds it", async () => {
+    const exporter = conversationLogExporter(t.db, fileSink(file));
+    await (await ask(deps(chatObserver({}, null, exporter)), "Meals?")).text();
+    // The relay commits a little after it kicks: an exporter that skipped locked rows would find nothing.
+    await relayOnce(t.db, async (row) => {
+      await deliver(row, () => exporter);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    await exporter.idle();
+    expect(lines().map((l) => l.question.text)).toEqual(["Meals?"]);
   });
 
   it("keeps the rows when the sink fails, and exports them on the next drain", async () => {

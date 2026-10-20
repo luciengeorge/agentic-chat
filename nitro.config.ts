@@ -1,5 +1,7 @@
 import { defineNitroConfig } from "nitro/config";
 
+import { LOCAL_TRACE_DEPS, localBuild } from "./src/core/local/build.ts";
+
 // Pages get their Content-Security-Policy from the root route, with a nonce per response (src/lib/csp.ts).
 const securityHeaders = {
   "Cross-Origin-Opener-Policy": "same-origin",
@@ -24,7 +26,13 @@ export default defineNitroConfig({
   // OCR (the ingest page route) loads tesseract.js from node_modules: bundled, it reads `__dirname`, which ESM
   // lacks, and its worker script and English model are files it finds on disk. The trailing * traces the whole
   // package into .output.
-  traceDeps: ["tesseract.js*", "tesseract.js-core*", "@tesseract.js-data/eng*"],
+  // `pnpm build:local` (section 21) adds transformers.js and onnxruntime-node, which only local models need.
+  traceDeps: [
+    "tesseract.js*",
+    "tesseract.js-core*",
+    "@tesseract.js-data/eng*",
+    ...(localBuild() ? LOCAL_TRACE_DEPS : []),
+  ],
   routeRules: {
     "/**": {
       headers: securityHeaders,

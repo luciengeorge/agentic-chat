@@ -23,6 +23,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { localConfig } from "#learn/local/config";
+import { type BundlePart, bundleTotal, type ComposeConfig, composeImages, gb } from "#learn/local/vendor";
 import { RERANKER_WEIGHTS } from "#learn/local/weights";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -55,21 +56,9 @@ function diskBytes(path: string): number {
   return Number(run("du", ["-sk", path]).split(/\s+/)[0]) * 1024;
 }
 
-const gb = (bytes: number) => `${(bytes / 1e9).toFixed(2)} GB`;
-
-/** The images Compose would run: the default services and the airgap profile, or every profile. */
-function composeImages(all: boolean): string[] {
-  const config = JSON.parse(run("docker", ["compose", "--profile", "*", "config", "--format", "json"])) as {
-    services: Record<string, { image: string; profiles?: string[] }>;
-  };
-  return [
-    ...new Set(
-      Object.values(config.services)
-        .filter((service) => all || !service.profiles || service.profiles.includes("airgap"))
-        .map((service) => service.image),
-    ),
-  ];
-}
+/** Every service of every profile, as Compose resolves compose.yaml. */
+const composeConfig = (): ComposeConfig =>
+  JSON.parse(run("docker", ["compose", "--profile", "*", "config", "--format", "json"])) as ComposeConfig;
 
 function imageBytes(image: string): number | null {
   try {
@@ -100,7 +89,7 @@ function lmStudioModel(key: string): { key: string; path: string; bytes: number 
 async function main() {
   const { dryRun, out, chatModel, allImages } = parseArgs(process.argv.slice(2));
   const config = localConfig();
-  const parts: { part: string; source: string; bytes: number | null; note?: string }[] = [];
+  const parts: BundlePart[] = [];
 
   parts.push({
     part: "pnpm-store",
@@ -108,7 +97,7 @@ async function main() {
     bytes: diskBytes(join(ROOT, "node_modules/.pnpm")),
     note: "measured as this checkout's node_modules/.pnpm, unpacked",
   });
-  for (const image of composeImages(allImages)) {
+  for (const image of composeImages(composeConfig(), allImages)) {
     const bytes = imageBytes(image);
     const part = `images/${image.split("/").at(-1)!.replace(":", "-")}`;
     parts.push({ part, source: image, bytes, note: bytes === null ? "not pulled here" : undefined });
@@ -128,7 +117,7 @@ async function main() {
     });
   }
 
-  const total = parts.reduce((sum, part) => sum + (part.bytes ?? 0), 0);
+  const total = bundleTotal(parts);
   for (const part of parts) {
     console.log(
       `${part.part.padEnd(52)} ${part.bytes === null ? "?".padStart(9) : gb(part.bytes).padStart(9)}${part.note ? `  (${part.note})` : ""}`,

@@ -11,15 +11,17 @@
  *
  * Model calls are counted by an AI SDK telemetry integration (`modelCallMetrics`), so every call (the chat answer,
  * the query rewriter, the embedder, the reranker, the agent's turns) is counted once, wherever it's made. A request
- * adds up its own cost in a ledger (`withRequestCost`) that every model call inside it writes to.
+ * adds up its own cost in a ledger (`#learn/observability/ledger`) that every model call inside it writes to.
  */
 import type { Telemetry } from "ai";
 
 import { type Attributes, type Counter, type Histogram, type Meter } from "@opentelemetry/api";
-import { AsyncLocalStorage } from "node:async_hooks";
 
+import { chargeRequest, type RequestCost } from "#learn/observability/ledger";
 import { costOf } from "#learn/observability/prices";
 import { GEN_AI } from "#learn/observability/spans";
+
+export { currentRequestCost, type RequestCost, withRequestCost } from "#learn/observability/ledger";
 
 export interface AppMetrics {
   tokenUsage: Histogram;
@@ -63,41 +65,6 @@ export function createMetrics(meter: Meter): AppMetrics {
   };
 }
 
-/** What one request spent, call by call. */
-export interface RequestCost {
-  usd: number;
-  calls: number;
-  inputTokens: number;
-  cachedInputTokens: number;
-  outputTokens: number;
-  /** Models that ran but have no price in the table. */
-  unpriced: string[];
-}
-
-const ledger = new AsyncLocalStorage<RequestCost>();
-
-const emptyCost = (): RequestCost => ({
-  usd: 0,
-  calls: 0,
-  inputTokens: 0,
-  cachedInputTokens: 0,
-  outputTokens: 0,
-  unpriced: [],
-});
-
-/**
- * Runs `fn` with a fresh ledger: every model call made inside it, however deep, adds its cost there. Returns what
- * `fn` returned and what the calls cost.
- */
-export async function withRequestCost<T>(fn: () => Promise<T>): Promise<{ result: T; cost: RequestCost }> {
-  const cost = emptyCost();
-  const result = await ledger.run(cost, fn);
-  return { result, cost };
-}
-
-/** The ledger of the request this code runs in, if any. */
-export const currentRequestCost = (): RequestCost | undefined => ledger.getStore();
-
 export interface ModelCall {
   provider: string;
   modelId: string;
@@ -124,16 +91,7 @@ export function recordModelCall(metrics: AppMetrics, call: ModelCall): number {
   if (call.durationMs !== undefined) metrics.operationDuration.record(call.durationMs / 1000, attributes);
   const cost = costOf(call.modelId, call);
   if (cost.priced) metrics.costUsd.add(cost.usd, attributes);
-
-  const request = currentRequestCost();
-  if (request) {
-    request.usd += cost.usd;
-    request.calls += 1;
-    request.inputTokens += call.inputTokens ?? 0;
-    request.cachedInputTokens += call.cachedInputTokens ?? 0;
-    request.outputTokens += call.outputTokens ?? 0;
-    if (!cost.priced && !request.unpriced.includes(call.modelId)) request.unpriced.push(call.modelId);
-  }
+  chargeRequest(call, cost);
   return cost.usd;
 }
 

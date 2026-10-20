@@ -32,8 +32,9 @@ const getRankings = createServerFn({ method: "GET" })
     if (acEnv() !== "dev") throw new Error(`The lexical lab only runs in dev (this is ${acEnv()}).`);
     const { rankings } = await import("@/components/labs/lexical-server");
     const { withTenant } = await import("@/db/tenant");
-    const { embedderFromEnv } = await import("@/lib/retrieval.server");
-    return rankings({ withTenant, embedder: embedderFromEnv() }, scopeOf(context.viewer), data.question);
+    const { retrievalDepsFromEnv } = await import("@/lib/retrieval.server");
+    const { embedder } = retrievalDepsFromEnv();
+    return rankings({ withTenant, embedder }, scopeOf(context.viewer), data.question);
   });
 
 export const Route = createFileRoute("/labs/lexical")({
