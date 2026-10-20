@@ -117,6 +117,49 @@ This lane builds reference code only. The steps come in wave 3.
 - **Vendoring:** the npm store, the images and the model weights, so a machine with no network can install and run.
 - **Never call LM Studio for anything Lucien didn't ask for:** start its server only if it isn't running, and say so. Don't download new models without saying which and how big (ask main first if over 5 GB).
 
+## Wave 3: carve sections 18 to 21 (two lanes)
+
+**The template still binds:** `docs/m3-contract.md` and `docs/m4-contract.md`, all of it, including the four "What ... taught" sections and machine etiquette.
+
+| Lane | Owns |
+|---|---|
+| E. Sections 18 + 19 | `exercises/18.*/**`, `exercises/19.*/**`, `src/routes/labs/{evals,observability}*`, `src/components/labs/{evals,observability}*`, splits in `src/core/{eval,observability}/**`, `src/server/plugins/relay-deliver.ts` (the conversation-log kind only) |
+| F. Sections 20 + 21 | `exercises/20.*/**`, `exercises/21.*/**`, `src/routes/labs/{drills,airgap}*`, `src/components/labs/{drills,airgap}*`, splits in `src/core/{drills,local}/**`, the local-only build switch |
+
+**Section notes:**
+- **18 Evals (5 steps):**
+  1. the golden set;
+  2. recall@k, MRR and NDCG;
+  3. claim decomposition;
+  4. judge calibration with Cohen's kappa;
+  5. agent task evals in CI, compared with autoevals (guided).
+
+  The real numbers: judge kappa 0.894 over 20 hand labels, claims 0.898, and the hand label both methods caught (`heron-closest`). Lab: an eval dashboard.
+- **19 Observability (4 steps):**
+  1. OpenTelemetry GenAI spans;
+  2. metrics and dashboards (guided);
+  3. cost per request;
+  4. conversation log fan-out.
+
+  Fix the wave 1 shortcut while carving 4: teach the relay the `conversation_log` kind, instead of pre-marking rows as published. Lab: Grafana (the `observability` profile) plus a cost panel in the app.
+- **20 Debugging drills (5 steps, type `lab`):** one step per drill (`leaver`, `paraphrase`, `ranking`, `stuck-edits`, `digest`).
+  - **The README gives only the symptom and the tools:** the labs, the audit table, the queue board, the logs. Never the cause.
+  - **The solution README gives the cause, and the path a good debugger takes to it.**
+  - **The step's check is `ex drill check`.** The workshop UI should show drills, with a "plant" and a "check" button, if that's a small addition to its step page.
+  - **Spoilers:** keep the drill answers out of the section README and the front door.
+- **21 Air-gapped (3 steps):**
+  1. local models, including the local reranker and the pipeline API's 1.0 trap;
+  2. egress blocked;
+  3. vendored dependencies and images.
+
+  Fix the two open items from wave 2 while carving:
+  - a local-only build switch, so `pnpm start` works with `MODEL_PROVIDER=local` (onnxruntime-node stays out of hosted builds);
+  - the labs embedding queries with the document prefix in local mode.
+
+  The local answer eval stays pending until Lucien downloads a chat model; say so in step 1, and name the model (Qwen3 8B, about 5 GB). Lab: an egress monitor.
+
+**Rules for this wave:** each lane runs only its own tests; main runs the full suite and the gate. No live model calls in tests. Never plant a drill or start a step in the real repo.
+
 ## Settled during the build
 
 (Lanes add what they decided here: one bullet per decision, plain words.)
