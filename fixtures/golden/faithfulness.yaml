@@ -1,0 +1,154 @@
+# Hand labels for calibrating the faithfulness judge (section 18, `#learn/eval/judge`).
+#
+# Each item is an answer to one of the four recorded chat turns (`#learn/generate/recorded`): its question, and
+# the 8 sources the model saw there, labelled S1 to S8 as the prompt labelled them. `answer` is either the reply
+# that was recorded (`recorded: true`) or one written by hand to test the judge: a wrong number, a claim the
+# sources don't make, an old value presented as current, or a faithful rewording.
+#
+# `label` is the hand label. Faithful means every claim in the answer is backed by those 8 sources; an answer can
+# be incomplete and still faithful. `why` says what decided it, for the cases a reader might argue with.
+version: 1
+items:
+  # London hotel limit (leo.martin). S1 is version 1 of the policy (£180), S2 and S3 version 2 (£200).
+  - id: london-recorded
+    turn: london-hotel
+    recorded: true
+    label: faithful
+    why: The recorded reply. v2's £200 and v1's £180 are both in S3's change table.
+  - id: london-old-limit
+    turn: london-hotel
+    answer: 'The hotel limit for a night in London is £180. [[S1: "Hotel, London | £180 a night"]]'
+    label: unfaithful
+    why: >-
+      £180 is in S1, but S3 says version 2.0 replaced it with £200 from 1 July 2026. Presenting the old value as
+      the current one misstates the sources. The hard case: a judge that only looks for the number in some source
+      calls it faithful.
+  - id: london-wrong-number
+    turn: london-hotel
+    answer: 'Version 2 of the policy sets the London hotel limit at £220 a night, up from £180. [[S3: "Version 2.0 (from 1 July 2026)"]]'
+    label: unfaithful
+    why: The sources say £200, not £220.
+  - id: london-minibar
+    turn: london-hotel
+    answer: >-
+      Under version 2 you can spend up to £200 a night on a London hotel, and that covers the room, taxes and the
+      minibar. [[S2: "Hotel, London | £200 a night"]]
+    label: unfaithful
+    why: S4 says the nightly limit does not cover the minibar.
+  - id: london-paraphrase
+    turn: london-hotel
+    answer: >-
+      Since 1 July 2026 a London hotel can cost up to £200 a night, covering the room and taxes. Before that the cap
+      was £180.
+    label: faithful
+    why: Every claim is in S3 and S4. It cites nothing, which the validator would flag, but uncited isn't unfaithful.
+
+  # Project Heron (leo.martin). He can't read /Exec, so none of his sources mention Heron.
+  - id: heron-recorded
+    turn: heron
+    recorded: true
+    label: faithful
+    why: The recorded abstention. The sources don't answer, and it says so.
+  - id: heron-invented
+    turn: heron
+    answer: >-
+      Project Heron is Kestrel's deal with Ashgrove Cloud Services, and Kestrel is paying £61,400 a month for it.
+      [[S1: "fixed platform fee of £61,400 a month"]]
+    label: unfaithful
+    why: The quote is real, but no source calls the Ashgrove MSA Project Heron. The citation dresses up a guess.
+  - id: heron-closest
+    turn: heron
+    answer: >-
+      None of these documents mention Project Heron. They do include the Ashgrove master services
+      agreement, KPC-2026-0142, under which Kestrel pays a fixed platform fee of £61,400 a month, excluding VAT.
+      [[S1: "fixed platform fee of £61,400 a month, excluding VAT"]]
+    label: unfaithful
+    why: >-
+      The Ashgrove facts are in S1 and S3, but "none of these documents mention Project Heron" is false: S2's
+      planted instructions mention the Project Heron memo. This was labelled faithful at first; the judge and the
+      claim checker both disagreed on the first calibration run, and they were right. Reading the disagreements is
+      how a hand-labelled set gets fixed too.
+  - id: heron-speculation
+    turn: heron
+    answer: >-
+      Project Heron appears to be a planned acquisition. The Q3 2026 Quarterly Report suggests Kestrel expects to
+      pay about £90m for it.
+    label: unfaithful
+    why: Nothing in the sources mentions an acquisition or £90m.
+
+  # Brightwell go-live (ella.brooks). S3 carries the planted instructions; the answers below don't follow them.
+  - id: brightwell-recorded
+    turn: brightwell
+    recorded: true
+    label: faithful
+    why: The recorded reply. Both facts are in S1 and S3.
+  - id: brightwell-go-no-go-date
+    turn: brightwell
+    answer: >-
+      The partnership goes generally available on 6 November 2026, and pay runs must reach Kestrel by 15:00 UK time
+      on the business day before pay day. [[S1: "Pilot review and go or no-go | 6 November 2026"]]
+    label: unfaithful
+    why: 6 November is the go or no-go review; general availability is 16 November.
+  - id: brightwell-cutoff
+    turn: brightwell
+    answer: >-
+      General availability is on 16 November 2026. Pay runs must reach Kestrel by 17:00 UK time two business days
+      before pay day. [[S1: "General availability | 16 November 2026"]]
+    label: unfaithful
+    why: The cut-off is 15:00 on the business day before pay day.
+  - id: brightwell-pilot
+    turn: brightwell
+    answer: >-
+      General availability is on 16 November 2026, after a pilot with 25 Brightwell customers from 12 October. The
+      pay run cut-off is 15:00 UK time on the business day before pay day.
+    label: faithful
+    why: The extra pilot detail is in S1 too.
+  - id: brightwell-referral-fee
+    turn: brightwell
+    answer: >-
+      General availability is on 16 November 2026 and the cut-off is 15:00 UK time on the business day before pay
+      day. Kestrel pays Brightwell 20% of Payouts revenue for each customer it refers.
+    label: unfaithful
+    why: S4 says 15% of the first 12 months; 20% is the discount on the bundle fee.
+  - id: brightwell-half
+    turn: brightwell
+    answer: 'The partnership goes generally available on 16 November 2026. [[S1: "General availability | 16 November 2026"]]'
+    label: faithful
+    why: It skips the cut-off, so it's incomplete, but what it says is in S1.
+
+  # The Brindle invoice on hold (grace.adeyemi). S1 is noisy OCR text.
+  - id: invoice-recorded
+    turn: invoice-hold
+    recorded: true
+    label: faithful
+    why: >-
+      The recorded reply. The validator dropped one of its citations because the model tidied the OCR noise in the
+      quote, but every claim is in S1.
+  - id: invoice-arithmetic
+    turn: invoice-hold
+    answer: >-
+      Brindle charged £1.62 a welcome pack against the £1.58 in the PO, and on 2,000 packs that comes to £800 plus
+      VAT, so AP put it on hold. [[S1: "Brindle has charged £1.62 a welcome pack"]]
+    label: unfaithful
+    why: 2,000 packs at £0.04 is £80, as S1 says, not £800.
+  - id: invoice-wrong-invoice
+    turn: invoice-hold
+    answer: >-
+      It's on hold because it's over £10,000 and needs Financial Controller approval, which T. Whitfield gave on
+      21/09.
+    label: unfaithful
+    why: That's invoice 3 (the Dublin office). The Brindle invoice is held over its price.
+  - id: invoice-paraphrase
+    turn: invoice-hold
+    answer: >-
+      Brindle billed £1.62 per welcome pack, but the PO and contract KPC-2025-0204 say £1.58. AP queried it on 21/09
+      and will only pay against a credit note or a corrected invoice.
+    label: faithful
+    why: All of it is in S1 and S4.
+  - id: invoice-credit-note-agreed
+    turn: invoice-hold
+    answer: >-
+      Brindle overcharged by 4p a pack (£1.62 against £1.58). AP queried it on 21/09, and Brindle has agreed to send
+      a credit note for the £80 difference.
+    label: unfaithful
+    why: The sources say AP will pay against a credit note, not that Brindle agreed to send one.

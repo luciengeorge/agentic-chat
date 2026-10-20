@@ -17,6 +17,7 @@ import { appDb } from "@/db/pool";
 import { withTenant } from "@/db/tenant";
 import { createRunnerLoop, type RunnerLoop } from "@/lib/agent-runs";
 import { agentGuard, agentTools } from "@/lib/agent-tools";
+import { observedLoop, observedTools } from "@/lib/observability.server";
 import { chatModelFromEnv } from "@/routes/api/chat/-deps";
 
 export type AgentRunner = "workflow" | "queue" | "inline";
@@ -68,7 +69,8 @@ export function setAgentRuntime(runtime: AgentRuntime | null): void {
   (globalThis as Store)[OVERRIDE] = runtime ?? undefined;
 }
 
-const appTools = (): AgentTool[] => [...agentTools(), rememberTool({ withTenant }), delegateTool()];
+// agentTools() are traced already; the two added here get theirs.
+const appTools = (): AgentTool[] => [...agentTools(), ...observedTools([rememberTool({ withTenant }), delegateTool()])];
 
 export function agentRuntime(): AgentRuntime {
   return (
@@ -76,13 +78,15 @@ export function agentRuntime(): AgentRuntime {
       db: appDb(),
       tools: appTools,
       loop: (viewer) =>
-        createRunnerLoop(viewer, {
-          model: chatModelFromEnv(),
-          tools: appTools(),
-          reasoningEffort: CHAT_REASONING_EFFORT,
-          guard: agentGuard(viewer),
-          maxOutputTokens: 2000,
-        }),
+        observedLoop(
+          createRunnerLoop(viewer, {
+            model: chatModelFromEnv(),
+            tools: appTools(),
+            reasoningEffort: CHAT_REASONING_EFFORT,
+            guard: agentGuard(viewer),
+            maxOutputTokens: 2000,
+          }),
+        ),
       admit: guardAdmits,
     }
   );

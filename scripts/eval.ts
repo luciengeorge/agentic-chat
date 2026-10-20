@@ -21,12 +21,14 @@ import { fileURLToPath } from "node:url";
 import type { Reranker } from "#learn/rerank/rerank";
 import type { RetrievedChunk } from "#learn/retrieve/types";
 
+import { EMBEDDING_MODEL } from "#learn/embed/embed";
 import { checkAnswer, checkGates, type CheckResult } from "#learn/eval/checks";
 import { judge, ndcgAtK, recallAtK, reciprocalRank } from "#learn/eval/metrics";
 import { BAR, summarize, type Scores, type Summary } from "#learn/eval/summary";
 import { answer, type AnswerResult } from "#learn/generate/answer";
 import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
+import { costOf } from "#learn/observability/prices";
 import { modelHypothesis } from "#learn/query/hyde";
 import { modelRewriter } from "#learn/query/rewrite";
 import { createRetrieve, DEFAULT_SETTINGS } from "#learn/retrieve/retrieve";
@@ -46,9 +48,6 @@ const ANSWER_K = DEFAULT_SETTINGS.k;
 const MAX_OUTPUT_TOKENS = 2000;
 /** A Cohere trial key allows 10 rerank calls a minute. */
 const COHERE_INTERVAL_MS = 6500;
-
-/** USD per million tokens (OpenAI's list prices, October 2026). Answer usage has no cache split, so it's priced uncached. */
-const PRICES = { chatInput: 0.1, chatCachedInput: 0.01, chatOutput: 0.5, embedding: 0.02 };
 
 interface ModelUsage {
   calls: number;
@@ -136,17 +135,14 @@ const pages = (chunk: Pick<RetrievedChunk, "pageStart" | "pageEnd">) =>
       ? `${chunk.pageStart}-${chunk.pageEnd}`
       : String(chunk.pageStart);
 
+/** Priced from the one table (`#learn/observability/prices`). Answer usage has no cache split, so it's priced uncached. */
 function cost(usage: Usage) {
-  const chat = (r: ModelUsage) =>
-    ((r.inputTokens - r.cachedInputTokens) * PRICES.chatInput +
-      r.cachedInputTokens * PRICES.chatCachedInput +
-      r.outputTokens * PRICES.chatOutput) /
-    1e6;
+  const chat = (r: ModelUsage) => costOf(CHAT_MODEL, r).usd;
   const a = usage.answer;
   const rewrite = chat(usage.rewrite);
   const hyde = chat(usage.hyde);
-  const answers = (a.inputTokens * PRICES.chatInput + a.outputTokens * PRICES.chatOutput) / 1e6;
-  const embeddings = (usage.embeddingTokens * PRICES.embedding) / 1e6;
+  const answers = costOf(CHAT_MODEL, { inputTokens: a.inputTokens, outputTokens: a.outputTokens }).usd;
+  const embeddings = costOf(EMBEDDING_MODEL, { inputTokens: usage.embeddingTokens }).usd;
   return { rewrite, hyde, answers, embeddings, total: rewrite + hyde + answers + embeddings };
 }
 

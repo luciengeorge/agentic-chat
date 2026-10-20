@@ -25,5 +25,17 @@ services:
     environment:
       DOCLING_SERVE_ENABLE_UI: "0"
 
+  # Grafana, Tempo (traces), Prometheus (metrics) and Loki (logs) behind one OpenTelemetry collector, for section 19.
+  # Only with `docker compose --profile observability up -d otel-lgtm`. The app sends to it when
+  # OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318; Grafana is on http://localhost:3001 (admin/admin), since the
+  # app has :3000.
+  otel-lgtm:
+    image: grafana/otel-lgtm:0.37.0
+    profiles: [observability]
+    ports:
+      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+
 volumes:
   paradedb-data:

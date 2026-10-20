@@ -8,6 +8,7 @@ import { echoModel } from "#learn/model/fake";
 import { appDb } from "@/db/pool";
 import { acEnv } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { chatObserver, observedRetrieve } from "@/lib/observability.server";
 import { CHAT_BUCKET } from "@/lib/rate-limit";
 import { retrieve } from "@/lib/retrieval.server";
 
@@ -37,10 +38,11 @@ export function chatModelFromEnv(env: Env = process.env): ChatModel {
 export function chatDeps(): ChatDeps {
   return {
     db: appDb(),
-    retrieve,
+    retrieve: observedRetrieve(retrieve),
     model: chatModelFromEnv(),
     reasoningEffort: CHAT_REASONING_EFFORT,
     bucket: CHAT_BUCKET,
     maxOutputTokens: 2000,
+    observe: chatObserver(),
   };
 }
