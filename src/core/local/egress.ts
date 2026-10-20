@@ -28,7 +28,7 @@ export function isLoopback(host: string): boolean {
 }
 
 /** Where `socket.connect(...)` was asked to go, from any of its call shapes. A Unix socket path has no host. */
-function target(args: unknown[]): { host: string; port: number | null } | null {
+export function connectTarget(args: unknown[]): { host: string; port: number | null } | null {
   let first = args[0];
   // net.connect() and tls.connect() pass their arguments already normalised, as an array.
   if (Array.isArray(first)) first = first[0];
@@ -67,7 +67,7 @@ export function guardEgress(options: { allow?: (host: string) => boolean } = {})
   const allowed: string[] = [];
   const original = Socket.prototype.connect;
   Socket.prototype.connect = function (this: Socket, ...args: unknown[]) {
-    const to = target(args);
+    const to = connectTarget(args);
     if (to === null || isLoopback(to.host) || allowExtra(to.host)) {
       if (to) allowed.push(`${to.host}:${to.port}`);
       return (original as (...a: unknown[]) => Socket).apply(this, args);

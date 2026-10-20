@@ -7,7 +7,8 @@ import { sql } from "drizzle-orm";
  *
  * - `OTEL_EXPORTER_OTLP_ENDPOINT` set: spans and metrics for chat turns, retrieval, model calls, agent steps and
  *   tool calls, and a cost per request.
- * - `CONVERSATION_LOG_FILE` set: each finished chat turn goes to that file as a JSON line, through the outbox.
+ * - `CONVERSATION_LOG_FILE` set: each finished chat turn goes to that file as a JSON line, through the outbox and
+ *   its relay.
  * Server only.
  */
 import type { AgentTool } from "#learn/agent/types";
@@ -26,6 +27,7 @@ import { recordDenial } from "#learn/observability/metrics";
 import { observeRequest } from "#learn/observability/request";
 import { startTelemetry, type Telemetry } from "#learn/observability/setup";
 import { agentStep, tracedRetrieve, tracedTools } from "#learn/observability/spans";
+import { kickRelay } from "@/db/outbox";
 import { systemDb } from "@/db/pool";
 import { withTenant } from "@/db/tenant";
 import { createLogger } from "@/lib/logger";
@@ -107,14 +109,21 @@ function exporterFor(file: string): Exporter {
   }));
 }
 
+/** This process's conversation log exporter, or null when the log is off. The relay hands it each log row. */
+export function processConversationLog(env: Env = process.env): Exporter | null {
+  const file = conversationLogFile(env);
+  return file ? exporterFor(file) : null;
+}
+
 /**
  * The chat route's observer, or undefined when telemetry and the conversation log are both off. The exporter is
- * the process's own unless given (tests pass one on their database).
+ * the process's own unless given (tests pass one on their database); it only says whether the log is on here,
+ * since the relay is what hands it the rows.
  */
 export function chatObserver(
   env: Env = process.env,
   telemetry: Telemetry | null = appTelemetry(env),
-  exporter: Exporter | null = conversationLogFile(env) ? exporterFor(conversationLogFile(env)!) : null,
+  exporter: Exporter | null = processConversationLog(env),
 ): ChatObserver | undefined {
   if (!telemetry && !exporter) return undefined;
   return {
@@ -141,6 +150,9 @@ export function chatObserver(
         });
       }
     },
-    committed: () => exporter?.kick(),
+    // The relay delivers the log row as it delivers any outbox row; kicked now, it needn't wait for its poll.
+    committed: () => {
+      if (exporter) kickRelay();
+    },
   };
 }

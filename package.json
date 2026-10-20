@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "dotenv -e .env.local -- vite dev --port 3000 --strictPort",
     "build": "vite build",
+    "build:local": "LOCAL_BUILD=1 vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production node .output/server/index.mjs",
     "test": "vitest run",

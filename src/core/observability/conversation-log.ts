@@ -8,9 +8,11 @@
  * picks them up. Delivery is at least once: a line can repeat after a crash, and each carries the reply id, so a
  * reader keeps the first.
  *
- * The outbox relay starts workflows, and a log line isn't one. So a log row is written already published (as a
- * workflow-first record is), the relay never picks it up, and the exporter is its reader: it claims each row once
- * its line is in the sink. The payload carries ids only; the exporter reads the messages when it writes the line.
+ * The row goes out like every other outbox row: the relay picks it up (kicked after the chat commits, or on its
+ * two-second poll after a crash) and delivers it with `deliverConversationLog`, which hands it to this process's
+ * exporter and returns at once, as a workflow start does. The exporter writes the line in its next batch and claims
+ * the row then, as a run's first step claims its own. The payload carries ids only; the exporter reads the messages
+ * when it writes the line.
  */
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { appendFile } from "node:fs/promises";
@@ -18,6 +20,7 @@ import { appendFile } from "node:fs/promises";
 import type { Db } from "@/db/create";
 import type { Tx } from "@/db/tenant";
 
+import { type OutboxRow, UndeliverableError } from "#learn/queue/outbox";
 import { conversations, messages, outbox } from "@/db/schema";
 
 export const CONVERSATION_LOG_KIND = "conversation_log";
@@ -30,7 +33,10 @@ export interface ConversationLogPayload {
   replyId: string;
 }
 
-/** Adds the log row in the caller's transaction, so it commits with the reply or not at all. */
+/**
+ * Adds the log row in the caller's transaction, so it commits with the reply or not at all. It's born unpublished,
+ * like any outbox row: the relay delivers it.
+ */
 export async function enqueueConversationLog(tx: Tx, tenantId: string, payload: ConversationLogPayload) {
   const [row] = await tx
     .insert(outbox)
@@ -39,11 +45,15 @@ export async function enqueueConversationLog(tx: Tx, tenantId: string, payload: 
       kind: CONVERSATION_LOG_KIND,
       payload,
       partitionKey: conversationPartition(payload.conversationId),
-      publishedAt: new Date(),
     })
     .returning({ id: outbox.id });
   return row.id;
 }
+
+const logPayload = (payload: unknown): ConversationLogPayload | null => {
+  const { conversationId, replyId } = (payload ?? {}) as { conversationId?: unknown; replyId?: unknown };
+  return typeof conversationId === "string" && typeof replyId === "string" ? { conversationId, replyId } : null;
+};
 
 interface StoredTurn {
   tenantId: string;
@@ -144,8 +154,12 @@ export interface ExportOptions {
 
 /**
  * One drain: in one transaction on the owner's pool (it crosses tenants, like the relay), locks a batch of
- * unclaimed log rows oldest first, skipping any another exporter holds, writes their lines to the sink in one
- * call, and claims them. A sink failure counts an attempt on each row and leaves them for later.
+ * unclaimed log rows oldest first, writes their lines to the sink in one call, and claims them. A sink failure
+ * counts an attempt on each row and leaves them for later.
+ *
+ * It waits for a row another transaction holds instead of skipping it: the row the relay hands over is still locked
+ * by the relay's own transaction when it kicks, and skipped it would wait for the next kick. Two exporters take
+ * turns, so lines leave in order.
  */
 export async function exportConversationLog(db: Db, sink: Sink, options: ExportOptions = {}): Promise<ExportResult> {
   const { batchSize = 50, exporter = "conversation-log", maxAttempts = 10 } = options;
@@ -156,7 +170,7 @@ export async function exportConversationLog(db: Db, sink: Sink, options: ExportO
       .where(and(eq(outbox.kind, CONVERSATION_LOG_KIND), isNull(outbox.claimedBy), isNull(outbox.failedAt)))
       .orderBy(asc(outbox.createdAt), asc(outbox.id))
       .limit(batchSize)
-      .for("update", { skipLocked: true });
+      .for("update");
 
     const lines: string[] = [];
     const done: string[] = [];
@@ -208,9 +222,9 @@ export interface Exporter {
 }
 
 /**
- * Drains in the background of this process: `kick()` after a log row commits starts a drain that repeats until a
- * batch comes back short, so nobody waits for the sink. Failures are reported to `onError` and left for the next
- * kick.
+ * Drains in the background of this process: `kick()` (from `deliverConversationLog`) starts a drain that repeats
+ * until a batch comes back short, so nobody waits for the sink. Failures are reported to `onError` and left for the
+ * next kick.
  */
 export function conversationLogExporter(
   db: Db,
@@ -244,4 +258,20 @@ export function conversationLogExporter(
       while (running) await running;
     },
   };
+}
+
+/**
+ * The relay's delivery of a log row (`src/server/plugins/relay-deliver.ts`): hands it to this process's exporter
+ * and returns at once, so the relay's pass never waits on the sink. The exporter claims the row once its line is
+ * written. A payload that isn't one, or a process with the log off, can never deliver it: undeliverable, so the
+ * relay marks it failed at once.
+ */
+export function deliverConversationLog(row: OutboxRow, exporter: Exporter | null): void {
+  if (!logPayload(row.payload)) {
+    throw new UndeliverableError(`bad conversation_log payload ${JSON.stringify(row.payload)}`);
+  }
+  if (!exporter) {
+    throw new UndeliverableError("the conversation log is off in this process (CONVERSATION_LOG_FILE isn't set)");
+  }
+  exporter.kick();
 }

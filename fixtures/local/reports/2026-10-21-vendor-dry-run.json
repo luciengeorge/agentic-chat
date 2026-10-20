@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-21",
+  "how": "What `pnpm vendor --dry-run` measures, taken by hand on the machine that ran section 21 (du -sk for folders, `docker image inspect --format {{.Size}}` for images), without `lms ls`. A null is a part not on this machine.",
+  "needed": [
+    { "part": "pnpm-store", "source": "pnpm-lock.yaml", "bytes": 1958326272, "note": "measured as this checkout's node_modules/.pnpm, unpacked" },
+    { "part": "images/paradedb-0.26.1-pg18", "source": "paradedb/paradedb:0.26.1-pg18", "bytes": 1489554445 },
+    { "part": "models/Xenova/bge-reranker-base", "source": "vendor/models/Xenova/bge-reranker-base", "bytes": 296415232 },
+    { "part": "models/lmstudio/text-embedding-nomic-embed-text-v1.5", "source": "~/.lmstudio/.internal/bundled-models/nomic-ai/nomic-embed-text-v1.5-GGUF", "bytes": 84107264 },
+    { "part": "models/lmstudio/qwen/qwen3-8b", "source": "qwen/qwen3-8b", "bytes": null, "note": "not downloaded in LM Studio: `lms get` it first (about 5 GB)" }
+  ],
+  "optional": [
+    { "part": "images/otel-lgtm-0.37.0", "source": "grafana/otel-lgtm:0.37.0", "bytes": 3483938715, "note": "section 19" },
+    { "part": "images/docling-serve-cpu-v1.35.0", "source": "quay.io/docling-project/docling-serve-cpu:v1.35.0", "bytes": null, "note": "section 03; not pulled here (7.26 GB on 2026-10-20)" }
+  ]
+}

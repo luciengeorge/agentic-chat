@@ -67,3 +67,38 @@ export const getDiff = createServerFn({ method: "GET" })
     const { exRunner, readDiff } = await server();
     return readDiff(exRunner(workshopRoot()), data.stepId);
   });
+
+/** Plants this step's drill, or resets whichever drill is planted. The drill comes from the step, never the client. */
+export const startDrillFn = createServerFn({ method: "POST" })
+  .middleware([workshopMiddleware])
+  .validator(z.object({ command: z.enum(["plant", "reset"]), stepId: StepId }))
+  .handler(async ({ data, context }) => {
+    const { exRunner, readStepPage, startDrillJob, WorkshopBusy } = await server();
+    const drill = readStepPage(workshopRoot(), data.stepId)?.drill;
+    if (!drill) throw notFound();
+    try {
+      const job = startDrillJob(exRunner(workshopRoot()), {
+        command: data.command,
+        drill: drill.id,
+        step: data.stepId,
+        owner: context.viewer.userId,
+      });
+      return { jobId: job.id, busy: null };
+    } catch (error) {
+      if (error instanceof WorkshopBusy) return { jobId: null, busy: error.message };
+      throw error;
+    }
+  });
+
+/** `ex drill check`, waited for: it grades, and changes nothing but the record of drills passed. */
+export const checkDrillFn = createServerFn({ method: "POST" })
+  .middleware([workshopMiddleware])
+  .handler(async () => {
+    const { exRunner, runDrillCheck, WorkshopBusy } = await server();
+    try {
+      return { result: await runDrillCheck(exRunner(workshopRoot())), busy: null };
+    } catch (error) {
+      if (error instanceof WorkshopBusy) return { result: null, busy: error.message };
+      throw error;
+    }
+  });
