@@ -1,6 +1,7 @@
 import {
   InboxIcon,
   Logout01Icon,
+  Mortarboard01Icon,
   PlusSignIcon,
   TestTube01Icon,
   WorkflowSquare03Icon,
@@ -81,6 +82,14 @@ export function ChatSidebar({
         >
           <HugeiconsIcon icon={TestTube01Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
           <span className="flex-1">Labs</span>
+        </Link>
+        <Link
+          to="/workshop"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-accent"
+          activeProps={{ className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground" }}
+        >
+          <HugeiconsIcon icon={Mortarboard01Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
+          <span className="flex-1">Workshop</span>
         </Link>
       </div>
 

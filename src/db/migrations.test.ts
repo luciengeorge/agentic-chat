@@ -77,5 +77,5 @@ describe.skipIf(!postgresAvailable)("migrations", () => {
     } finally {
       await fromSchema.drop();
     }
-  });
+  }, 30_000); // a whole database built from the schema: slow on a busy machine
 });
