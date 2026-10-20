@@ -89,6 +89,34 @@ This lane builds reference code only. The steps come in wave 3.
 - `compose.yaml` (the profile only);
 - `scripts/` for these features.
 
+## Wave 2 (two lanes, reference only)
+
+| Lane | Owns |
+|---|---|
+| D. Drills (section 20) | `scripts/ex/drill*.ts` and their tests, `scripts/ex/cli.ts` (the `drill` command only), `src/core/drills/**` (fault definitions), `fixtures/drills/**`, the lab data the drills need |
+| L. Air-gapped (section 21) | `src/core/local/**` (LM Studio client, local embeddings, the transformers.js reranker), the config switch that selects local models, `compose.yaml` (an egress-blocked profile only), `scripts/vendor*.ts`, `package.json` (its deps and scripts) |
+
+**Lane D, drills:**
+- `pnpm ex drill <id>` plants one fault in the running app, then prints the symptom only: what a user or an on-call alert would see.
+- `ex drill check` grades by behaviour: the symptom is gone, and the fault's own test passes.
+- `ex drill reset` restores the app.
+- **Hiding the fault.** The learner can't see which file holds it. Faults live outside the repo's tracked files (for example applied from an encrypted or out-of-tree patch, or a config or database flip), and `git status` and `git diff` must not point at the answer. Say how this is done and how strong it is.
+- **The five faults:**
+  1. stale ACLs: a sync that stops updating the closure, so a removed user keeps reading;
+  2. an embedding version mismatch: a query embedded with a model the index wasn't built with;
+  3. the reranker failing open: an error swallowed, so the fused order ships unreranked and nobody notices;
+  4. a poison message: an outbox row that fails forever and blocks its partition;
+  5. the 2am schedule: an automation whose cron fires in UTC, at the wrong local hour, or twice across a DST change.
+- **Each drill:** a symptom, a hidden cause, a check, and the clues a good debugger would follow (logs, the audit table, the queue board).
+- **Never against Lucien's real state** unless he runs it himself. Test drills on a test repo and a test database.
+
+**Lane L, air-gapped:**
+- **Local chat and embedding models through LM Studio** (OpenAI-compatible, on `:1234`), selected by config. Pick models that are already downloaded in `~/.lmstudio/models` and fit 32 GB. Record how much the golden numbers drop against OpenAI and Cohere with `pnpm eval --retrieval-only` and with the answer eval, on local models.
+- **A local reranker on transformers.js:** `AutoModelForSequenceClassification`, then a sigmoid over the logit, never the pipeline API. Its weights are vendored.
+- **Egress blocked:** a Compose network with no route out, and a check that the app answers with everything local while outbound calls fail.
+- **Vendoring:** the npm store, the images and the model weights, so a machine with no network can install and run.
+- **Never call LM Studio for anything Lucien didn't ask for:** start its server only if it isn't running, and say so. Don't download new models without saying which and how big (ask main first if over 5 GB).
+
 ## Settled during the build
 
 (Lanes add what they decided here: one bullet per decision, plain words.)
