@@ -1,0 +1,210 @@
+{
+  "date": "2026-10-20",
+  "models": {
+    "baseURL": "http://127.0.0.1:1234/v1",
+    "chatModel": "qwen/qwen3-8b",
+    "embeddingModel": "text-embedding-nomic-embed-text-v1.5",
+    "embeddingDimensions": 768,
+    "rerankerModel": "Xenova/bge-reranker-base",
+    "rerankerDtype": "q8",
+    "weightsDir": "/Users/lucien/src/luciengeorge/agentic-chat/vendor/models"
+  },
+  "network": [
+    {
+      "probe": "dns",
+      "target": "api.openai.com",
+      "reached": false,
+      "ms": 10,
+      "detail": "not resolved (getent exit 2)"
+    },
+    {
+      "probe": "dns",
+      "target": "api.cohere.com",
+      "reached": false,
+      "ms": 9,
+      "detail": "not resolved (getent exit 2)"
+    },
+    {
+      "probe": "dns",
+      "target": "huggingface.co",
+      "reached": false,
+      "ms": 13,
+      "detail": "not resolved (getent exit 2)"
+    },
+    {
+      "probe": "tcp",
+      "target": "api.openai.com:443",
+      "reached": false,
+      "ms": 20,
+      "detail": "Invalid argument"
+    },
+    {
+      "probe": "tcp",
+      "target": "api.cohere.com:443",
+      "reached": false,
+      "ms": 12,
+      "detail": "Invalid argument"
+    },
+    {
+      "probe": "tcp",
+      "target": "1.1.1.1:443",
+      "reached": false,
+      "ms": 9,
+      "detail": "Network is unreachable"
+    },
+    {
+      "probe": "tcp",
+      "target": "8.8.8.8:53",
+      "reached": false,
+      "ms": 11,
+      "detail": "Network is unreachable"
+    },
+    {
+      "probe": "tcp",
+      "target": "host.docker.internal:1234",
+      "reached": false,
+      "ms": 18,
+      "detail": "Invalid argument"
+    },
+    {
+      "probe": "tcp",
+      "target": "airgap-db:5432",
+      "reached": true,
+      "ms": 11,
+      "detail": "connected"
+    },
+    {
+      "probe": "postgres",
+      "target": "airgap-db:5432",
+      "reached": true,
+      "ms": 43,
+      "detail": "accepting connections"
+    }
+  ],
+  "local": {
+    "retrieval": {
+      "question": "How much can I claim a day for meals when I travel for work?",
+      "seconds": 14.08,
+      "top": [
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "score": 0.8120960264659798
+        },
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "score": 0.7947513830583757
+        },
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "score": 0.7846992687847864
+        }
+      ],
+      "rewritten": []
+    }
+  },
+  "hosted": {
+    "openai embeddings, no retries": {
+      "ms": 18,
+      "attempts": 1,
+      "error": "Cannot connect to API: egress blocked: api.openai.com:443 is not on this machine"
+    },
+    "cohere rerank, no retries": {
+      "ms": 5,
+      "attempts": 1,
+      "error": "Cannot connect to API: egress blocked: api.cohere.com:443 is not on this machine"
+    },
+    "openai embeddings, the app's retries": {
+      "ms": 6378,
+      "attempts": 3,
+      "error": "Failed after 3 attempts. Last error: AI_APICallError: Cannot connect to API: egress blocked: api.openai.com:443 is not on this machine"
+    },
+    "cohere rerank, the app's retries": {
+      "ms": 62030,
+      "attempts": 6,
+      "error": "Failed after 6 attempts. Last error: AI_APICallError: Cannot connect to API: egress blocked: api.cohere.com:443 is not on this machine"
+    }
+  },
+  "checks": [
+    {
+      "name": "network: dns api.openai.com",
+      "passed": true,
+      "detail": "refused in 10 ms (not resolved (getent exit 2))"
+    },
+    {
+      "name": "network: dns api.cohere.com",
+      "passed": true,
+      "detail": "refused in 9 ms (not resolved (getent exit 2))"
+    },
+    {
+      "name": "network: dns huggingface.co",
+      "passed": true,
+      "detail": "refused in 13 ms (not resolved (getent exit 2))"
+    },
+    {
+      "name": "network: tcp api.openai.com:443",
+      "passed": true,
+      "detail": "refused in 20 ms (Invalid argument)"
+    },
+    {
+      "name": "network: tcp api.cohere.com:443",
+      "passed": true,
+      "detail": "refused in 12 ms (Invalid argument)"
+    },
+    {
+      "name": "network: tcp 1.1.1.1:443",
+      "passed": true,
+      "detail": "refused in 9 ms (Network is unreachable)"
+    },
+    {
+      "name": "network: tcp 8.8.8.8:53",
+      "passed": true,
+      "detail": "refused in 11 ms (Network is unreachable)"
+    },
+    {
+      "name": "network: tcp host.docker.internal:1234",
+      "passed": true,
+      "detail": "refused in 18 ms (Invalid argument)"
+    },
+    {
+      "name": "network: tcp airgap-db:5432",
+      "passed": true,
+      "detail": "reached in 11 ms (connected)"
+    },
+    {
+      "name": "network: postgres airgap-db:5432",
+      "passed": true,
+      "detail": "reached in 43 ms (accepting connections)"
+    },
+    {
+      "name": "local: retrieval",
+      "passed": true,
+      "detail": "8 chunks in 14.08 s; /HR/Policies/Travel and Expenses Policy v2.pdf at rank 2"
+    },
+    {
+      "name": "local: no connection left the machine",
+      "passed": true,
+      "detail": "0 refused; allowed localhost:5432, 127.0.0.1:1234"
+    },
+    {
+      "name": "hosted: OpenAI embeddings, no retries",
+      "passed": true,
+      "detail": "failed in 18 ms after 1 attempts"
+    },
+    {
+      "name": "hosted: Cohere rerank, no retries",
+      "passed": true,
+      "detail": "failed in 5 ms after 1 attempts"
+    },
+    {
+      "name": "hosted: OpenAI embeddings, the app's retries",
+      "passed": true,
+      "detail": "failed in 6378 ms after 3 attempts"
+    },
+    {
+      "name": "hosted: Cohere rerank, the app's retries",
+      "passed": true,
+      "detail": "failed in 62030 ms after 6 attempts"
+    }
+  ],
+  "passed": true
+}

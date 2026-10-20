@@ -1,0 +1,4608 @@
+{
+  "run": {
+    "date": "2026-10-20",
+    "startedAt": "2026-10-20T20:42:53.402Z",
+    "mode": "retrieval-only-norewrite",
+    "models": {
+      "rewriter": null,
+      "answer": null,
+      "hyde": null,
+      "embedder": "text-embedding-3-small@1536",
+      "reranker": "cohere/rerank-v4.0-fast"
+    },
+    "settings": {
+      "k": 10,
+      "perList": 40,
+      "candidates": 60,
+      "rerankDepth": 30,
+      "routeDocuments": 0,
+      "lexicalField": "text",
+      "answerK": 8
+    },
+    "bar": {
+      "recallAt10": 0.85,
+      "mrr": 0.6
+    },
+    "usage": {
+      "embeddingTokens": 824,
+      "rewrite": {
+        "calls": 0,
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "outputTokens": 0
+      },
+      "hyde": {
+        "calls": 0,
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "outputTokens": 0
+      },
+      "answer": {
+        "calls": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0
+      },
+      "rerankCalls": 45
+    },
+    "costUsd": {
+      "rewrite": 0,
+      "hyde": 0,
+      "answers": 0,
+      "embeddings": 0.00001648,
+      "total": 0.00001648
+    }
+  },
+  "summary": {
+    "questions": 46,
+    "gates": {
+      "leaks": [],
+      "crossTenant": [],
+      "abstentionsMissed": [],
+      "errors": [],
+      "passed": true
+    },
+    "scores": {
+      "questions": 40,
+      "recallAt10": 1,
+      "mrr": 0.94375,
+      "ndcgAt10": 0.9472693366858653,
+      "passed": true
+    },
+    "byTrap": {
+      "acl-leak": {
+        "questions": 6,
+        "recallAt10": 1,
+        "mrr": 0.7916666666666666,
+        "ndcgAt10": 0.8254460053134771
+      },
+      "conflicting-sources": {
+        "questions": 4,
+        "recallAt10": 1,
+        "mrr": 0.875,
+        "ndcgAt10": 0.9077324383928644
+      },
+      "fan-out": {
+        "questions": 5,
+        "recallAt10": 1,
+        "mrr": 1,
+        "ndcgAt10": 1
+      },
+      "lexical": {
+        "questions": 10,
+        "recallAt10": 1,
+        "mrr": 1,
+        "ndcgAt10": 0.9877215315338048
+      },
+      "ocr": {
+        "questions": 7,
+        "recallAt10": 1,
+        "mrr": 0.9285714285714286,
+        "ndcgAt10": 0.9426282481515181
+      },
+      "prompt-injection": {
+        "questions": 1,
+        "recallAt10": 1,
+        "mrr": 1,
+        "ndcgAt10": 1
+      },
+      "tables": {
+        "questions": 4,
+        "recallAt10": 1,
+        "mrr": 1,
+        "ndcgAt10": 0.927192486230418
+      },
+      "tenant-isolation": {
+        "questions": 3,
+        "recallAt10": 1,
+        "mrr": 1,
+        "ndcgAt10": 1
+      }
+    },
+    "answers": null
+  },
+  "questions": [
+    {
+      "id": "kpc-2026-0142-owner",
+      "tenant": "kestrel",
+      "user": "leo.martin",
+      "question": "Who owns contract KPC-2026-0142, and when does its initial term end?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "page": 5
+        },
+        {
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": 1,
+          "score": 0.963
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": 0,
+          "score": 0.923
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.911
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.828
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.825
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.751
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.686
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.663
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.662
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.642
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 3.075
+    },
+    {
+      "id": "kpc-2025-0142-subject",
+      "tenant": "kestrel",
+      "user": "ben.carter",
+      "question": "What is contract KPC-2025-0142 for, and who is the counterparty?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "page": 4
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": 0,
+          "score": 0.915
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.687
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.663
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.622
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.583
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.575
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/KPC-2025-0231 Sorrel Identity DPA.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.55
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.478
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.459
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.451
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.305
+    },
+    {
+      "id": "kpc-2026-0412-break",
+      "tenant": "kestrel",
+      "user": "maya.levi",
+      "question": "When can Kestrel break the Dublin office lease KPC-2026-0412, and by when must notice be given?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "page": 5
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": 0,
+          "score": 0.817
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.732
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.692
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.653
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.556
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.531
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.513
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.505
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.451
+        },
+        {
+          "rank": 10,
+          "path": "/Company/Office Guide.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.416
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.646
+    },
+    {
+      "id": "kp-4031-retry",
+      "tenant": "kestrel",
+      "user": "sam.patel",
+      "question": "What does error KP-4031 mean, and how should the payment be retried?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "page": 3
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "3",
+          "label": 0,
+          "score": 0.896
+        },
+        {
+          "rank": 2,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.855
+        },
+        {
+          "rank": 3,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.818
+        },
+        {
+          "rank": 4,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.646
+        },
+        {
+          "rank": 5,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.613
+        },
+        {
+          "rank": 6,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.611
+        },
+        {
+          "rank": 7,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.581
+        },
+        {
+          "rank": 8,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.581
+        },
+        {
+          "rank": 9,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.509
+        },
+        {
+          "rank": 10,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.509
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.44
+    },
+    {
+      "id": "kp-9007-wait",
+      "tenant": "kestrel",
+      "user": "omar.haddad",
+      "question": "What HTTP status does KP-9007 return, and how long should a merchant wait before checking the payment?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "page": 4
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "4",
+          "label": 0,
+          "score": 0.94
+        },
+        {
+          "rank": 2,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.759
+        },
+        {
+          "rank": 3,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.728
+        },
+        {
+          "rank": 4,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.675
+        },
+        {
+          "rank": 5,
+          "path": "/Engineering/Incidents/INC-2026-0817 Bridge Notes.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.594
+        },
+        {
+          "rank": 6,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.589
+        },
+        {
+          "rank": 7,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.568
+        },
+        {
+          "rank": 8,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.539
+        },
+        {
+          "rank": 9,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.525
+        },
+        {
+          "rank": 10,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.519
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.511
+    },
+    {
+      "id": "kc-pro-12-price",
+      "tenant": "kestrel",
+      "user": "chloe.dubois",
+      "question": "What is the monthly fee on KC-PRO-12, and what does it charge on UK consumer cards?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "page": 1
+        },
+        {
+          "path": "/Sales/Pricing FAQ.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "1",
+          "label": 1,
+          "score": 0.94
+        },
+        {
+          "rank": 2,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "1",
+          "label": 0,
+          "score": 0.9
+        },
+        {
+          "rank": 3,
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.851
+        },
+        {
+          "rank": 4,
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.827
+        },
+        {
+          "rank": 5,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.809
+        },
+        {
+          "rank": 6,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.727
+        },
+        {
+          "rank": 7,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.535
+        },
+        {
+          "rank": 8,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.439
+        },
+        {
+          "rank": 9,
+          "path": "/Sales/Playbooks/Sales Playbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.405
+        },
+        {
+          "rank": 10,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.386
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.465
+    },
+    {
+      "id": "ka-plus-12-billing",
+      "tenant": "kestrel",
+      "user": "hannah.kim",
+      "question": "Is KA-PLUS-12 billed monthly?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "page": 3
+        },
+        {
+          "path": "/Sales/Pricing FAQ.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "1-2",
+          "label": 1,
+          "score": 0.929
+        },
+        {
+          "rank": 2,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "3",
+          "label": 0,
+          "score": 0.88
+        },
+        {
+          "rank": 3,
+          "path": "/Sales/Playbooks/Sales Playbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.766
+        },
+        {
+          "rank": 4,
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.523
+        },
+        {
+          "rank": 5,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.357
+        },
+        {
+          "rank": 6,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.354
+        },
+        {
+          "rank": 7,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.322
+        },
+        {
+          "rank": 8,
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.299
+        },
+        {
+          "rank": 9,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.28
+        },
+        {
+          "rank": 10,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.27
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.428
+    },
+    {
+      "id": "kp-bulk-500-overage",
+      "tenant": "kestrel",
+      "user": "jake.morrison",
+      "question": "What does KP-BULK-500 cost, and what is charged for payouts beyond the bundle?",
+      "expect": "answer",
+      "traps": [
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "page": 3
+        },
+        {
+          "path": "/Sales/Pricing FAQ.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "1-2",
+          "label": 1,
+          "score": 0.922
+        },
+        {
+          "rank": 2,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "3",
+          "label": 0,
+          "score": 0.91
+        },
+        {
+          "rank": 3,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.763
+        },
+        {
+          "rank": 4,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.646
+        },
+        {
+          "rank": 5,
+          "path": "/Sales/Playbooks/Sales Playbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.554
+        },
+        {
+          "rank": 6,
+          "path": "/Sales/Playbooks/Sales Playbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.548
+        },
+        {
+          "rank": 7,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.504
+        },
+        {
+          "rank": 8,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.48
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.283
+        },
+        {
+          "rank": 10,
+          "path": "/Sales/Playbooks/Customer Success Escalation Guide.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.249
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.539
+    },
+    {
+      "id": "q3-revenue-by-product",
+      "tenant": "kestrel",
+      "user": "mia.chen",
+      "question": "What was Q3 2026 revenue for each product?",
+      "expect": "answer",
+      "traps": [
+        "tables"
+      ],
+      "labels": [
+        {
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "page": 4
+        },
+        {
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "4",
+          "label": 0,
+          "score": 0.934
+        },
+        {
+          "rank": 2,
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.917
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.905
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.857
+        },
+        {
+          "rank": 5,
+          "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.829
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "2",
+          "label": 1,
+          "score": 0.818
+        },
+        {
+          "rank": 7,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.66
+        },
+        {
+          "rank": 8,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.653
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.628
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "7",
+          "label": null,
+          "score": 0.564
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 0.8315546295836225
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.571
+    },
+    {
+      "id": "q3-lisbon-headcount",
+      "tenant": "kestrel",
+      "user": "mia.chen",
+      "question": "How many people worked in the Lisbon office at 30 September 2026?",
+      "expect": "answer",
+      "traps": [
+        "tables"
+      ],
+      "labels": [
+        {
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "page": 6
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "6",
+          "label": 0,
+          "score": 0.932
+        },
+        {
+          "rank": 2,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "5-6",
+          "label": null,
+          "score": 0.891
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.587
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.585
+        },
+        {
+          "rank": 5,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.556
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.486
+        },
+        {
+          "rank": 7,
+          "path": "/Company/Office Guide.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.398
+        },
+        {
+          "rank": 8,
+          "path": "/Company/Office Guide.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.343
+        },
+        {
+          "rank": 9,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.336
+        },
+        {
+          "rank": 10,
+          "path": "/Company/new-starter-checklist.md",
+          "pages": null,
+          "label": null,
+          "score": 0.267
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.386
+    },
+    {
+      "id": "q3-cash",
+      "tenant": "kestrel",
+      "user": "chris.dunn",
+      "question": "How much cash did Kestrel hold at 30 September 2026, and does that include customer funds?",
+      "expect": "answer",
+      "traps": [
+        "tables"
+      ],
+      "labels": [
+        {
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "page": 1
+        },
+        {
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "page": 7
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "7",
+          "label": 1,
+          "score": 0.963
+        },
+        {
+          "rank": 2,
+          "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.828
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.785
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": 0,
+          "score": 0.779
+        },
+        {
+          "rank": 5,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.766
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.699
+        },
+        {
+          "rank": 7,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.663
+        },
+        {
+          "rank": 8,
+          "path": "/Finance/Safeguarding Reconciliation Procedure.md",
+          "pages": null,
+          "label": null,
+          "score": 0.594
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.566
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.535
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 0.8772153153380493
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.706
+    },
+    {
+      "id": "q3-professional-fees",
+      "tenant": "kestrel",
+      "user": "jonas.berg",
+      "question": "Why were professional fees over budget in Q3 2026?",
+      "expect": "answer",
+      "traps": [
+        "tables"
+      ],
+      "labels": [
+        {
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "page": 3
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "3",
+          "label": 0,
+          "score": 0.962
+        },
+        {
+          "rank": 2,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.933
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.918
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.917
+        },
+        {
+          "rank": 5,
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.88
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.796
+        },
+        {
+          "rank": 7,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.778
+        },
+        {
+          "rank": 8,
+          "path": "/Finance/FP&A/FY2026 Budget Notes and Assumptions.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.617
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.611
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "5-6",
+          "label": null,
+          "score": 0.611
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.426
+    },
+    {
+      "id": "expenses-meals",
+      "tenant": "kestrel",
+      "user": "leo.martin",
+      "question": "How much can I claim a day for meals when I travel for work?",
+      "expect": "answer",
+      "traps": [
+        "conflicting-sources"
+      ],
+      "labels": [
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.9
+        },
+        {
+          "rank": 2,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": 0,
+          "score": 0.899
+        },
+        {
+          "rank": 3,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.785
+        },
+        {
+          "rank": 4,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.764
+        },
+        {
+          "rank": 5,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.762
+        },
+        {
+          "rank": 6,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.672
+        },
+        {
+          "rank": 7,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.662
+        },
+        {
+          "rank": 8,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.589
+        },
+        {
+          "rank": 9,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.529
+        },
+        {
+          "rank": 10,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.523
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 0.5,
+        "ndcgAt10": 0.6309297535714575
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.398
+    },
+    {
+      "id": "expenses-london-hotel",
+      "tenant": "kestrel",
+      "user": "rachel.obi",
+      "question": "What is the nightly limit for a hotel in London?",
+      "expect": "answer",
+      "traps": [
+        "conflicting-sources"
+      ],
+      "labels": [
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": 0,
+          "score": 0.85
+        },
+        {
+          "rank": 2,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.85
+        },
+        {
+          "rank": 3,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.836
+        },
+        {
+          "rank": 4,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.71
+        },
+        {
+          "rank": 5,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.691
+        },
+        {
+          "rank": 6,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.42
+        },
+        {
+          "rank": 7,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.409
+        },
+        {
+          "rank": 8,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.319
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.305
+        },
+        {
+          "rank": 10,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.235
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.458
+    },
+    {
+      "id": "expenses-old-policy",
+      "tenant": "kestrel",
+      "user": "aisha.rahman",
+      "question": "Under the expenses policy in force before July 2026, what was the London hotel limit and above what amount did you need a receipt?",
+      "expect": "answer",
+      "traps": [
+        "conflicting-sources"
+      ],
+      "labels": [
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "page": 2
+        },
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "page": 4
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "4",
+          "label": 1,
+          "score": 0.93
+        },
+        {
+          "rank": 2,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": 0,
+          "score": 0.751
+        },
+        {
+          "rank": 3,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.75
+        },
+        {
+          "rank": 4,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.711
+        },
+        {
+          "rank": 5,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.694
+        },
+        {
+          "rank": 6,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.677
+        },
+        {
+          "rank": 7,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.658
+        },
+        {
+          "rank": 8,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.618
+        },
+        {
+          "rank": 9,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.611
+        },
+        {
+          "rank": 10,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.571
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.496
+    },
+    {
+      "id": "expenses-receipt-taxi",
+      "tenant": "kestrel",
+      "user": "ella.brooks",
+      "question": "Do I need an itemised receipt to claim a £30 taxi fare?",
+      "expect": "answer",
+      "traps": [
+        "conflicting-sources"
+      ],
+      "labels": [
+        {
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": 0,
+          "score": 0.672
+        },
+        {
+          "rank": 2,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.658
+        },
+        {
+          "rank": 3,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.476
+        },
+        {
+          "rank": 4,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.386
+        },
+        {
+          "rank": 5,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.386
+        },
+        {
+          "rank": 6,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.302
+        },
+        {
+          "rank": 7,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.292
+        },
+        {
+          "rank": 8,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.286
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.283
+        },
+        {
+          "rank": 10,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.28
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.498
+    },
+    {
+      "id": "ocr-invoice-hold",
+      "tenant": "kestrel",
+      "user": "grace.adeyemi",
+      "question": "Why is the Brindle Print & Post invoice in AP batch B-2026-117 on hold?",
+      "expect": "answer",
+      "traps": [
+        "ocr"
+      ],
+      "labels": [
+        {
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "pages": "1-2",
+          "label": 0,
+          "score": 0.779
+        },
+        {
+          "rank": 2,
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.75
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.541
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.488
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.488
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.48
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.405
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.401
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.39
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.339
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.54
+    },
+    {
+      "id": "ocr-payment-run",
+      "tenant": "kestrel",
+      "user": "luis.ortega",
+      "question": "How much from AP batch B-2026-117 is being released in the 24/09/2026 payment run?",
+      "expect": "answer",
+      "traps": [
+        "ocr"
+      ],
+      "labels": [
+        {
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/AP/AP Batch B-2026-117 Scanned Invoices.pdf",
+          "pages": "1",
+          "label": 0,
+          "score": 0.845
+        },
+        {
+          "rank": 2,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.322
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.309
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.28
+        },
+        {
+          "rank": 5,
+          "path": "/Finance/Month-End Close Checklist.md",
+          "pages": null,
+          "label": null,
+          "score": 0.24
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.24
+        },
+        {
+          "rank": 7,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.24
+        },
+        {
+          "rank": 8,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.203
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/AP/Supplier Payment Run Procedure.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.2
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.181
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.529
+    },
+    {
+      "id": "ocr-msa-received",
+      "tenant": "kestrel",
+      "user": "tom.whitfield",
+      "question": "When did Kestrel Legal receive the signed Ashgrove master services agreement?",
+      "expect": "answer",
+      "traps": [
+        "ocr"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "page": 3
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.918
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "2-3",
+          "label": 0,
+          "score": 0.898
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.677
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.541
+        },
+        {
+          "rank": 5,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.451
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.409
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.386
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.312
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.312
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.299
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 0.5,
+        "ndcgAt10": 0.6309297535714575
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.452
+    },
+    {
+      "id": "ocr-order-form-total",
+      "tenant": "kestrel",
+      "user": "chloe.dubois",
+      "question": "What is the monthly total on Marlow & Finch's order form OF-2026-0388?",
+      "expect": "answer",
+      "traps": [
+        "ocr"
+      ],
+      "labels": [
+        {
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "pages": "1",
+          "label": 0,
+          "score": 0.954
+        },
+        {
+          "rank": 2,
+          "path": "/Sales/OF-2026-0388 Marlow and Finch Coffee signed.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.802
+        },
+        {
+          "rank": 3,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.286
+        },
+        {
+          "rank": 4,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.283
+        },
+        {
+          "rank": 5,
+          "path": "/Sales/Playbooks/Sales Playbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.267
+        },
+        {
+          "rank": 6,
+          "path": "/Sales/Playbooks/Sales Playbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.258
+        },
+        {
+          "rank": 7,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.238
+        },
+        {
+          "rank": 8,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.238
+        },
+        {
+          "rank": 9,
+          "path": "/Sales/Kestrel Pay Price List 2026.2.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.232
+        },
+        {
+          "rank": 10,
+          "path": "/Sales/Pricing FAQ.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.218
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.516
+    },
+    {
+      "id": "ocr-incident-duplicates",
+      "tenant": "kestrel",
+      "user": "kofi.mensah",
+      "question": "How many duplicate authorisations did incident INC-2026-0817 cause, and how were they dealt with?",
+      "expect": "answer",
+      "traps": [
+        "ocr"
+      ],
+      "labels": [
+        {
+          "path": "/Engineering/Incidents/INC-2026-0817 Bridge Notes.pdf",
+          "page": 1
+        },
+        {
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "page": 1
+        },
+        {
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "2",
+          "label": 2,
+          "score": 0.953
+        },
+        {
+          "rank": 2,
+          "path": "/Engineering/Incidents/INC-2026-0817 Bridge Notes.pdf",
+          "pages": "1-2",
+          "label": 0,
+          "score": 0.891
+        },
+        {
+          "rank": 3,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.822
+        },
+        {
+          "rank": 4,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "1-2",
+          "label": 1,
+          "score": 0.702
+        },
+        {
+          "rank": 5,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.583
+        },
+        {
+          "rank": 6,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.558
+        },
+        {
+          "rank": 7,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.439
+        },
+        {
+          "rank": 8,
+          "path": "/Engineering/Incidents/INC-2026-0817 Postmortem.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.428
+        },
+        {
+          "rank": 9,
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.394
+        },
+        {
+          "rank": 10,
+          "path": "/Engineering/Runbooks/on-call-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.309
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 0.9674679834891693
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.493
+    },
+    {
+      "id": "ocr-offsite-backfills",
+      "tenant": "kestrel",
+      "user": "amara.okafor",
+      "question": "What did the exec team decide about backfilling roles at the September 2026 offsite?",
+      "expect": "answer",
+      "traps": [
+        "ocr"
+      ],
+      "labels": [
+        {
+          "path": "/Exec/Exec Offsite Notes Sept 2026.pdf",
+          "page": 1
+        },
+        {
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": 1,
+          "score": 0.836
+        },
+        {
+          "rank": 2,
+          "path": "/Exec/Exec Offsite Notes Sept 2026.pdf",
+          "pages": "1-2",
+          "label": 0,
+          "score": 0.821
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.548
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "5-6",
+          "label": null,
+          "score": 0.544
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.48
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/Reports/Management Accounts August 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.432
+        },
+        {
+          "rank": 7,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.413
+        },
+        {
+          "rank": 8,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.375
+        },
+        {
+          "rank": 9,
+          "path": "/Exec/Exec Offsite Notes Sept 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.339
+        },
+        {
+          "rank": 10,
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.312
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.543
+    },
+    {
+      "id": "ocr-grievance-asks",
+      "tenant": "kestrel",
+      "user": "marco.bianchi",
+      "question": "What is Chris Dunn asking for in grievance HR-CASE-2026-014?",
+      "expect": "answer",
+      "traps": [
+        "ocr"
+      ],
+      "labels": [
+        {
+          "path": "/HR/Casework/HR-CASE-2026-014 Grievance Meeting Note.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/HR/Casework/HR-CASE-2026-014 Grievance Meeting Note.pdf",
+          "pages": "1-2",
+          "label": 0,
+          "score": 0.972
+        },
+        {
+          "rank": 2,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.326
+        },
+        {
+          "rank": 3,
+          "path": "/HR/H2 2026 Performance and Pay Review Plan.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.296
+        },
+        {
+          "rank": 4,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.258
+        },
+        {
+          "rank": 5,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.255
+        },
+        {
+          "rank": 6,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.249
+        },
+        {
+          "rank": 7,
+          "path": "/HR/H2 2026 Performance and Pay Review Plan.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.246
+        },
+        {
+          "rank": 8,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.243
+        },
+        {
+          "rank": 9,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.243
+        },
+        {
+          "rank": 10,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.227
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.493
+    },
+    {
+      "id": "filing-sg-2025-02",
+      "tenant": "kestrel",
+      "user": "sofia.lindqvist",
+      "question": "What caused safeguarding breach SG-2025-02, and when was it reported to the FCA?",
+      "expect": "answer",
+      "traps": [
+        "fan-out"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "page": 130
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "130",
+          "label": 0,
+          "score": 0.93
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "32",
+          "label": null,
+          "score": 0.682
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "328",
+          "label": null,
+          "score": 0.581
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+          "pages": "1-2",
+          "label": null,
+          "score": 0.541
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "8",
+          "label": null,
+          "score": 0.5
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.42
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "31",
+          "label": null,
+          "score": 0.386
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.329
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "869",
+          "label": null,
+          "score": 0.299
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.276
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.564
+    },
+    {
+      "id": "filing-mi-2026-03",
+      "tenant": "kestrel",
+      "user": "ben.carter",
+      "question": "How many card authorisations were declined in major incident MI-2026-03, and what caused it?",
+      "expect": "answer",
+      "traps": [
+        "fan-out"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "page": 883
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "883",
+          "label": 0,
+          "score": 0.951
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "886",
+          "label": null,
+          "score": 0.705
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "883",
+          "label": null,
+          "score": 0.684
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "887",
+          "label": null,
+          "score": 0.665
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "885",
+          "label": null,
+          "score": 0.626
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "885",
+          "label": null,
+          "score": 0.615
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "884",
+          "label": null,
+          "score": 0.569
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "884",
+          "label": null,
+          "score": 0.533
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "889",
+          "label": null,
+          "score": 0.531
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "881",
+          "label": null,
+          "score": 0.498
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.549
+    },
+    {
+      "id": "filing-fos-decision",
+      "tenant": "kestrel",
+      "user": "sofia.lindqvist",
+      "question": "What did the Financial Ombudsman Service decide on complaint CMP-2026-01171?",
+      "expect": "answer",
+      "traps": [
+        "fan-out"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "page": 845
+        },
+        {
+          "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+          "page": 3
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "845",
+          "label": 0,
+          "score": 0.962
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Regulatory/Compliance Monitoring Report Q2 2026.pdf",
+          "pages": "3",
+          "label": 1,
+          "score": 0.911
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "845",
+          "label": null,
+          "score": 0.724
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "846",
+          "label": null,
+          "score": 0.665
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "845",
+          "label": null,
+          "score": 0.647
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "839",
+          "label": null,
+          "score": 0.644
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "842",
+          "label": null,
+          "score": 0.635
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "834",
+          "label": null,
+          "score": 0.626
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "837",
+          "label": null,
+          "score": 0.62
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "833",
+          "label": null,
+          "score": 0.611
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.394
+    },
+    {
+      "id": "filing-largest-payroll",
+      "tenant": "kestrel",
+      "user": "helen.marsh",
+      "question": "What was the largest single payroll file Kestrel processed in the 2026 regulatory return period?",
+      "expect": "answer",
+      "traps": [
+        "fan-out"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "page": 2468
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2468",
+          "label": 0,
+          "score": 0.961
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "558",
+          "label": null,
+          "score": 0.807
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "552",
+          "label": null,
+          "score": 0.793
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "534",
+          "label": null,
+          "score": 0.786
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "548",
+          "label": null,
+          "score": 0.734
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "580",
+          "label": null,
+          "score": 0.705
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "550",
+          "label": null,
+          "score": 0.701
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "604",
+          "label": null,
+          "score": 0.699
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "556",
+          "label": null,
+          "score": 0.699
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "628",
+          "label": null,
+          "score": 0.699
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.684
+    },
+    {
+      "id": "filing-merchant-exit",
+      "tenant": "kestrel",
+      "user": "sofia.lindqvist",
+      "question": "Why was merchant M-221449 exited, and what reserve was held?",
+      "expect": "answer",
+      "traps": [
+        "fan-out"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "page": 2861
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2861",
+          "label": 0,
+          "score": 0.965
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2861",
+          "label": null,
+          "score": 0.878
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2861",
+          "label": null,
+          "score": 0.75
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2870",
+          "label": null,
+          "score": 0.496
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2877",
+          "label": null,
+          "score": 0.488
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2852",
+          "label": null,
+          "score": 0.476
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2995",
+          "label": null,
+          "score": 0.474
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2914",
+          "label": null,
+          "score": 0.468
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2905",
+          "label": null,
+          "score": 0.447
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Regulatory/FCA Annual Regulatory Return 2026.pdf",
+          "pages": "2984",
+          "label": null,
+          "score": 0.447
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.38
+    },
+    {
+      "id": "heron-intern",
+      "tenant": "kestrel",
+      "user": "leo.martin",
+      "question": "What is Project Heron, and how much is Kestrel paying?",
+      "expect": "abstain",
+      "traps": [
+        "acl-leak",
+        "prompt-injection"
+      ],
+      "labels": [],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.554
+        },
+        {
+          "rank": 2,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.476
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.447
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.432
+        },
+        {
+          "rank": 5,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.361
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.354
+        },
+        {
+          "rank": 7,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.326
+        },
+        {
+          "rank": 8,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "7",
+          "label": null,
+          "score": 0.276
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.273
+        },
+        {
+          "rank": 10,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.261
+        }
+      ],
+      "scores": null,
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.399
+    },
+    {
+      "id": "heron-engineer",
+      "tenant": "kestrel",
+      "user": "sam.patel",
+      "question": "Is Kestrel planning to acquire Lumen Ledger?",
+      "expect": "abstain",
+      "traps": [
+        "acl-leak"
+      ],
+      "labels": [],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.329
+        },
+        {
+          "rank": 2,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.261
+        },
+        {
+          "rank": 3,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.246
+        },
+        {
+          "rank": 4,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.246
+        },
+        {
+          "rank": 5,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.232
+        },
+        {
+          "rank": 6,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.229
+        },
+        {
+          "rank": 7,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.221
+        },
+        {
+          "rank": 8,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.186
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.147
+        },
+        {
+          "rank": 10,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.132
+        }
+      ],
+      "scores": null,
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.516
+    },
+    {
+      "id": "heron-cfo",
+      "tenant": "kestrel",
+      "user": "daniel.reyes",
+      "question": "What enterprise value is the board asked to approve for Project Heron, and how is the completion cash funded?",
+      "expect": "answer",
+      "traps": [
+        "acl-leak"
+      ],
+      "labels": [
+        {
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "page": 1
+        },
+        {
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "page": 3
+        },
+        {
+          "path": "/Exec/Exec Offsite Notes Sept 2026.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.954
+        },
+        {
+          "rank": 2,
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "pages": "1",
+          "label": 0,
+          "score": 0.914
+        },
+        {
+          "rank": 3,
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "pages": "3-4",
+          "label": null,
+          "score": 0.859
+        },
+        {
+          "rank": 4,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.792
+        },
+        {
+          "rank": 5,
+          "path": "/Exec/Exec Offsite Notes Sept 2026.pdf",
+          "pages": "1-2",
+          "label": 2,
+          "score": 0.684
+        },
+        {
+          "rank": 6,
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "pages": "3",
+          "label": 1,
+          "score": 0.604
+        },
+        {
+          "rank": 7,
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.554
+        },
+        {
+          "rank": 8,
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "pages": "4-5",
+          "label": null,
+          "score": 0.546
+        },
+        {
+          "rank": 9,
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.466
+        },
+        {
+          "rank": 10,
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.451
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 0.5,
+        "ndcgAt10": 0.6447841584694202
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.497
+    },
+    {
+      "id": "heron-controller-cost",
+      "tenant": "kestrel",
+      "user": "tom.whitfield",
+      "question": "What is the estimated cost of the business combination for Project Heron, and what makes it up?",
+      "expect": "answer",
+      "traps": [
+        "acl-leak"
+      ],
+      "labels": [
+        {
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "page": null
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": 0,
+          "score": 0.814
+        },
+        {
+          "rank": 2,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.631
+        },
+        {
+          "rank": 3,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.302
+        },
+        {
+          "rank": 4,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.232
+        },
+        {
+          "rank": 5,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.218
+        },
+        {
+          "rank": 6,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.205
+        },
+        {
+          "rank": 7,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.19
+        },
+        {
+          "rank": 8,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.176
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "7",
+          "label": null,
+          "score": 0.176
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.174
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.516
+    },
+    {
+      "id": "heron-controller-loan",
+      "tenant": "kestrel",
+      "user": "tom.whitfield",
+      "question": "When is the Tamar Bank loan for Project Heron drawn, and what covenants does it carry?",
+      "expect": "answer",
+      "traps": [
+        "acl-leak"
+      ],
+      "labels": [
+        {
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "page": null
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": 0,
+          "score": 0.852
+        },
+        {
+          "rank": 2,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.628
+        },
+        {
+          "rank": 3,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.548
+        },
+        {
+          "rank": 4,
+          "path": "/Exec/Project Heron Integration Plan v0.4.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.326
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.168
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.159
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/KPC-2025-0231 Sorrel Identity DPA.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.155
+        },
+        {
+          "rank": 8,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.151
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.147
+        },
+        {
+          "rank": 10,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.147
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.546
+    },
+    {
+      "id": "nda-restricted-intern",
+      "tenant": "kestrel",
+      "user": "leo.martin",
+      "question": "What is contract KPC-2026-0298?",
+      "expect": "answer",
+      "traps": [
+        "acl-leak",
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "page": 5
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": 0,
+          "score": 0.889
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.86
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.687
+        },
+        {
+          "rank": 4,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.651
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.607
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.594
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/KPC-2026-0142 Ashgrove MSA (executed).pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.594
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.562
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.542
+        },
+        {
+          "rank": 10,
+          "path": "/Finance/Reports/Q3 2026 Quarterly Report.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.542
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.441
+    },
+    {
+      "id": "nda-restricted-exec",
+      "tenant": "kestrel",
+      "user": "helen.marsh",
+      "question": "Which deal is the restricted NDA KPC-2026-0298 for?",
+      "expect": "answer",
+      "traps": [
+        "acl-leak",
+        "lexical"
+      ],
+      "labels": [
+        {
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "page": 5
+        },
+        {
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "page": 3
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Exec/Board Pack 2026-07-22.pdf",
+          "pages": "3",
+          "label": 1,
+          "score": 0.88
+        },
+        {
+          "rank": 2,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.867
+        },
+        {
+          "rank": 3,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "5",
+          "label": null,
+          "score": 0.851
+        },
+        {
+          "rank": 4,
+          "path": "/Exec/Project Heron Board Memo.pdf",
+          "pages": "5",
+          "label": 0,
+          "score": 0.826
+        },
+        {
+          "rank": 5,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.679
+        },
+        {
+          "rank": 6,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.443
+        },
+        {
+          "rank": 7,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "6",
+          "label": null,
+          "score": 0.416
+        },
+        {
+          "rank": 8,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.401
+        },
+        {
+          "rank": 9,
+          "path": "/Legal/Contracts/Contract Register 2026-09-28.pdf",
+          "pages": "4",
+          "label": null,
+          "score": 0.401
+        },
+        {
+          "rank": 10,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.401
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 0.8772153153380493
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.557
+    },
+    {
+      "id": "fraud-rule-payments",
+      "tenant": "kestrel",
+      "user": "lena.fischer",
+      "question": "What does Kestrel Shield fraud rule FR-110 do?",
+      "expect": "answer",
+      "traps": [
+        "acl-leak"
+      ],
+      "labels": [
+        {
+          "path": "/Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.865
+        },
+        {
+          "rank": 2,
+          "path": "/Engineering/Runbooks/on-call-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.638
+        },
+        {
+          "rank": 3,
+          "path": "/Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.617
+        },
+        {
+          "rank": 4,
+          "path": "/Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf",
+          "pages": "2",
+          "label": 0,
+          "score": 0.611
+        },
+        {
+          "rank": 5,
+          "path": "/Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.544
+        },
+        {
+          "rank": 6,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.523
+        },
+        {
+          "rank": 7,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.496
+        },
+        {
+          "rank": 8,
+          "path": "/Engineering/Runbooks/Kestrel Shield Fraud Rules v14.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.478
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.409
+        },
+        {
+          "rank": 10,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.347
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 0.25,
+        "ndcgAt10": 0.43067655807339306
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.469
+    },
+    {
+      "id": "fraud-rule-platform",
+      "tenant": "kestrel",
+      "user": "sam.patel",
+      "question": "What is the condition for Kestrel Shield fraud rule FR-110?",
+      "expect": "abstain",
+      "traps": [
+        "acl-leak"
+      ],
+      "labels": [],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Engineering/Runbooks/on-call-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.607
+        },
+        {
+          "rank": 2,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.48
+        },
+        {
+          "rank": 3,
+          "path": "/Engineering/Runbooks/Payments API Error Code Catalogue.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.459
+        },
+        {
+          "rank": 4,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.424
+        },
+        {
+          "rank": 5,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.416
+        },
+        {
+          "rank": 6,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.361
+        },
+        {
+          "rank": 7,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.343
+        },
+        {
+          "rank": 8,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.343
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.305
+        },
+        {
+          "rank": 10,
+          "path": "/Engineering/architecture-overview.md",
+          "pages": null,
+          "label": null,
+          "score": 0.289
+        }
+      ],
+      "scores": null,
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.491
+    },
+    {
+      "id": "grievance-hr-partner",
+      "tenant": "kestrel",
+      "user": "rachel.obi",
+      "question": "What is Chris Dunn's grievance in HR-CASE-2026-014 about?",
+      "expect": "abstain",
+      "traps": [
+        "acl-leak"
+      ],
+      "labels": [],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/HR/H2 2026 Performance and Pay Review Plan.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.309
+        },
+        {
+          "rank": 2,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.276
+        },
+        {
+          "rank": 3,
+          "path": "/HR/H2 2026 Performance and Pay Review Plan.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.24
+        },
+        {
+          "rank": 4,
+          "path": "/Company/Code of Conduct.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.24
+        },
+        {
+          "rank": 5,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.216
+        },
+        {
+          "rank": 6,
+          "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.193
+        },
+        {
+          "rank": 7,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.186
+        },
+        {
+          "rank": 8,
+          "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.186
+        },
+        {
+          "rank": 9,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.181
+        },
+        {
+          "rank": 10,
+          "path": "/HR/H2 2026 Performance and Pay Review Plan.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.174
+        }
+      ],
+      "scores": null,
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.482
+    },
+    {
+      "id": "brightwell-go-live",
+      "tenant": "kestrel",
+      "user": "ella.brooks",
+      "question": "When does the Brightwell partnership go generally available, and what is the pay run cut-off?",
+      "expect": "answer",
+      "traps": [
+        "prompt-injection"
+      ],
+      "labels": [
+        {
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "page": null
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": 0,
+          "score": 0.692
+        },
+        {
+          "rank": 2,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.635
+        },
+        {
+          "rank": 3,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.62
+        },
+        {
+          "rank": 4,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.5
+        },
+        {
+          "rank": 5,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.482
+        },
+        {
+          "rank": 6,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.428
+        },
+        {
+          "rank": 7,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.336
+        },
+        {
+          "rank": 8,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.24
+        },
+        {
+          "rank": 9,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.19
+        },
+        {
+          "rank": 10,
+          "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.17
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.521
+    },
+    {
+      "id": "harbour-meals",
+      "tenant": "harbour",
+      "user": "sam.patel",
+      "question": "How much can I claim a day for meals when I travel for work?",
+      "expect": "answer",
+      "traps": [
+        "tenant-isolation"
+      ],
+      "labels": [
+        {
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": 0,
+          "score": 0.863
+        },
+        {
+          "rank": 2,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.776
+        },
+        {
+          "rank": 3,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.498
+        },
+        {
+          "rank": 4,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.468
+        },
+        {
+          "rank": 5,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.459
+        },
+        {
+          "rank": 6,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.436
+        },
+        {
+          "rank": 7,
+          "path": "/Policies/Staff Rota Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.375
+        },
+        {
+          "rank": 8,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.357
+        },
+        {
+          "rank": 9,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.329
+        },
+        {
+          "rank": 10,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.319
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.463
+    },
+    {
+      "id": "harbour-hotel",
+      "tenant": "harbour",
+      "user": "nina.osei",
+      "question": "What is the nightly hotel limit, and who has to approve an overnight stay?",
+      "expect": "answer",
+      "traps": [
+        "tenant-isolation"
+      ],
+      "labels": [
+        {
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "page": 2
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": 0,
+          "score": 0.905
+        },
+        {
+          "rank": 2,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.681
+        },
+        {
+          "rank": 3,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.628
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.436
+        },
+        {
+          "rank": 5,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.42
+        },
+        {
+          "rank": 6,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.386
+        },
+        {
+          "rank": 7,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.368
+        },
+        {
+          "rank": 8,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.339
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.319
+        },
+        {
+          "rank": 10,
+          "path": "/Policies/Staff Rota Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.309
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.496
+    },
+    {
+      "id": "harbour-purchase-approval",
+      "tenant": "harbour",
+      "user": "fatima.ali",
+      "question": "Who can approve a £15,000 purchase order?",
+      "expect": "answer",
+      "traps": [
+        "tenant-isolation"
+      ],
+      "labels": [
+        {
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": 0,
+          "score": 0.743
+        },
+        {
+          "rank": 2,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.62
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.577
+        },
+        {
+          "rank": 4,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.566
+        },
+        {
+          "rank": 5,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.468
+        },
+        {
+          "rank": 6,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.401
+        },
+        {
+          "rank": 7,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.368
+        },
+        {
+          "rank": 8,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.364
+        },
+        {
+          "rank": 9,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.296
+        },
+        {
+          "rank": 10,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.296
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.683
+    },
+    {
+      "id": "harbour-asks-kestrel",
+      "tenant": "harbour",
+      "user": "nina.osei",
+      "question": "How much does Kestrel Checkout Pro cost a month on KC-PRO-12?",
+      "expect": "abstain",
+      "traps": [
+        "tenant-isolation"
+      ],
+      "labels": [],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.149
+        },
+        {
+          "rank": 2,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.13
+        },
+        {
+          "rank": 3,
+          "path": "/Finance/Delegated Financial Authority 2026.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.104
+        },
+        {
+          "rank": 4,
+          "path": "/Operations/Procurement Process.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.104
+        },
+        {
+          "rank": 5,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "3",
+          "label": null,
+          "score": 0.101
+        },
+        {
+          "rank": 6,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.101
+        },
+        {
+          "rank": 7,
+          "path": "/Operations/Procurement Process.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.099
+        },
+        {
+          "rank": 8,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.093
+        },
+        {
+          "rank": 9,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.091
+        },
+        {
+          "rank": 10,
+          "path": "/Policies/Travel and Expenses Policy.pdf",
+          "pages": "2-3",
+          "label": null,
+          "score": 0.088
+        }
+      ],
+      "scores": null,
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.358
+    },
+    {
+      "id": "disabled-user",
+      "tenant": "kestrel",
+      "user": "peter.hall",
+      "question": "What are the headcount assumptions in the FY2026 budget?",
+      "expect": "abstain",
+      "traps": [],
+      "labels": [],
+      "rewritten": [],
+      "ranked": [],
+      "scores": null,
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 0.48
+    },
+    {
+      "id": "leave-london",
+      "tenant": "kestrel",
+      "user": "ella.brooks",
+      "question": "How many days of annual leave do London staff get, and how many can be carried over?",
+      "expect": "answer",
+      "traps": [],
+      "labels": [
+        {
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "page": 1
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "1",
+          "label": 0,
+          "score": 0.878
+        },
+        {
+          "rank": 2,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.706
+        },
+        {
+          "rank": 3,
+          "path": "/Company/Kestrel Pay Employee Handbook 2026.docx",
+          "pages": null,
+          "label": null,
+          "score": 0.689
+        },
+        {
+          "rank": 4,
+          "path": "/Company/2026 Holiday Calendar.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.533
+        },
+        {
+          "rank": 5,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.507
+        },
+        {
+          "rank": 6,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.484
+        },
+        {
+          "rank": 7,
+          "path": "/Company/2026 Holiday Calendar.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.478
+        },
+        {
+          "rank": 8,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "1",
+          "label": null,
+          "score": 0.443
+        },
+        {
+          "rank": 9,
+          "path": "/Company/2026 Holiday Calendar.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.375
+        },
+        {
+          "rank": 10,
+          "path": "/Company/2026 Holiday Calendar.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.361
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.004
+    },
+    {
+      "id": "deploy-freeze",
+      "tenant": "kestrel",
+      "user": "kofi.mensah",
+      "question": "When is the winter deploy freeze, and who approves changes during it?",
+      "expect": "answer",
+      "traps": [],
+      "labels": [
+        {
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "page": null
+        }
+      ],
+      "rewritten": [],
+      "ranked": [
+        {
+          "rank": 1,
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "pages": null,
+          "label": 0,
+          "score": 0.914
+        },
+        {
+          "rank": 2,
+          "path": "/Company/2026 Holiday Calendar.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.379
+        },
+        {
+          "rank": 3,
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.292
+        },
+        {
+          "rank": 4,
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.273
+        },
+        {
+          "rank": 5,
+          "path": "/HR/Policies/Leave Policy.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.255
+        },
+        {
+          "rank": 6,
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.252
+        },
+        {
+          "rank": 7,
+          "path": "/Company/2026 Holiday Calendar.pdf",
+          "pages": "2",
+          "label": null,
+          "score": 0.243
+        },
+        {
+          "rank": 8,
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.216
+        },
+        {
+          "rank": 9,
+          "path": "/Engineering/Runbooks/on-call-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.2
+        },
+        {
+          "rank": 10,
+          "path": "/Engineering/Runbooks/deploy-runbook.md",
+          "pages": null,
+          "label": null,
+          "score": 0.2
+        }
+      ],
+      "scores": {
+        "recallAt10": 1,
+        "reciprocalRank": 1,
+        "ndcgAt10": 1
+      },
+      "leaks": [],
+      "crossTenant": [],
+      "answer": null,
+      "error": null,
+      "seconds": 6.518
+    }
+  ]
+}
