@@ -1,6 +1,7 @@
-// Runs one step's tests in a fresh Vitest, so learn-slots resolves AC_ACTIVE_STEP and AC_SLOT_ROOT anew.
-// Usage: tsx scripts/ex/vitest-run.ts --root <repo> --tests <dir> --report <file> [--quiet]
 import type { TestProjectInlineConfiguration } from "vitest/config";
+// Runs one step's tests in a fresh Vitest, so learn-slots resolves AC_ACTIVE_STEP and AC_SLOT_ROOT anew.
+// Usage: tsx scripts/ex/vitest-run.ts --root <repo> --tests <dir> --report <file> [--quiet] [--progress]
+import type { Reporter, TestCase } from "vitest/node";
 
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -9,6 +10,7 @@ import { loadConfigFromFile } from "vite";
 import { startVitest } from "vitest/node";
 
 import { isTestFile, isWorkflowTestFile } from "./catalog";
+import { PROGRESS_PREFIX } from "./progress";
 
 const { values } = parseArgs({
   options: {
@@ -16,9 +18,10 @@ const { values } = parseArgs({
     tests: { type: "string" },
     report: { type: "string" },
     quiet: { type: "boolean", default: false },
+    progress: { type: "boolean", default: false },
   },
 });
-const { root, tests, report, quiet } = values;
+const { root, tests, report, quiet, progress } = values;
 if (!root || !tests || !report) throw new Error("--root, --tests and --report are required");
 
 const file = join(root, "vitest.config.ts");
@@ -52,6 +55,25 @@ if (names.some(isWorkflowTestFile)) {
   stepProjects.push({ ...workflows, test: { ...workflows.test, include: [`${dir}/${WORKFLOW_TESTS}`] } });
 }
 
+/** One line on stdout per event: the tests a file holds once collected, then each test as it ends. */
+const emit = (event: unknown) => process.stdout.write(`${PROGRESS_PREFIX}${JSON.stringify(event)}\n`);
+const name = (test: TestCase) => ({ file: test.module.moduleId, name: test.fullName });
+const progressReporter: Reporter = {
+  onTestModuleCollected(module) {
+    emit({ collected: [...module.children.allTests()].map(name) });
+  },
+  onTestCaseResult(test) {
+    const result = test.result();
+    const error = result.state === "failed" ? result.errors[0] : undefined;
+    emit({
+      ...name(test),
+      state: result.state,
+      duration_ms: test.diagnostic()?.duration ?? 0,
+      message: error ? `${error.name ?? "Error"}: ${error.message}` : null,
+    });
+  },
+};
+
 const vitest = await startVitest(
   "test",
   [],
@@ -60,7 +82,7 @@ const vitest = await startVitest(
     config: false,
     run: true,
     watch: false,
-    reporters: quiet ? ["json"] : ["default", "json"],
+    reporters: [...(quiet ? [] : ["default"]), "json", ...(progress ? [progressReporter] : [])],
     outputFile: { json: report },
   },
   { test: { projects: stepProjects } },

@@ -132,6 +132,7 @@ describe("list", () => {
               problem_dir: "exercises/00.tour/01.problem.run",
               solution_dir: "exercises/00.tour/01.solution.run",
               status: "not_started",
+              passed: false,
             },
           ],
         },
@@ -472,8 +473,66 @@ test("is a string", () => {
     expect(await status()).toBe("active");
     await ex(["solution", "_smoke.1"]);
     expect(await ex(["test", "_smoke.1"])).toMatchObject({ target: "playground", passed: true });
+    // Still active, and passed: `status` says the first, `passed` the second.
+    expect((await ex(["list", "--all"])).sections[1].steps[0]).toMatchObject({ status: "active", passed: true });
     await ex(["start", "00.1"]);
     expect(await status()).toBe("passed");
+  });
+
+  it("with --progress, reports the tests each file holds, then each test as it ends, as JSON lines on stderr", async () => {
+    const { root, write } = setup();
+    write(
+      `${PROBLEM}/greeting.test.ts`,
+      `import { describe, expect, test } from "vitest";
+import { formatGreeting } from "#learn/_sample/greeting";
+
+describe("greeting", () => {
+  test("greets by name", () => {
+    expect(formatGreeting("x")).toBe("hello x");
+  });
+});
+
+test("is a string", () => {
+  expect(typeof "x").toBe("string");
+});
+`,
+    );
+    let out = "";
+    let err = "";
+    const io = { out: (text: string) => (out += `${text}\n`), err: (text: string) => (err += `${text}\n`) };
+    const argv = ["test", "_smoke.1", "--target", "problem", "--progress", "--json"];
+    expect(await main(argv, { root, io, slotSwitch: new FakeSwitch(root) })).toBe(1);
+    const final = JSON.parse(out);
+    const events = err
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const file = `${PROBLEM}/greeting.test.ts`;
+    expect(events[0]).toEqual({
+      event: "collected",
+      nodeids: [`${file} > greeting > greets by name`, `${file} > is a string`],
+    });
+    const tests: Streamed[] = events.slice(1).map((event) => event.test);
+    expect(events.slice(1).every((event) => event.event === "test")).toBe(true);
+    // Each streamed test is named as the final report names it, with the same outcome and message.
+    type Streamed = { nodeid: string; outcome: string; message: string | null; duration_s: number };
+    const strip = ({ duration_s: _, ...test }: Streamed) => test;
+    expect(tests.map(strip).sort((a, b) => (a.nodeid < b.nodeid ? -1 : 1))).toEqual(final.tests.map(strip));
+    expect(tests.find((test) => test.outcome === "failed")).toMatchObject({ message: "Error: not written: x" });
+
+    const text = await (async () => {
+      let printed = "";
+      const plain = { out: (line: string) => (printed += `${line}\n`), err: () => {} };
+      await main(["test", "_smoke.1", "--target", "problem", "--progress"], {
+        root,
+        io: plain,
+        slotSwitch: new FakeSwitch(root),
+      });
+      return printed;
+    })();
+    expect(text).toMatch(
+      /^running _smoke\.1's tests\.\.\.\n(✗ greets by name\n✓ is a string|✓ is a string\n✗ greets by name)\n/,
+    );
   });
 
   it("runs *.workflow.test.ts in the workflows project, with a Workflow test root of its own", async () => {

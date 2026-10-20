@@ -15,6 +15,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Setup and teardown create and drop whole databases; on a busy laptop that outlasts the 10 s default.
+    hookTimeout: 30_000,
     setupFiles: ["./src/test/setup.ts"],
     globalSetup: ["./src/db/test/global-setup.ts"],
     css: false,
@@ -36,6 +38,7 @@ export default defineConfig({
           name: "workflows",
           include: ["src/workflows/**/*.test.ts"],
           environment: "node",
+          hookTimeout: 30_000,
           globalSetup: ["./src/db/test/global-setup.ts"],
         },
       },
