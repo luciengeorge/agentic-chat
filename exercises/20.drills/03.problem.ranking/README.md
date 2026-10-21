@@ -30,7 +30,7 @@ Sign in as `leo.martin@kestrelpay.example` (password `dev-password`), ask the qu
 - Cohere's own dashboard, if you have the account, or a scratch script that calls the app's reranker (`rerankerFromEnv()` in `src/lib/retrieval.server.ts`) on two short texts.
 - Section 08 built the reranker and `retrieve`; its READMEs say what each stage hands the next.
 
-🦉 "No errors" is a clue, not an alibi. When a part of the system costs less and runs faster, ask whether it's running at all, and if it isn't, where its error went.
+🦉 "No errors" is a clue, not an alibi. When a part of the system costs less and runs faster, ask whether it's running at all.
 
 ## Done when
 

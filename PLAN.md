@@ -302,7 +302,7 @@ Slots are independent, so another order is possible later if wanted.
 | 17 | Safety | 4 | Authorisation as the acting user; the poisoned document; plan-then-execute with an action allowlist; guardrails at the server boundary | Red-team runner |
 | 18 | Evals | 5 | Golden set; recall@k, MRR and NDCG; claim decomposition; judge calibration; agent task evals in CI, compared with autoevals | Eval dashboard |
 | 19 | Observability | 4 | OpenTelemetry GenAI spans; metrics and dashboards; cost per request; conversation log fan-out | Grafana |
-| 20 | Debugging drills | 5 | Find the fault: stale ACLs, embedding version mismatch, rerank failing open, a poison message, the 2am schedule | Symptom dashboard |
+| 20 | Debugging drills | 5 | Five hidden faults, each found from its symptom | Symptom dashboard |
 | 21 | Air-gapped | 3 | Local models, including a local reranker; egress blocked on the network; vendored dependencies and images | Egress monitor |
 | 22 | Ship it | 4 | The app and workflows to Vercel; ParadeDB in the cloud, secrets and migrations; hooks and streams tested on a Vercel preview; CI/CD | |
 

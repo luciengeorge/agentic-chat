@@ -13,7 +13,7 @@ slots:
 ## Why it works
 
 - **One table, one function.** Every cost in the app goes through `costOf`: the request metric, the span, `pnpm eval`'s totals, this lab. When gpt-6-luna's price changes, one line changes and every report agrees.
-- **Cached tokens are a part of the input, not more of it.** The provider reports 10,000 input tokens with 4,000 of them cached; it bills 6,000 fresh and 4,000 at a tenth. Pricing all 10,000 fresh and then the 4,000 again gives $0.00154 instead of $0.00114: 35% too much on every call of that shape.
+- **Cached tokens are a part of the input, not more of it.** The provider reports 10,000 input, 4,000 of them cached, and 1,000 output; it bills 6,000 fresh, 4,000 at a tenth and the 1,000 output. Pricing all 10,000 fresh and then the 4,000 again gives $0.00154 instead of $0.00114: 35% too much on every call of that shape.
 - **Unpriced is not free.** A missing price is a fact about the table, so it's reported, never hidden in a 0.
 - **The ledger finds its own request.** `ledger.run` ties the ledger to one chain of async work. The AI SDK fires its telemetry callback deep inside `streamText` or `rerank`, from code that knows nothing of requests, and `getStore()` there still returns the ledger of the request that started the call. Two requests interleaving each see their own; a module variable would hand Grace's rewrite to Ella's turn.
 - **In place, so failures still count.** `observeRequest` keeps a reference to the ledger and reads it when the request ends, thrown or not. A request that spent $0.001 and then failed reports $0.001.

@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { DEV_SECRETS } from "@/lib/auth-env";
+import { REQUIRED_IN_PROD } from "@/lib/env-check";
 
 const ROOT = join(import.meta.dirname, "../..");
 const SERVER = join(ROOT, ".output/server/index.mjs");
@@ -24,6 +25,11 @@ async function freePort() {
   await new Promise((done) => server.close(done));
   return port;
 }
+
+/** Everything the boot check asks for, with placeholder values; each test overrides what it's about. */
+const PLACEHOLDERS = Object.fromEntries(
+  Object.keys(REQUIRED_IN_PROD).map((name) => [name, "placeholder-value-long-enough-for-any-check"]),
+);
 
 // A server that wrongly starts is killed after the timeout, on a port of its own.
 async function bootAndExit(env: Record<string, string>) {
@@ -54,28 +60,32 @@ describe("the production build", () => {
     rmSync(dataDir, { recursive: true, force: true });
   });
 
-  it("refuses to start with no environment at all", async () => {
+  it("refuses to start with no environment at all, naming what's missing", async () => {
     const { status, output } = await bootAndExit({});
     expect(status).not.toBe(0);
-    expect(output).toContain("BETTER_AUTH_SECRET must be set to a real secret");
+    expect(output).toContain("The server can't start in prod without these");
+    expect(output).toContain("  CRON_SECRET: ");
+    expect(output).toContain("  BETTER_AUTH_SECRET: ");
   }, 30_000);
 
   it("refuses the dev secrets without AC_ENV", async () => {
-    const { status, output } = await bootAndExit({ ...DEV_SECRETS });
+    const { status, output } = await bootAndExit({ ...PLACEHOLDERS, ...DEV_SECRETS });
     expect(status).not.toBe(0);
     expect(output).toContain("BETTER_AUTH_SECRET must be set to a real secret");
   }, 30_000);
 
-  it("runs as prod with real secrets and no AC_ENV, so the dev-only routes answer 404", async () => {
+  it("runs as prod with real secrets and no AC_ENV, so the dev-only routes answer 404 and cron wants its secret", async () => {
     const port = await freePort();
     const server = spawn(process.execPath, [SERVER], {
       cwd: ROOT,
       env: {
         ...base,
+        ...PLACEHOLDERS,
         PORT: String(port),
         BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
         TOAST_SECRET: randomBytes(32).toString("hex"),
         DATABASE_URL: "postgres://ac:ac@127.0.0.1:5432/ac",
+        DATABASE_ADMIN_URL: "postgres://ac:ac@127.0.0.1:5432/ac",
         BETTER_AUTH_URL: `http://localhost:${port}`,
       },
     });
@@ -91,6 +101,9 @@ describe("the production build", () => {
         signal: AbortSignal.timeout(10_000),
       });
       expect(response.status, output).toBe(404);
+      // The cron routes are in the build, and refuse a caller without the secret.
+      const cron = await fetch(`http://localhost:${port}/api/cron/relay`, { signal: AbortSignal.timeout(10_000) });
+      expect(cron.status, output).toBe(401);
     } finally {
       server.kill("SIGKILL");
     }

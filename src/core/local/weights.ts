@@ -24,7 +24,8 @@ export interface WeightManifest {
  * The reranker's weights: BAAI's bge-reranker-base (an XLM-RoBERTa cross-encoder, 278M parameters, one output
  * logit) as Xenova converted it to ONNX. The int8 file (`model_quantized.onnx`, 279 MB) is a quarter of the fp32
  * one. The tokenizer's `tokenizer.json` holds the whole vocabulary, so the sentencepiece model isn't needed.
- * The big files' hashes are Hugging Face's LFS ids, which are sha256s of the content.
+ * The big files' hashes are Hugging Face's LFS ids. LFS (Git Large File Storage) keeps a big file outside the git
+ * repo and names it by an id, which is the sha256 of its content, so the hub's id is the hash to check.
  */
 export const RERANKER_WEIGHTS: WeightManifest = {
   repo: "Xenova/bge-reranker-base",

@@ -263,14 +263,22 @@ describe("ex drill", () => {
     expect(existsSync(join(root, JOURNAL))).toBe(false);
   });
 
-  it("refuses while the active step slots the code the fault is in, and allows another step", async () => {
+  it("refuses while the active step slots the code the fault is in, without naming it, and allows another step", async () => {
     const { root, ex } = setup();
     mkdirSync(join(root, ".ex"));
     writeFileSync(join(root, ".ex/state.json"), JSON.stringify({ active_step: "01.1", passed: [] }));
     const refused = await ex(["drill", "demo"], { ok: false });
-    expect(refused.error).toContain("the active step 01.1 slots code this drill plants its fault in");
+    expect(refused.error).toBe(
+      "a step in your playground slots code this drill changes; run `pnpm ex stop`, then plant",
+    );
+    expect(JSON.stringify(refused), "naming the step would narrow down where the fault is").not.toContain("01.1");
     writeFileSync(join(root, ".ex/state.json"), JSON.stringify({ active_step: "01.2", passed: [] }));
     await ex(["drill", "demo"]);
+    writeFileSync(join(root, ".ex/state.json"), JSON.stringify({ active_step: "01.1", passed: [] }));
+    const checked = await ex(["drill", "check"], { ok: false });
+    expect(checked.warnings).toEqual([
+      "a step in your playground slots code this drill uses, so the app runs your playground, not the code the drill changed",
+    ]);
   });
 
   it("refuses when the stack isn't in the state the drill plants into, before changing anything", async () => {

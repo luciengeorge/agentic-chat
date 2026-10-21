@@ -254,6 +254,17 @@ describe.skipIf(!postgresAvailable)("the conversation log", () => {
       ).toMatchObject({ exported: 1 });
       expect(lines()).toHaveLength(1);
     });
+
+    it("writes each line once when two drains run at once: the second waits for the first's lock", async () => {
+      await logRow(await storedTurn("Meals?"));
+      const { sink, lines } = memorySink({ delayMs: 300 });
+      const results = await Promise.all([exportConversationLog(t.db, sink), exportConversationLog(t.db, sink)]);
+      expect(
+        lines().map((l) => l.question.text),
+        "both drains read the row and wrote its line: lock the rows you select (FOR UPDATE), so the second waits",
+      ).toEqual(["Meals?"]);
+      expect(results.map((r) => r.exported).sort()).toEqual([0, 1]);
+    });
   });
 
   describe("Ella Brooks's Brightwell turn, end to end", () => {

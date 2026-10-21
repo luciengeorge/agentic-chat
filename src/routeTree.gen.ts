@@ -49,6 +49,10 @@ import { Route as ApiAutomationsIndexRouteImport } from './routes/api/automation
 import { Route as ApiAutomationsAutomationIdRouteImport } from './routes/api/automations/$automationId'
 import { Route as ApiChatIndexRouteImport } from './routes/api/chat/index'
 import { Route as ApiChatRouterRouteImport } from './routes/api/chat/router'
+import { Route as ApiCronAgentQueueRouteImport } from './routes/api/cron/agent-queue'
+import { Route as ApiCronRelayRouteImport } from './routes/api/cron/relay'
+import { Route as ApiCronSchedulerRouteImport } from './routes/api/cron/scheduler'
+import { Route as ApiCronSyncRouteImport } from './routes/api/cron/sync'
 import { Route as ApiIngestOcrRouteImport } from './routes/api/ingest/ocr'
 import { Route as ApiIngestRasteriseRouteImport } from './routes/api/ingest/rasterise'
 import { Route as ApiMemoryIndexRouteImport } from './routes/api/memory/index'
@@ -269,6 +273,26 @@ const ApiChatRouterRoute = ApiChatRouterRouteImport.update({
   path: '/api/chat/router',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronAgentQueueRoute = ApiCronAgentQueueRouteImport.update({
+  id: '/api/cron/agent-queue',
+  path: '/api/cron/agent-queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronRelayRoute = ApiCronRelayRouteImport.update({
+  id: '/api/cron/relay',
+  path: '/api/cron/relay',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronSchedulerRoute = ApiCronSchedulerRouteImport.update({
+  id: '/api/cron/scheduler',
+  path: '/api/cron/scheduler',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronSyncRoute = ApiCronSyncRouteImport.update({
+  id: '/api/cron/sync',
+  path: '/api/cron/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIngestOcrRoute = ApiIngestOcrRouteImport.update({
   id: '/api/ingest/ocr',
   path: '/api/ingest/ocr',
@@ -401,6 +425,10 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
   '/api/chat/router': typeof ApiChatRouterRoute
+  '/api/cron/agent-queue': typeof ApiCronAgentQueueRoute
+  '/api/cron/relay': typeof ApiCronRelayRoute
+  '/api/cron/scheduler': typeof ApiCronSchedulerRoute
+  '/api/cron/sync': typeof ApiCronSyncRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
@@ -459,6 +487,10 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
   '/api/chat/router': typeof ApiChatRouterRoute
+  '/api/cron/agent-queue': typeof ApiCronAgentQueueRoute
+  '/api/cron/relay': typeof ApiCronRelayRoute
+  '/api/cron/scheduler': typeof ApiCronSchedulerRoute
+  '/api/cron/sync': typeof ApiCronSyncRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
@@ -520,6 +552,10 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
   '/api/chat/router': typeof ApiChatRouterRoute
+  '/api/cron/agent-queue': typeof ApiCronAgentQueueRoute
+  '/api/cron/relay': typeof ApiCronRelayRoute
+  '/api/cron/scheduler': typeof ApiCronSchedulerRoute
+  '/api/cron/sync': typeof ApiCronSyncRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
@@ -582,6 +618,10 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/automations/$automationId'
     | '/api/chat/router'
+    | '/api/cron/agent-queue'
+    | '/api/cron/relay'
+    | '/api/cron/scheduler'
+    | '/api/cron/sync'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
@@ -640,6 +680,10 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/automations/$automationId'
     | '/api/chat/router'
+    | '/api/cron/agent-queue'
+    | '/api/cron/relay'
+    | '/api/cron/scheduler'
+    | '/api/cron/sync'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
@@ -700,6 +744,10 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/automations/$automationId'
     | '/api/chat/router'
+    | '/api/cron/agent-queue'
+    | '/api/cron/relay'
+    | '/api/cron/scheduler'
+    | '/api/cron/sync'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
@@ -757,6 +805,10 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutomationsAutomationIdRoute: typeof ApiAutomationsAutomationIdRouteWithChildren
   ApiChatRouterRoute: typeof ApiChatRouterRoute
+  ApiCronAgentQueueRoute: typeof ApiCronAgentQueueRoute
+  ApiCronRelayRoute: typeof ApiCronRelayRoute
+  ApiCronSchedulerRoute: typeof ApiCronSchedulerRoute
+  ApiCronSyncRoute: typeof ApiCronSyncRoute
   ApiIngestOcrRoute: typeof ApiIngestOcrRoute
   ApiIngestRasteriseRoute: typeof ApiIngestRasteriseRoute
   ApiMemoryNoteIdRoute: typeof ApiMemoryNoteIdRoute
@@ -1058,6 +1110,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/agent-queue': {
+      id: '/api/cron/agent-queue'
+      path: '/api/cron/agent-queue'
+      fullPath: '/api/cron/agent-queue'
+      preLoaderRoute: typeof ApiCronAgentQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/relay': {
+      id: '/api/cron/relay'
+      path: '/api/cron/relay'
+      fullPath: '/api/cron/relay'
+      preLoaderRoute: typeof ApiCronRelayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/scheduler': {
+      id: '/api/cron/scheduler'
+      path: '/api/cron/scheduler'
+      fullPath: '/api/cron/scheduler'
+      preLoaderRoute: typeof ApiCronSchedulerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/sync': {
+      id: '/api/cron/sync'
+      path: '/api/cron/sync'
+      fullPath: '/api/cron/sync'
+      preLoaderRoute: typeof ApiCronSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ingest/ocr': {
       id: '/api/ingest/ocr'
       path: '/api/ingest/ocr'
@@ -1269,6 +1349,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutomationsAutomationIdRoute: ApiAutomationsAutomationIdRouteWithChildren,
   ApiChatRouterRoute: ApiChatRouterRoute,
+  ApiCronAgentQueueRoute: ApiCronAgentQueueRoute,
+  ApiCronRelayRoute: ApiCronRelayRoute,
+  ApiCronSchedulerRoute: ApiCronSchedulerRoute,
+  ApiCronSyncRoute: ApiCronSyncRoute,
   ApiIngestOcrRoute: ApiIngestOcrRoute,
   ApiIngestRasteriseRoute: ApiIngestRasteriseRoute,
   ApiMemoryNoteIdRoute: ApiMemoryNoteIdRoute,

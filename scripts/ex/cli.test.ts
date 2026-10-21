@@ -616,6 +616,32 @@ test("runs in node, with its own workflow root", () => {
   });
 });
 
+describe("while a drill is planted", () => {
+  const plant = (write: (rel: string, text: string) => void, path: (rel: string) => string) => {
+    mkdirSync(path(".ex"), { recursive: true });
+    write(".ex/drill.json", `${JSON.stringify({ active: "c2VhbGVk", passed: [] })}\n`);
+  };
+
+  it("test and gate refuse: the tests near the faulted file would fail and name it", async () => {
+    const { ex, write, path } = setup();
+    plant(write, path);
+    const refusal = {
+      error: "a drill is planted; the test suite would name its file",
+      detail: "Run `pnpm ex drill check` or `pnpm ex drill reset`",
+    };
+    expect(await ex(["test", "_smoke.1", "--target", "solution"], { ok: false })).toEqual(refusal);
+    expect(await ex(["gate"], { ok: false })).toEqual(refusal);
+  });
+
+  it("test runs as before once no drill is planted, or the journal says none is", SPAWNS_VITEST, async () => {
+    const { ex, write, path } = setup();
+    expect((await ex(["test", "_smoke.1", "--target", "solution"])).passed).toBe(true);
+    mkdirSync(path(".ex"), { recursive: true });
+    write(".ex/drill.json", `${JSON.stringify({ active: null, passed: ["leaver"] })}\n`);
+    expect((await ex(["test", "_smoke.1", "--target", "solution"])).passed).toBe(true);
+  });
+});
+
 describe("gate", SPAWNS_VITEST, () => {
   it("passes when the problem fails and the solution passes", async () => {
     const { ex } = setup();

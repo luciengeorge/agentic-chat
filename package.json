@@ -22,6 +22,8 @@
     "db:up": "docker compose up --wait",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "dotenv -e .env.local -- tsx src/db/migrate-main.ts",
+    "db:migrate:remote": "tsx scripts/db-migrate-remote.ts",
+    "db:rotate-passwords": "tsx scripts/db-rotate-passwords.ts",
     "db:seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
     "sync": "dotenv -e .env.local -- tsx src/db/request-sync.ts",
     "db:embed": "dotenv -e .env.local -- tsx src/db/embed-main.ts",

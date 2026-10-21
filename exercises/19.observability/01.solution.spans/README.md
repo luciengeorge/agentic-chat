@@ -11,7 +11,7 @@ slots:
 
 ## Why it works
 
-- **Active is what makes a tree.** OpenTelemetry keeps "the span running now" in a context that Node carries through every `await` and callback of a request (AsyncLocalStorage, the same machinery as step 3's ledger). `startActiveSpan` puts your span there while `fn` runs, so the AI SDK, which starts its spans deep inside `streamText`, finds it as their parent. `startSpan` alone makes an orphan, and the model call lands in a trace of its own.
+- **Active is what makes a tree.** OpenTelemetry keeps "the span running now" in a context that Node carries through every `await` and callback of a request (AsyncLocalStorage, the same machinery as step 3's ledger). `startActiveSpan` puts your span there while `fn` runs, so the AI SDK, which starts its spans deep inside `streamText`, finds it as their parent. `startSpan` alone leaves the spans started inside it with no parent, so the model call lands in a trace of its own.
 - **Spans, not log lines.** A log line is a point in time with some text. A span is an interval with a parent: the trace shows what ran inside what, in order, and what overlapped. "Where did nine seconds go?" is a look at one tree instead of a search through thousands of lines for the ones that belong together.
 - **An error span is still a result.** `inSpan` marks the span and rethrows, so the trace shows which call failed and the caller behaves exactly as it would untraced. Section 13's loop still turns the throw into an `ok: false` result for the model.
 - **The tool is unchanged.** Spreading keeps `needsApproval`, the schema and the effect, which the loop and the policy read. Tracing must never change what the app does.

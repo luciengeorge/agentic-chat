@@ -166,6 +166,21 @@ const LABS: Lab[] = [
     description:
       "The recorded chat turns priced by your code, and a link to Grafana while the observability stack runs.",
   },
+  {
+    section: "20",
+    to: "/labs/drills",
+    title: "Debugging drills",
+    description: "The planted drill's report, where each drill stands, and the tools a good debugger reaches for.",
+    devOnly: true,
+  },
+  {
+    section: "21",
+    to: "/labs/airgap",
+    title: "Air-gapped: the egress monitor",
+    description:
+      "Where each model runs, and a monitor in the dev server that lists every connection it lets out or refuses.",
+    devOnly: true,
+  },
 ];
 
 const rowClass = "flex items-center gap-4 rounded-xl border px-4 py-3 transition-colors hover:bg-muted";

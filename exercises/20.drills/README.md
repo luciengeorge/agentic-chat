@@ -20,7 +20,7 @@ Some interviews hand you a broken system and a symptom, and watch how you find t
 4. Grade it: `pnpm ex drill check` (or **Check**). It passes when the symptom is gone _and_ the fault's own test passes against your code.
 5. `pnpm ex drill reset` puts the original code and data back, your fix included, before the next drill.
 
-`git status` and `git diff` show nothing while a drill is planted; that's on purpose. The answers are in `src/core/drills/`, `scripts/ex/drill*.ts`, `.ex/` and the M5 contract's "Wave 2, lane D" block: don't read them.
+`git status` and `git diff` show nothing while a drill is planted; that's on purpose. The answers are in `src/core/drills/`, `scripts/ex/drill*.ts`, `.ex/`, `docs/m5-contract.md` and the git history of `PLAN.md`'s row 20: don't read them. While a drill is planted, `pnpm test`, `pnpm ex test` and `pnpm ex gate` refuse, since the app's own tests near the faulted file would fail and name it (`src/core/drills/catalog.test.ts` would fail too: it checks each fault still applies to clean code). Check or reset first.
 
 The check grades behaviour, so two things to know. Some faults leave bad data behind, and fixing the code alone won't clear it. And a fix that hides a failure (a catch that carries on, a fallback nobody hears about) can make the symptom go away and still fail the check: it wants errors to surface.
 

@@ -46,11 +46,11 @@ Sign in as `leo.martin@kestrelpay.example` with the password `dev-password`. Leo
 | 15  | Agents: durability        | Checkpoints and resume, idempotent side effects, the run as a Workflow, approvals that wait days, timeouts and cancellation, a replayer by hand   |
 | 16  | Agents: orchestration     | Workflows against agents, routing, read-only sub-agents that spend from their parent, schedules that fire once, fan-out with backpressure         |
 | 17  | Safety                    | Acting as the user, the poisoned document, plan then execute with an allowlist, guardrails at the server boundary                                 |
-| 18  | Evals                     | Coming. A golden set, ranking metrics, claim checks, a calibrated judge, agent evals in CI                                                        |
-| 19  | Observability             | Coming. Traces, metrics and dashboards, the cost of each request                                                                                  |
-| 20  | Debugging drills          | Coming. A broken system and a symptom, five times: find the cause                                                                                 |
-| 21  | Air-gapped                | Coming. Local models and a local reranker, with the network cut off                                                                               |
-| 22  | Ship it                   | Coming. The app and its workflows on Vercel, the database in the cloud, CI                                                                        |
+| 18  | Evals                     | A golden set, recall@k, MRR and NDCG, claims checked against their sources, a judge calibrated with Cohen's kappa, agent evals in CI              |
+| 19  | Observability             | OpenTelemetry traces and metrics, a Grafana dashboard, the cost of each request, the conversation log through the outbox                          |
+| 20  | Debugging drills          | Five faults planted in the running app, each with only the symptom a user or an alert would report: find the cause                                |
+| 21  | Air-gapped                | Local models through LM Studio, a local reranker scored with a sigmoid, the network cut off, everything vendored                                  |
+| 22  | Ship it                   | The app and its workflows on Vercel, ParadeDB on Fly, secrets and migrations, a preview checked end to end, CI and CD                             |
 
 Each section's own `README.md` defines its terms and lists its steps, and its `FINISHED.md` says what to look at once you're done.
 
@@ -83,8 +83,8 @@ Other commands: `pnpm ex list` (every step, with your progress), `pnpm ex reset 
 ## Step types
 
 - **graded**: the tests decide when you're done. Most steps are this.
-- **guided**: a walkthrough or a comparison, with no pass or fail (the tour, docling in 03.5, workflows against agents in 16.1, `WorkflowAgent` in 16.6).
-- **lab**: done when something shows in the app; the README says exactly what.
+- **guided**: a walkthrough or a comparison, with no pass or fail (the tour, docling in 03.5, workflows against agents in 16.1, `WorkflowAgent` in 16.6, agent task evals in 18.5, metrics and dashboards in 19.2, and all four steps of 22, where you deploy with your own accounts).
+- **lab**: done when something shows in the app; the README says exactly what. Section 20's drills are this type: `pnpm ex drill <id>` plants the fault, and `pnpm ex drill check` grades your fix.
 
 ## The labs
 
