@@ -156,7 +156,7 @@ export async function checkClaims(
   // 🐨 The classic mistake: matching checks to claims by their place in the reply. The model may answer out of
   //    order or skip one. Match by number; a claim it skipped is `not_found`, with no evidence.
   //
-  // 💰 `new Map(object.checks.map((c) => [c.claim, c]))`. `check?.evidence ?? null`.
+  // 💰 A `Map` keyed by the claim number finds each claim's check in one lookup.
   //
   // 🦉 Why one call. Grace's answer has four claims; the whole set has 48. Her check call sent 4,042 tokens, nearly
   //    all of it the eight sources. A call per claim would send them four times over. One call with numbered

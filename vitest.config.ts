@@ -20,7 +20,8 @@ export default defineConfig({
     // OCR, the ONNX reranker and workflow bundles are CPU-heavy: on every core at once they starve each other.
     maxWorkers: "50%",
     setupFiles: ["./src/test/setup.ts"],
-    globalSetup: ["./src/db/test/global-setup.ts"],
+    // The drill guard first: while a drill is planted, the suite refuses (scripts/ex/drill-guard.ts).
+    globalSetup: ["./scripts/ex/drill-guard.ts", "./src/db/test/global-setup.ts"],
     css: false,
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts", "vite-plugins/**/*.test.ts", "servers/**/*.test.ts"],
     exclude: ["node_modules", ".output", ".tanstack", "dist", ".vercel"],
@@ -42,7 +43,7 @@ export default defineConfig({
           environment: "node",
           hookTimeout: 30_000,
           maxWorkers: "50%",
-          globalSetup: ["./src/db/test/global-setup.ts"],
+          globalSetup: ["./scripts/ex/drill-guard.ts", "./src/db/test/global-setup.ts"],
         },
       },
     ],

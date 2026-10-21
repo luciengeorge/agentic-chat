@@ -4,8 +4,9 @@
 //
 // 🦉 Already written in this file: the kind and partition, `conversationLine` (a turn as its line), the `Sink`
 //    and `fileSink`, `loadTurn` (a row's turn, read back from the messages; exported here so the step's file
-//    compiles before `exportConversationLog` uses it) and `conversationLogExporter` (the background drains, built
-//    on your `exportConversationLog`). The relay's `deliver` (`src/server/plugins/relay-deliver.ts`) calls your
+//    compiles before `exportConversationLog` uses it), the select that reads a drain's batch (new in this file,
+//    inside `exportConversationLog`) and `conversationLogExporter` (the background drains, built on your
+//    `exportConversationLog`). The relay's `deliver` (`src/server/plugins/relay-deliver.ts`) calls your
 //    `deliverConversationLog` for every log row. You write `enqueueConversationLog`, `exportConversationLog` and
 //    `deliverConversationLog`.
 
@@ -25,14 +26,14 @@
  * the row then, as a run's first step claims its own. The payload carries ids only; the exporter reads the messages
  * when it writes the line.
  */
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { appendFile } from "node:fs/promises";
 
 import type { OutboxRow } from "#learn/queue/outbox";
 import type { Db } from "@/db/create";
 import type { Tx } from "@/db/tenant";
 
-import { conversations, messages } from "@/db/schema";
+import { conversations, messages, outbox } from "@/db/schema";
 
 export const CONVERSATION_LOG_KIND = "conversation_log";
 
@@ -59,7 +60,7 @@ export async function enqueueConversationLog(
   //    a row born published is one the relay never sees, and a line written here puts the sink inside the chat's
   //    transaction.
   //
-  // 💰 `tx.insert(outbox).values({...}).returning({ id: outbox.id })`, with `outbox` from `@/db/schema`.
+  // 💰 `tx.insert(outbox).values({...}).returning({ id: outbox.id })`.
   //
   // 🦉 Why the outbox, and not a write to the sink after the reply commits. Two systems can't commit together.
   //    Write the line first and the reply may roll back: a line for a reply nobody got. Commit the reply first
@@ -179,36 +180,47 @@ export interface ExportOptions {
  */
 export async function exportConversationLog(db: Db, sink: Sink, options: ExportOptions = {}): Promise<ExportResult> {
   const { batchSize = 50, exporter = "conversation-log", maxAttempts = 10 } = options;
-  // 🐨 In one `db.transaction`: select up to `batchSize` log rows that no one has claimed and that haven't failed,
-  //    oldest first (by `created_at`, then `id`), and lock them `FOR UPDATE`.
-  // 🐨 For each, `loadTurn`. A turn that's gone (the conversation was deleted) can never be written: mark its row
-  //    failed now (`failed_at`, `last_error` "the reply is gone"), count it in `gone`, and skip it. The others
-  //    become lines: `JSON.stringify(conversationLine(turn))`.
-  // 🐨 No lines: return. Otherwise write them all with one `sink.write`. If it throws, count an attempt on each of
-  //    those rows, keep the error as `last_error` (`${error.name}: ${error.message}`), mark a row failed once its
-  //    attempts reach `maxAttempts`, and return the error with nothing exported. If it works, claim the rows
-  //    (`claimed_by` the exporter's name, `claimed_at` now, one more attempt, `last_error` cleared).
-  // 🐨 The classic mistakes. `SKIP LOCKED`, as section 05's queue uses it: the relay kicks the exporter while its
-  //    own transaction still holds the row it's handing over, so a drain that skips locked rows misses exactly the
-  //    row it was kicked for. Wait for the lock instead. And claiming before writing: a crash after the claim and
-  //    before the write loses the line forever.
-  //
-  // 💰 `tx.select({...}).from(outbox).where(and(...)).orderBy(asc(...), asc(...)).limit(n).for("update")`, with
-  //    `isNull`, `asc`, `inArray` from `drizzle-orm` (add them to the import) and `outbox` from `@/db/schema`.
-  //    `` sql`${outbox.attempts} + 1` `` adds one in the update.
-  //
-  // 🦉 Why claim after the sink, so a line may repeat. One of the two must come first. Claim first and a crash
-  //    loses a line nobody can find again; write first and a crash writes it twice. A duplicate carries its reply
-  //    id and costs a reader one check. A lost line costs a question nobody can answer. At least once, deduped by
-  //    id, is the usual answer.
-  // 🦉 Why one sink call per batch. A warehouse or a bucket charges by the request and is slow per call; fifty
-  //    lines in one write cost about what one does.
-  //
-  // 🚨 The tests check the lines and their order, the claim, a failing sink, running out of attempts, a gone
-  //    reply, the batch size, a row the relay still holds, and Ella's turn end to end.
-  throw new Error(
-    `exportConversationLog(${typeof db}, ${typeof sink.write}, batch ${batchSize}, ${exporter}, ${maxAttempts} attempts) isn't written yet`,
-  );
+  return db.transaction(async (tx) => {
+    // 🦉 New in this file: the select below. It reads this drain's batch, in its transaction: up to `batchSize`
+    //    log rows that no one has claimed and that haven't failed, oldest first (by `created_at`, then `id`).
+    const rows = await tx
+      .select({ id: outbox.id, tenantId: outbox.tenantId, payload: outbox.payload, attempts: outbox.attempts })
+      .from(outbox)
+      .where(and(eq(outbox.kind, CONVERSATION_LOG_KIND), isNull(outbox.claimedBy), isNull(outbox.failedAt)))
+      .orderBy(asc(outbox.createdAt), asc(outbox.id))
+      .limit(batchSize);
+    // 🐨 Lock the rows it reads: end the select above with a lock. Which lock is the first classic mistake below.
+    // 🐨 For each row, `loadTurn`. A turn that's gone (the conversation was deleted) can never be written: mark its
+    //    row failed now (`failed_at`, `last_error` "the reply is gone"), count it in `gone`, and skip it. The
+    //    others become lines: `JSON.stringify(conversationLine(turn))`.
+    // 🐨 No lines: return. Otherwise write them all with one `sink.write`. If it throws, count an attempt on each
+    //    of those rows, keep the error as `last_error` (`${error.name}: ${error.message}`), mark a row failed once
+    //    its attempts reach `maxAttempts`, and return the error with nothing exported. If it works, claim the rows
+    //    (`claimed_by` the exporter's name, `claimed_at` now, one more attempt, `last_error` cleared).
+    // 🐨 The classic mistakes. No lock at all: two drains at once both read the row, and its line goes out twice.
+    //    `SKIP LOCKED`, as section 05's queue uses it: the relay kicks the exporter while its own transaction still
+    //    holds the row it's handing over, so a drain that skips locked rows misses exactly the row it was kicked
+    //    for. Wait for the lock instead. And claiming before writing: a crash after the claim and before the write
+    //    loses the line forever.
+    //
+    // 💰 Drizzle ends a select with a row lock through `.for(strength, options?)`: the strengths are `"update"`,
+    //    `"no key update"`, `"share"` and `"key share"`, the options `{ skipLocked: true }` or `{ noWait: true }`.
+    //    `inArray` and `sql` from `drizzle-orm` (add them to the import); `` sql`${outbox.attempts} + 1` `` adds
+    //    one in an update.
+    //
+    // 🦉 Why claim after the sink, so a line may repeat. One of the two must come first. Claim first and a crash
+    //    loses a line nobody can find again; write first and a crash writes it twice. A duplicate carries its
+    //    reply id and costs a reader one check. A lost line costs a question nobody can answer. At least once,
+    //    deduped by id, is the usual answer.
+    // 🦉 Why one sink call per batch. A warehouse or a bucket charges by the request and is slow per call; fifty
+    //    lines in one write cost about what one does.
+    //
+    // 🚨 The tests check the lines and their order, the claim, a failing sink, running out of attempts, a gone
+    //    reply, the batch size, a row the relay still holds, two drains at once, and Ella's turn end to end.
+    throw new Error(
+      `exportConversationLog(${rows.length} rows read, ${typeof sink.write}, ${exporter}, ${maxAttempts} attempts) isn't written yet`,
+    );
+  });
 }
 
 export interface Exporter {

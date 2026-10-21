@@ -88,7 +88,8 @@ export function chanceAgreement<C extends string>(m: Confusion<C>): number {
 export function cohensKappa<C extends string>(m: Confusion<C>): number {
   // 🐨 (observed − chance) / (1 − chance), from your two functions.
   // 🐨 When chance is 1 (both raters put every item in the same one category) there's nothing above luck to
-  //    measure, and the division is 0 / 0. Return 1 if they agree on everything, else 0. Never NaN.
+  //    measure, and the division is 0 / 0. Return 1, never NaN: chance is 1 only when both raters put every item
+  //    in that one category, so they agree on all of it.
   // 🐨 The classic mistake: stopping at observed − chance. That's how far above luck the raters are; dividing by
   //    1 − chance says how much of the possible distance above luck that is, so 1 always means perfect.
   //

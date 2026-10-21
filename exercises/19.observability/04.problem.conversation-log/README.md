@@ -19,7 +19,7 @@ slots:
 
 ## Do this
 
-🐨 In `playground/conversation-log.ts`, write `enqueueConversationLog` (the row, in the reply's transaction), `exportConversationLog` (one drain) and `deliverConversationLog` (the relay's hand-over). The line itself (`conversationLine`), reading a turn back (`loadTurn`) and the background exporter are written.
+🐨 In `playground/conversation-log.ts`, write `enqueueConversationLog` (the row, in the reply's transaction), `exportConversationLog` (one drain) and `deliverConversationLog` (the relay's hand-over). The line itself (`conversationLine`), reading a turn back (`loadTurn`), the select that reads a drain's batch and the background exporter are written: you add the batch's lock, then write, claim and count failures.
 
 With `CONVERSATION_LOG_FILE` set and this step unfinished, chat replies fail to save: the log row and the reply commit together or not at all. That's the promise working.
 

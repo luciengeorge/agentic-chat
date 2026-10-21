@@ -11,6 +11,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { StructuredModel } from "#learn/model/types";
 
 import { describeKappa } from "#learn/eval/kappa";
+import { modelProvider } from "#learn/local/config";
 import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
 import { costOf } from "#learn/observability/prices";
@@ -52,6 +53,7 @@ async function main() {
   if (record) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("--record needs OPENAI_API_KEY (.env.local)");
+    if (modelProvider() === "local") throw new Error("--record records gpt-6-luna: unset MODEL_PROVIDER=local");
     modelFor = (kind, id) => {
       const into = (calls[kind][id] ??= []);
       return aiSdkChatModel(createOpenAI({ apiKey, fetch: recordingFetch(into) })(CHAT_MODEL));

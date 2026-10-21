@@ -120,7 +120,7 @@ fake-workspace, `pnpm ex` and the `db:` scripts. A variable already set in your 
 `AC_ENV` says which environment a process runs in: `dev`, `test` or `prod`. Leave it out and you get prod, except
 under the dev server (dev) and Vitest (test). So a production build that forgets it still runs as prod. The secrets in
 `.env.example` are public on purpose: in prod the app refuses to start on them, or on any secret shorter than 32
-characters. No model keys are needed yet.
+characters. The model keys are only needed to talk to the models; the tests use fakes.
 
 ## Scripts
 
@@ -138,7 +138,27 @@ pnpm db:up            # ParadeDB in Docker Compose
 pnpm db:migrate       # apply the migrations in src/db/migrations
 pnpm db:seed          # add the tenants and people from fixtures/world.yaml (safe to repeat)
 pnpm db:generate      # write a migration from changes to src/db/schema
+pnpm db:migrate:remote    # migrate a cloud database (both URLs from the shell, never .env.local)
+pnpm db:rotate-passwords  # one new password for every person on a cloud copy (ACCOUNT_PASSWORD)
 ```
+
+## Deploying
+
+Section 22 (`exercises/22.ship/`) is the walkthrough; this is the summary. Nothing in the repo deploys by itself.
+
+| Part                   | Where                                                              | How                                                                                      |
+| ---------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| The app, its workflows | Vercel, functions in `lhr1`                                        | `vercel link`, then the Git integration or `vercel deploy`; Workflow uses Vercel's world |
+| ParadeDB               | a Fly Machine with a 10 GB volume, `paradedb/paradedb:0.26.1-pg18` | `pnpm db:migrate:remote` as the owner, then the data copy and new passwords (22.2)       |
+| fake-workspace         | not deployed                                                       | the sync cron route skips while `FAKE_WORKSPACE_URL` is unset                            |
+
+**Environment.** [`.env.example`](./.env.example) marks each variable a deploy needs with `[prod: required]` and says where it comes from. A production server refuses to start until all eight are set (`DATABASE_URL`, `DATABASE_ADMIN_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `TOAST_SECRET`, `CRON_SECRET`, `OPENAI_API_KEY`, `COHERE_API_KEY`), names every one that's missing, and refuses the public dev values of the three secrets (`src/lib/env-check.ts`, `src/lib/auth-env.ts`).
+
+**Background work.** In `pnpm dev`, server plugins run the outbox relay, the scheduler, the periodic sync and the agent queue. On Vercel nothing stays running, so `vercel.json` schedules a cron route for each (`/api/cron/relay`, `scheduler` and `agent-queue` every minute, `sync` every five). Each does one bounded pass, and refuses any caller without `Authorization: Bearer $CRON_SECRET`. Vercel's Hobby plan allows only daily cron jobs and refuses a deploy with these schedules; per-minute needs Pro.
+
+**Checking a deploy.** `pnpm ex smoke --target <url>` runs the checks that make sense over HTTP: the security headers, the dev-only routes off, the cron routes refusing strangers, sign-in, a cited answer, and two agent runs through their approval hook. `SMOKE_PASSWORD`, `SMOKE_CRON_SECRET` and `VERCEL_AUTOMATION_BYPASS_SECRET` (in `.env.example`) adapt it to a deploy.
+
+**CI and CD.** `.github/workflows/ci.yml` runs lint, types, the tests against a ParadeDB service, the build, a boot check of the built server, and the gate. `.github/workflows/deploy.yml` runs after a green CI and does nothing until its secrets exist: with `DATABASE_ADMIN_URL` and `DATABASE_URL` it migrates production on `main`; with `VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` it also deploys (previews for pull requests, production for `main`) in place of Vercel's Git integration.
 
 ## Folder structure
 

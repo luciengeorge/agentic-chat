@@ -13,6 +13,7 @@ import { sql } from "drizzle-orm";
  */
 import type { AgentTool } from "#learn/agent/types";
 import type { Retrieve, Viewer } from "#learn/retrieve/types";
+import type { Db } from "@/db/create";
 import type { Tx } from "@/db/tenant";
 import type { RunnerLoop } from "@/lib/agent-runs";
 
@@ -20,8 +21,11 @@ import { conversationLogFile, telemetryConfig } from "#learn/observability/confi
 import {
   conversationLogExporter,
   enqueueConversationLog,
+  type ExportOptions,
+  exportConversationLog,
   type Exporter,
   fileSink,
+  type Sink,
 } from "#learn/observability/conversation-log";
 import { recordDenial } from "#learn/observability/metrics";
 import { observeRequest } from "#learn/observability/request";
@@ -113,6 +117,47 @@ function exporterFor(file: string): Exporter {
 export function processConversationLog(env: Env = process.env): Exporter | null {
   const file = conversationLogFile(env);
   return file ? exporterFor(file) : null;
+}
+
+export const LOG_PASS_BATCHES = 5;
+
+export interface LogPassResult {
+  batches: number;
+  exported: number;
+  gone: number;
+  /** The sink's error, when it failed: the pass stops there, and each row in that batch has one more attempt. */
+  error: string | null;
+}
+
+/**
+ * One bounded drain of the conversation log, run by every relay pass (the dev relay's poll and the cron route).
+ * The exporter only drains when the relay hands it a row, so a row the relay published while the sink was down
+ * would wait for the next chat. Here it goes out on the next pass: every unclaimed, unfailed log row, published or
+ * not, at most `maxBatches` batches, stopping at the first sink error. Each failure counts an attempt, so after
+ * `maxAttempts` a row is failed and left alone.
+ */
+export async function conversationLogPass(
+  db: Db,
+  sink: Sink,
+  { maxBatches = LOG_PASS_BATCHES, ...options }: ExportOptions & { maxBatches?: number } = {},
+): Promise<LogPassResult> {
+  const batchSize = options.batchSize ?? 50;
+  const result: LogPassResult = { batches: 0, exported: 0, gone: 0, error: null };
+  while (result.batches < maxBatches) {
+    result.batches += 1;
+    const batch = await exportConversationLog(db, sink, { ...options, batchSize });
+    result.exported += batch.exported;
+    result.gone += batch.gone;
+    if (batch.error) return { ...result, error: batch.error };
+    if (batch.exported + batch.gone < batchSize) break;
+  }
+  return result;
+}
+
+/** This process's log pass, on the owner's pool and the configured file, or null when the log is off. */
+export function processConversationLogPass(env: Env = process.env): (() => Promise<LogPassResult>) | null {
+  const file = conversationLogFile(env);
+  return file ? () => conversationLogPass(systemDb(), fileSink(file)) : null;
 }
 
 /**

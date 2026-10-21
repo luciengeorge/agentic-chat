@@ -222,11 +222,11 @@ export async function plantDrill(root: string, slotSwitch: SlotSwitch, deps: Dri
     );
   }
   const fault = unseal<Fault>(drill.id, drill.sealed);
-  const step = conflictingStep(root, fault);
-  if (step) {
+  // Naming the step would say which module holds the fault.
+  if (conflictingStep(root, fault)) {
     throw new ExError(
-      `the active step ${step} slots code this drill plants its fault in, so the app wouldn't run the fault`,
-      "`pnpm ex stop` leaves the step (it refuses while your playground has changes), or pick another drill",
+      "a step in your playground slots code this drill changes; run `pnpm ex stop`, then plant",
+      "`pnpm ex stop` refuses while your playground has changes; or pick another drill",
     );
   }
   git(root, ["rev-parse", "--is-inside-work-tree"]);
@@ -313,10 +313,9 @@ export async function checkDrill(root: string, deps: DrillDeps): Promise<Checked
   }
   const fault = unseal<Fault>(active.id, findDrill(deps, active.id).sealed);
   const warnings: string[] = [];
-  const step = conflictingStep(root, fault);
-  if (step)
+  if (conflictingStep(root, fault))
     warnings.push(
-      `the active step ${step} slots code this drill uses, so the app runs your playground, not the code the drill changed`,
+      "a step in your playground slots code this drill uses, so the app runs your playground, not the code the drill changed",
     );
 
   const live = deps.live(root);
@@ -457,7 +456,8 @@ export async function runDrillTest(
     const code = await new Promise<number>((resolve, reject) => {
       const child = spawn(join(root, "node_modules/.bin/vitest"), args, {
         cwd: root,
-        env: { ...childEnv, AC_ACTIVE_STEP: NO_STEP },
+        // AC_DRILL_CHECK lets this one run past the guard that refuses tests while a drill is planted.
+        env: { ...childEnv, AC_ACTIVE_STEP: NO_STEP, AC_DRILL_CHECK: "1" },
         stdio: "ignore",
       });
       child.on("error", reject);

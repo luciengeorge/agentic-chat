@@ -271,9 +271,10 @@ async function rejectUntilFinal(client: AgentClient, run: RunFollower): Promise<
 
 /**
  * 11. Approval: as tom.whitfield, one run's mail is rejected and the run then ends `succeeded` without sending;
- * another is cancelled while it waits on its approval and ends `cancelled`, without sending.
+ * another is cancelled while it waits on its approval and ends `cancelled`, without sending. With
+ * `mailbox: false` (a deploy, where no fake-workspace runs) it doesn't ask fake-workspace what was sent.
  */
-export async function checkApproval(target: SmokeTargets): Promise<string> {
+export async function checkApproval(target: SmokeTargets, { mailbox = true } = {}): Promise<string> {
   const tom = await AgentClient.signIn(target, "kestrel", "tom.whitfield");
   const runs: RunFollower[] = [];
   try {
@@ -302,12 +303,13 @@ export async function checkApproval(target: SmokeTargets): Promise<string> {
     })();
     const [rejected] = await Promise.all([rejecting, cancelling]);
 
-    for (const id of [rejectId, cancelId]) {
+    for (const id of mailbox ? [rejectId, cancelId] : []) {
       const mails = await mailsOf(target, id);
       if (mails.length) throw new Error(`run ${id} sent ${mails.length} mail(s) with its key`);
     }
     const decided = rejectRun.events.filter((e) => e.data.type === "approval_decided").length;
-    return `run ${rejectId}: ${rejected} rejection(s) (${decided} decided), succeeded, no mail; run ${cancelId}: cancelled while waiting, no mail`;
+    const mail = mailbox ? ", no mail" : "";
+    return `run ${rejectId}: ${rejected} rejection(s) (${decided} decided), succeeded${mail}; run ${cancelId}: cancelled while waiting${mail}`;
   } finally {
     for (const run of runs) run.stop();
     await tom.signOut();

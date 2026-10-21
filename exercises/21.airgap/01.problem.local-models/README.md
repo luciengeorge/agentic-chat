@@ -14,7 +14,8 @@ slots:
 - A **cross-encoder** reads the question and one chunk together, as one input, and gives back one number for how well the chunk answers it. bge-reranker-base is one (278 million parameters, 279 MB as int8: its weights rounded to 8-bit whole numbers, a quarter of the size).
 - A **logit** is that raw number: any size, either sign. On the example below they run from -10.2 to 3.7.
 - A **sigmoid** squashes one logit into (0, 1): 1 / (1 + e^-x). A **softmax** turns a row of logits into shares that add up to 1.
-- **transformers.js** runs Hugging Face models in Node, on onnxruntime (a native engine for neural networks). Its **pipeline API** wraps a model in one call; we call the tokenizer and the model ourselves instead.
+- **ONNX** is a file format for a trained model, so any runtime can load it. Xenova converted bge-reranker-base to it.
+- **transformers.js** runs Hugging Face models in Node, on onnxruntime (a native engine that runs ONNX files). Its **pipeline API** wraps a model in one call; we call the tokenizer and the model ourselves instead.
 
 ## What's already written
 

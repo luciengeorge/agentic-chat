@@ -13,11 +13,13 @@ import type { StepRun, Target, TestProgress } from "./testing";
 import { SlotError } from "../../vite-plugins/learn-slots";
 import { findStep } from "./catalog";
 import { checkDrill, defaultDrillDeps, listDrills, plantDrill, resetDrill } from "./drill";
+import { refuseWhileDrillPlanted } from "./drill-guard";
 import { ExError } from "./errors";
 import { runGate } from "./gate";
 import { listSections, nextFor } from "./list";
 import { compose, up } from "./services";
 import { runChecks, smokeChecks, smokeTargets } from "./smoke";
+import { remoteChecks, remoteTargets } from "./smoke-target";
 import { readState } from "./state";
 import { switchSlots } from "./switch";
 import { TARGETS, runStepTests } from "./testing";
@@ -276,6 +278,7 @@ const COMMANDS: Record<string, Command> = {
     args: ["step"],
     options: { target: { type: "string", default: "playground" }, progress: { type: "boolean", default: false } },
     async run({ root, json, io }, [id], values) {
+      refuseWhileDrillPlanted(root);
       const target = values.target as Target;
       if (!TARGETS.includes(target)) throw new ExError(`--target must be one of ${TARGETS.join(", ")}`);
       const step = findStep(root, id!);
@@ -332,6 +335,7 @@ const COMMANDS: Record<string, Command> = {
     usage: "gate",
     summary: "Check every graded step: its tests fail on the problem code and pass on the solution",
     async run({ root }) {
+      refuseWhileDrillPlanted(root);
       const results = await runGate(root);
       const passed = results.every((result) => result.passed);
       const lines = results.flatMap((result) => [
@@ -396,10 +400,15 @@ const COMMANDS: Record<string, Command> = {
     },
   },
   smoke: {
-    usage: "smoke",
-    summary: "Check the running stack end to end",
-    async run({ root, smoke }) {
-      const checks = await runChecks(smokeChecks(root, smoke ?? smokeTargets(root)));
+    usage: "smoke [--target <url>]",
+    summary: "Check the running stack end to end, or a deploy over HTTP with --target",
+    options: { target: { type: "string" } },
+    async run({ root, smoke }, _, { target }) {
+      const checks = await runChecks(
+        typeof target === "string"
+          ? remoteChecks(smoke ?? remoteTargets(target), { cronSecret: process.env.SMOKE_CRON_SECRET?.trim() })
+          : smokeChecks(root, smoke ?? smokeTargets(root)),
+      );
       const passed = checks.every((check) => check.passed);
       const lines = checks.map((c) => `${c.passed ? "ok  " : "FAIL"} ${c.name}${c.detail ? `  ${c.detail}` : ""}`);
       return { payload: { passed, checks }, text: lines.join("\n"), ok: passed };

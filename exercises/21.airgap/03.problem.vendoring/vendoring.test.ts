@@ -3,13 +3,51 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
 import { type BundlePart, bundleTotal, type ComposeConfig, composeImages, gb } from "#learn/local/vendor";
 import { fetchWeights, RERANKER_WEIGHTS, type WeightManifest } from "#learn/local/weights";
 
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+
+/**
+ * Watches every way a file can be moved or copied into place, sync or not: after each one, `afterMove` (when a test
+ * sets it) looks at what the target holds. The functions still do what they always do.
+ */
+const moves = vi.hoisted(() => ({ afterMove: null as null | ((how: string) => void) }));
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs")>();
+  const watched = <F extends (...args: never[]) => unknown>(how: string, fn: F) =>
+    ((...args: Parameters<F>) => {
+      const out = fn(...args);
+      moves.afterMove?.(how);
+      return out;
+    }) as unknown as F;
+  const overrides = {
+    renameSync: watched("renameSync", fs.renameSync),
+    copyFileSync: watched("copyFileSync", fs.copyFileSync),
+    cpSync: watched("cpSync", fs.cpSync),
+    linkSync: watched("linkSync", fs.linkSync),
+  };
+  return { ...fs, ...overrides, default: { ...fs, ...overrides } };
+});
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const fsp = await importOriginal<typeof import("node:fs/promises")>();
+  const watched = <F extends (...args: never[]) => Promise<unknown>>(how: string, fn: F) =>
+    (async (...args: Parameters<F>) => {
+      const out = await fn(...args);
+      moves.afterMove?.(how);
+      return out;
+    }) as unknown as F;
+  const overrides = {
+    rename: watched("rename", fsp.rename),
+    copyFile: watched("copyFile", fsp.copyFile),
+    cp: watched("cp", fsp.cp),
+    link: watched("link", fsp.link),
+  };
+  return { ...fsp, ...overrides, default: { ...fsp, ...overrides } };
+});
 
 const FILES: Record<string, Buffer> = {
   "config.json": Buffer.from('{"id2label":{"0":"LABEL_0"}}'),
@@ -113,6 +151,30 @@ describe("fetchWeights", () => {
     const message = await failed(fetchWeights(MANIFEST, dir, { fetch }));
     expect(message, "one bit differs, so the sha256 does: compare it with the manifest's").toContain(MODEL);
     expect(existsSync(at(dir, MODEL))).toBe(false);
+  });
+
+  it("checks the download before it moves it: the target never holds a bad file, even for a moment", async () => {
+    const dir = weightsDir();
+    const swapped = Buffer.from(FILES[MODEL]!);
+    swapped[7] = swapped[7]! ^ 1;
+    const bad: string[] = [];
+    moves.afterMove = (how) => {
+      const target = at(dir, MODEL);
+      if (existsSync(target) && sha256(readFileSync(target)) !== sha256(FILES[MODEL]!)) bad.push(how);
+    };
+    try {
+      for (const body of [swapped, FILES[MODEL]!.subarray(0, 1000)]) {
+        const { fetch } = hub((path, bytes) => new Response(new Uint8Array(path === MODEL ? body : bytes)));
+        expect(await failed(fetchWeights(MANIFEST, dir, { fetch }))).toContain(MODEL);
+      }
+    } finally {
+      moves.afterMove = null;
+    }
+    expect(
+      bad,
+      "the bad bytes were moved to the target, then checked: check <target>.partial first, and rename only a match. " +
+        "A crash between the rename and the check would leave them where the reranker loads",
+    ).toEqual([]);
   });
 
   it("leaves the target alone when a download is cut off halfway", async () => {

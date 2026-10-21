@@ -20,7 +20,8 @@ import { type Exporter } from "#learn/observability/conversation-log";
 import { testTelemetry } from "#learn/observability/testing";
 import { relayOnce } from "#learn/queue/outbox";
 import { createTestDatabase, postgresAvailable, type TestDatabase } from "@/db/testing";
-import { chatObserver } from "@/lib/observability.server";
+import { chatObserver, conversationLogPass } from "@/lib/observability.server";
+import { relayPass } from "@/routes/api/cron/-cron";
 import { deliver } from "@/server/plugins/relay-deliver";
 
 import { handleChat, type ChatDeps } from "./-chat";
@@ -185,6 +186,59 @@ describe.skipIf(!postgresAvailable)("observing POST /api/chat", () => {
     ]);
     expect(await exportConversationLog(t.db, fileSink(file))).toMatchObject({ exported: 2, error: null });
     expect(lines().map((l) => l.question.text)).toEqual(["Meals?", "Hotels?"]);
+  });
+
+  it("exports a row the relay published while the sink was down on the next relay pass, with nothing to kick it", async () => {
+    const broken: Sink = { write: async () => Promise.reject(new Error("bucket unreachable")) };
+    const down = conversationLogExporter(t.db, broken);
+    await (await ask(deps(chatObserver({}, null, down)), "Meals?")).text();
+    expect((await relay(down)).published).toHaveLength(1);
+    await down.idle();
+    const [stranded] = await t.sql`SELECT published_at, claimed_by, last_error FROM outbox`;
+    expect(stranded, "published by the relay, never claimed: no delivery will come for it again").toMatchObject({
+      claimed_by: null,
+      last_error: "Error: bucket unreachable",
+    });
+    expect(stranded.published_at).not.toBeNull();
+
+    // The sink is back. No chat, no kick: only the cron route's (or the dev relay's) next pass.
+    const pass = await relayPass(t.db, (row) => deliver(row, () => null), {
+      conversationLog: () => conversationLogPass(t.db, fileSink(file)),
+    });
+    expect(pass).toMatchObject({ published: 0, conversationLog: { exported: 1, error: null } });
+    expect(lines().map((l) => l.question.text)).toEqual(["Meals?"]);
+    const [row] = await t.sql`SELECT claimed_by FROM outbox`;
+    expect(row.claimed_by).toBe("conversation-log");
+  });
+
+  it("gives up on a row after its attempts, so a dead sink can't keep a pass busy forever", async () => {
+    const observe = chatObserver({}, null, { kick: () => {}, idle: async () => {} });
+    await (await ask(deps(observe), "Meals?")).text();
+    const broken: Sink = { write: async () => Promise.reject(new Error("bucket unreachable")) };
+    for (let i = 0; i < 3; i++) {
+      expect(await conversationLogPass(t.db, broken, { maxAttempts: 3 })).toMatchObject({ error: /unreachable/ });
+    }
+    const [row] = await t.sql`SELECT attempts, failed_at FROM outbox`;
+    expect(row.attempts).toBe(3);
+    expect(row.failed_at, "out of attempts: failed, and left alone").not.toBeNull();
+    expect(await conversationLogPass(t.db, broken, { maxAttempts: 3 })).toEqual({
+      batches: 1,
+      exported: 0,
+      gone: 0,
+      error: null,
+    });
+  });
+
+  it("drains at most its batches a pass, and the next pass carries on", async () => {
+    const observe = chatObserver({}, null, { kick: () => {}, idle: async () => {} });
+    for (const q of ["Meals?", "Hotels?", "Trains?"]) await (await ask(deps(observe), q)).text();
+    const sink = fileSink(file);
+    expect(await conversationLogPass(t.db, sink, { batchSize: 1, maxBatches: 2 })).toMatchObject({
+      batches: 2,
+      exported: 2,
+    });
+    expect(await conversationLogPass(t.db, sink, { batchSize: 1, maxBatches: 2 })).toMatchObject({ exported: 1 });
+    expect(lines().map((l) => l.question.text)).toEqual(["Meals?", "Hotels?", "Trains?"]);
   });
 
   it("with telemetry on, gives the turn a span with its cost, and counts a rate-limited request", async () => {
