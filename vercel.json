@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/cron/relay", "schedule": "* * * * *" },
+    { "path": "/api/cron/scheduler", "schedule": "* * * * *" },
+    { "path": "/api/cron/agent-queue", "schedule": "* * * * *" },
+    { "path": "/api/cron/sync", "schedule": "*/5 * * * *" }
+  ]
+}

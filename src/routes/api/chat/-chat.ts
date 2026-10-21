@@ -5,6 +5,7 @@ import type { ChatModel, ReasoningEffort } from "#learn/model/types";
 import type { Retrieve, Viewer } from "#learn/retrieve/types";
 import type { ChatUIMessage, SourceRef, Verdict } from "@/components/chat/types";
 import type { Db } from "@/db/create";
+import type { ChatObserver } from "@/lib/observability.server";
 
 import { readChatTurn } from "#learn/boundary/chat-request";
 import { takeToken, type Bucket } from "#learn/boundary/rate-limit";
@@ -33,6 +34,8 @@ export interface ChatDeps {
   now?: () => Date;
   heartbeatMs?: number;
   maxOutputTokens?: number;
+  /** Spans, metrics and the conversation log (section 19). Unset when they're off: the turn runs as before. */
+  observe?: ChatObserver;
 }
 
 function pgCode(error: unknown): string | undefined {
@@ -65,6 +68,7 @@ export async function handleChat(request: Request, viewer: Viewer, deps: ChatDep
     throw error;
   }
   if (!limit.allowed) {
+    deps.observe?.rateLimited();
     return json(
       429,
       { error: "rate_limited", retryAfterSeconds: limit.retryAfterSeconds },
@@ -83,15 +87,27 @@ export async function handleChat(request: Request, viewer: Viewer, deps: ChatDep
     turn.kind === "replay"
       ? replay(turn.reply)
       : createUIMessageStream<ChatUIMessage>({
-          execute: ({ writer }) =>
-            respond(writer, {
-              deps,
-              question,
-              history: turn.history,
-              signal: abort.signal,
-              save: (reply) => inTenant((tx) => saveReply(tx, scope, conversationId, { ...reply, userKey })),
-              scope,
-            }),
+          execute: async ({ writer }) => {
+            const run = () =>
+              respond(writer, {
+                deps,
+                question,
+                history: turn.history,
+                signal: abort.signal,
+                save: async (reply) => {
+                  const saved = await inTenant(async (tx) => {
+                    const ok = await saveReply(tx, scope, conversationId, { ...reply, userKey });
+                    if (ok)
+                      await deps.observe?.saved(tx, { tenantId: scope.tenantId, conversationId, replyId: reply.id });
+                    return ok;
+                  });
+                  if (saved) deps.observe?.committed();
+                  return saved;
+                },
+                scope,
+              });
+            await (deps.observe ? deps.observe.turn(conversationId, run) : run());
+          },
           onError: (error) => {
             logger.error("chat turn failed", { error, conversationId });
             return "Something went wrong while answering. Try again.";
@@ -125,7 +141,7 @@ async function respond(
     save: (reply: { id: string; content: ReplyContent }) => Promise<boolean>;
     scope: Viewer;
   },
-) {
+): Promise<"complete" | "aborted"> {
   const id = randomUUID();
   writer.write({ type: "start", messageId: id });
 
@@ -172,7 +188,7 @@ async function respond(
       }),
     });
     logger.info("chat turn aborted", { chars: text.length });
-    return;
+    return "aborted";
   }
 
   const content = replyContent({
@@ -185,6 +201,7 @@ async function respond(
   });
   await save({ id, content });
   writer.write({ type: "finish", finishReason: "stop" });
+  return "complete";
 }
 
 function replyContent({

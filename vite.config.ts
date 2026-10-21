@@ -7,6 +7,7 @@ import { defineConfig, type Plugin } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import { workflow } from "workflow/vite";
 
+import { LOCAL_ONLY_PACKAGES, localBuild, NO_LOCAL_MODELS } from "./src/core/local/build.ts";
 import { setWorkflowEsbuildPlugins } from "./src/workflows/esbuild-plugins.ts";
 import { learnSlots, learnSlotsEsbuild } from "./vite-plugins/learn-slots.ts";
 
@@ -23,6 +24,20 @@ const nodeOnly: Plugin = {
   }),
 };
 
+// Section 21: a hosted build swaps transformers.js for a module that explains, so onnxruntime-node stays out of
+// `.output`; `pnpm build:local` loads it from node_modules instead, traced by nitro.config.ts.
+const localModels: Plugin = {
+  name: "agentic-chat:local-models",
+  apply: "build",
+  enforce: "pre",
+  configEnvironment: (_name, config) =>
+    config.consumer !== "client" && localBuild() ? { resolve: { external: LOCAL_ONLY_PACKAGES } } : {},
+  resolveId(id) {
+    if (localBuild() || this.environment.config.consumer === "client") return null;
+    return LOCAL_ONLY_PACKAGES.includes(id) ? NO_LOCAL_MODELS : null;
+  },
+};
+
 const config = defineConfig({
   plugins: [
     workflow(),
@@ -36,6 +51,7 @@ const config = defineConfig({
       compiler: true,
     }),
     nodeOnly,
+    localModels,
   ],
   clearScreen: false,
 });

@@ -10,6 +10,9 @@ import { WorkflowAgent } from "@ai-sdk/workflow";
 import { jsonSchema, stepCountIs, type ToolSet, tool } from "ai";
 import { getWorkflowMetadata, getWritable } from "workflow";
 
+import { lmStudio } from "#learn/local/lmstudio";
+import { localChatConfig, modelProvider } from "#learn/local/provider";
+
 import { runToolStep, setupStep } from "./workflow-agent-steps";
 
 const MODEL_OVERRIDE = Symbol.for("agentic-chat.workflow-agent-model");
@@ -22,7 +25,8 @@ export function setWorkflowAgentModel(model: LanguageModelV4 | null): void {
 /**
  * The model, as WorkflowAgent carries it between the workflow and its steps: by name only. The provider's own
  * models serialise their resolved headers, which puts the API key into Workflow's event log on disk, so this one
- * builds the real model inside the step, from the environment.
+ * builds the real model inside the step, from the environment. With `MODEL_PROVIDER=local` that's LM Studio's chat
+ * model, whatever id it carries, and no OpenAI client is built (section 21).
  */
 export class RuntimeModel implements LanguageModelV4 {
   readonly specificationVersion = "v4";
@@ -41,7 +45,12 @@ export class RuntimeModel implements LanguageModelV4 {
 
   private model(): LanguageModelV4 {
     const override = (globalThis as Record<symbol, unknown>)[MODEL_OVERRIDE] as LanguageModelV4 | undefined;
-    return override ?? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(this.modelId);
+    if (override) return override;
+    if (modelProvider() === "local") {
+      const config = localChatConfig();
+      return lmStudio(config).chatModel(config.chatModel);
+    }
+    return createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(this.modelId);
   }
 
   doGenerate(options: LanguageModelV4CallOptions) {

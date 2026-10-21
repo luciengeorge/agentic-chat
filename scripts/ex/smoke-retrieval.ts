@@ -12,7 +12,7 @@ import { uuidArray } from "#learn/search/sql";
 import { closeDb, dbFor } from "@/db/pool";
 import { type Tx, withTenantOn } from "@/db/tenant";
 import { loadWorld } from "@/fixtures/world";
-import { embedderFromEnv, rerankerFromEnv, rewriterFromEnv } from "@/lib/retrieval.server";
+import { retrievalDepsFromEnv } from "@/lib/retrieval.server";
 
 import type { SmokeTargets } from "./smoke";
 
@@ -53,7 +53,7 @@ export async function checkRetrieval(target: SmokeTargets, given?: RetrievalDeps
       if (!row) throw new Error(`no ${site} organization; run \`pnpm db:seed\``);
       tenants.set(site, row.id);
     }
-    const deps = given ?? { embedder: embedderFromEnv(), reranker: rerankerFromEnv(), rewriter: rewriterFromEnv() };
+    const deps = given ?? retrievalDepsFromEnv();
     const withTenant = <T>(tenantId: string, fn: (tx: Tx) => Promise<T>) => withTenantOn(db, tenantId, fn);
     const retrieve = createRetrieve({ withTenant, ...deps });
     const ask = (site: string, username: string, query: string): Promise<Retrieval> =>

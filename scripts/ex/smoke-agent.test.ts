@@ -204,6 +204,16 @@ describe("checkApproval", () => {
     expect([...runs.values()].map((r) => r.status).sort()).toEqual(["cancelled", "succeeded"]);
   });
 
+  it("asks fake-workspace nothing with mailbox: false, as on a deploy", async () => {
+    const { fetch } = stack(() => ({}));
+    const asked: string[] = [];
+    const watched: Fetch = (url, init) => (asked.push(url), fetch(url, init));
+    expect(await checkApproval(targets(watched), { mailbox: false })).toMatch(
+      /^run \S+: 1 rejection\(s\) \(1 decided\), succeeded; run \S+: cancelled while waiting$/,
+    );
+    expect(asked.filter((url) => url.startsWith(WORKSPACE))).toEqual([]);
+  });
+
   it("rejects a run that asks again, and fails one that ends badly after the rejection", async () => {
     expect(await checkApproval(targets(stack(() => ({ asksAgain: true })).fetch))).toMatch(/2 rejection\(s\)/);
     await expect(checkApproval(targets(stack(() => ({ afterReject: "failed" })).fetch))).rejects.toThrow(

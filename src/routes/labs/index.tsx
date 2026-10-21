@@ -152,6 +152,35 @@ const LABS: Lab[] = [
       "Fifteen attacks on the agent's writes, on a model that obeys them, through your plan, policy and guardrails.",
     devOnly: true,
   },
+  {
+    section: "18",
+    to: "/labs/evals",
+    title: "Evals: the dashboard",
+    description:
+      "Every golden-set run rescored by your metrics, the judge and claims against hand labels, the agent tasks.",
+  },
+  {
+    section: "19",
+    to: "/labs/observability",
+    title: "Observability",
+    description:
+      "The recorded chat turns priced by your code, and a link to Grafana while the observability stack runs.",
+  },
+  {
+    section: "20",
+    to: "/labs/drills",
+    title: "Debugging drills",
+    description: "The planted drill's report, where each drill stands, and the tools a good debugger reaches for.",
+    devOnly: true,
+  },
+  {
+    section: "21",
+    to: "/labs/airgap",
+    title: "Air-gapped: the egress monitor",
+    description:
+      "Where each model runs, and a monitor in the dev server that lists every connection it lets out or refuses.",
+    devOnly: true,
+  },
 ];
 
 const rowClass = "flex items-center gap-4 rounded-xl border px-4 py-3 transition-colors hover:bg-muted";
