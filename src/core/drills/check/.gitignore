@@ -1,0 +1,3 @@
+# `pnpm ex drill check` writes a fault's test here while it runs, and deletes it after.
+*
+!.gitignore

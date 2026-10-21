@@ -23,5 +23,5 @@ describe("spikeWorkflow", () => {
     const events: SpikeEvent[] = [];
     for await (const event of run.getReadable<SpikeEvent>()) events.push(event);
     expect(events.map((event) => event.text)).toEqual(["resumed", "hi", "done"]);
-  });
+  }, 60_000);
 });

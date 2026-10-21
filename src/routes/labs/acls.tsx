@@ -24,11 +24,11 @@ async function devOnly() {
 }
 
 async function labDeps() {
-  const { embedderFromEnv, rerankerFromEnv, rewriterFromEnv } = await import("@/lib/retrieval.server");
+  const { retrievalDepsFromEnv } = await import("@/lib/retrieval.server");
   const { withTenant } = await import("@/db/tenant");
   const { systemDb } = await import("@/db/pool");
   return {
-    retrieve: { withTenant, embedder: embedderFromEnv(), reranker: rerankerFromEnv(), rewriter: rewriterFromEnv() },
+    retrieve: { withTenant, ...retrievalDepsFromEnv() },
     owner: systemDb(),
   };
 }

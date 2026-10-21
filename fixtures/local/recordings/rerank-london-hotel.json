@@ -1,0 +1,40 @@
+{
+  "recorded": "2026-10-21",
+  "how": "loadCrossEncoder on the vendored weights (int8, one pair per pass), then transformers.js pipeline(\"text-classification\") on the same weights, for pairs ({ text, text_pair }) and for the query and passage joined into one text. The chunks are the dev database's, as ac_local holds them; the question is the golden set's expenses-london-hotel.",
+  "query": "What is the nightly limit for a hotel in London?",
+  "model": "Xenova/bge-reranker-base@q8",
+  "passages": [
+    {
+      "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+      "page": 2,
+      "logit": 3.145991325378418,
+      "pipeline": 1,
+      "pipelineJoined": 1,
+      "text": "## 4. Limits\n\nThe limits apply per person. Outside the UK, costs in another currency are converted at the rate on the day you incurred them.\n\n| Item | Limit |\n| --- | --- |\n| Meals and subsistence | £40 a day |\n| Hotel, London | £200 a night |\n| Hotel, rest of the UK | £130 a night |\n| Hotel, Lisbon or Dublin | €180 a night |\n| Hotel, other EU cities | €160 a night |\n| Client entertainment | £75 a head, approved in advance |\n| Team meals (manager-led) | £30 a head, up to once a quarter |\n| Home office equipment | £300 once, in your first 3 months |"
+    },
+    {
+      "path": "/HR/Policies/Travel and Expenses Policy.pdf",
+      "page": 2,
+      "logit": 3.6938135623931885,
+      "pipeline": 1,
+      "pipelineJoined": 1,
+      "text": "## 4. Limits\n\nThe limits apply per person. Outside the UK, costs in another currency are converted at the rate on the day you incurred them.\n\n| Item | Limit |\n| --- | --- |\n| Meals and subsistence | £35 a day |\n| Hotel, London | £180 a night |\n| Hotel, rest of the UK | £120 a night |\n| Hotel, Lisbon or Dublin | €170 a night |\n| Hotel, other EU cities | €150 a night |\n| Client entertainment | £60 a head, approved in advance |\n| Team meals (manager-led) | £30 a head, up to once a quarter |\n| Home office equipment | £300 once, in your first 3 months |"
+    },
+    {
+      "path": "/HR/Policies/Travel and Expenses Policy v2.pdf",
+      "page": 4,
+      "logit": 1.6887390613555908,
+      "pipeline": 1,
+      "pipelineJoined": 1,
+      "text": "## 11. What changed from version 1.0\n\n| Area | Version 1.0 (from 1 January 2025) | Version 2.0 (from 1 July 2026) |\n| --- | --- | --- |\n| Meals and subsistence | £35 a day | £40 a day |\n| Hotel, London | £180 a night | £200 a night |\n| Hotel, rest of the UK | £120 a night | £130 a night |\n| Hotel, Lisbon or Dublin | €170 a night | €180 a night |\n| Hotel, other EU cities | €150 a night | €160 a night |\n| Client entertainment | £60 a head | £75 a head |\n| Receipts | Itemised receipt for expenses over £50 | Itemised receipt for every expense above £25 |\n| Claim deadline | 60 days | 30 days |\n| Alcohol with meals | Allowed within the daily limit | Not reimbursed, except client entertainment |\n| First class rail | Not reimbursed | Allowed for journeys over 3 hours, booked 7 days ahead, at most £30 above standard |\n\nThe hotel and meals limits were raised after the Finance review of 2025 travel spend found that 41% of London hotel bookings went over the £180 limit with approval. The receipt threshold was lowered to meet the audit recommendation of February 2026."
+    },
+    {
+      "path": "/Company/Brightwell Payroll Partner Onboarding Pack v1.3.docx",
+      "page": null,
+      "logit": -10.181325912475586,
+      "pipeline": 1,
+      "pipelineJoined": 1,
+      "text": "## 4. Contacts\n\n| Role | Brightwell | Kestrel Pay |\n| --- | --- | --- |\n| Partnership owner | Owen Pryce, Partner Manager, owen.pryce@brightwellpayroll.example | Julia Novak, Payments Product Manager |\n| Integration | Shona Whitlock, Integration Lead | Ravi Shah, Sales Engineer |\n| Security and data protection | Dev Malhotra, Head of Information Security | Lena Fischer, Security Engineer |\n| Customer support | partners@brightwellpayroll.example | Hannah Kim, Customer Success Manager |\n| Commercial | Owen Pryce | Jake Morrison, Head of Sales |"
+    }
+  ]
+}

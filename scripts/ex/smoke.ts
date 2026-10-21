@@ -33,6 +33,8 @@ export type SmokeTargets = {
   readyTimeoutMs?: number;
   /** fake-workspace's `/_control` token, for counting sends. Defaults to the dev one. */
   workspaceControlToken?: string;
+  /** Every person's password, in place of world.yaml's: a deploy whose passwords were changed (section 22.2). */
+  password?: string;
   fetch: Fetch;
 };
 
@@ -146,12 +148,12 @@ export async function checkParadeDb(databaseUrl: string): Promise<string> {
 
 type Viewer = { userId?: string; tenant?: { slug?: string } };
 
-/** Signs in through better-auth's own endpoint, as the login page does. */
+/** Signs in through better-auth's own endpoint, as the login page does, with the target's password if it has one. */
 export async function signIn(target: SmokeTargets, email: string, password: string): Promise<Response> {
   return send(target.fetch, { url: target.appUrl, start: "pnpm dev" }, "/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json", origin: target.appUrl },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password: target.password ?? password }),
   });
 }
 

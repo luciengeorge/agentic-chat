@@ -21,14 +21,18 @@ import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversationId'
 import { Route as LabsIndexRouteImport } from './routes/labs/index'
 import { Route as LabsAclsRouteImport } from './routes/labs/acls'
+import { Route as LabsAirgapRouteImport } from './routes/labs/airgap'
 import { Route as LabsBackgroundRouteImport } from './routes/labs/background'
 import { Route as LabsBoundaryRouteImport } from './routes/labs/boundary'
 import { Route as LabsChunkingRouteImport } from './routes/labs/chunking'
 import { Route as LabsConnectorsRouteImport } from './routes/labs/connectors'
+import { Route as LabsDrillsRouteImport } from './routes/labs/drills'
 import { Route as LabsDurabilityRouteImport } from './routes/labs/durability'
+import { Route as LabsEvalsRouteImport } from './routes/labs/evals'
 import { Route as LabsLexicalRouteImport } from './routes/labs/lexical'
 import { Route as LabsLoopRouteImport } from './routes/labs/loop'
 import { Route as LabsModelsRouteImport } from './routes/labs/models'
+import { Route as LabsObservabilityRouteImport } from './routes/labs/observability'
 import { Route as LabsOrchestrationRouteImport } from './routes/labs/orchestration'
 import { Route as LabsParsingRouteImport } from './routes/labs/parsing'
 import { Route as LabsPromptRouteImport } from './routes/labs/prompt'
@@ -45,6 +49,10 @@ import { Route as ApiAutomationsIndexRouteImport } from './routes/api/automation
 import { Route as ApiAutomationsAutomationIdRouteImport } from './routes/api/automations/$automationId'
 import { Route as ApiChatIndexRouteImport } from './routes/api/chat/index'
 import { Route as ApiChatRouterRouteImport } from './routes/api/chat/router'
+import { Route as ApiCronAgentQueueRouteImport } from './routes/api/cron/agent-queue'
+import { Route as ApiCronRelayRouteImport } from './routes/api/cron/relay'
+import { Route as ApiCronSchedulerRouteImport } from './routes/api/cron/scheduler'
+import { Route as ApiCronSyncRouteImport } from './routes/api/cron/sync'
 import { Route as ApiIngestOcrRouteImport } from './routes/api/ingest/ocr'
 import { Route as ApiIngestRasteriseRouteImport } from './routes/api/ingest/rasterise'
 import { Route as ApiMemoryIndexRouteImport } from './routes/api/memory/index'
@@ -124,6 +132,11 @@ const LabsAclsRoute = LabsAclsRouteImport.update({
   path: '/labs/acls',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LabsAirgapRoute = LabsAirgapRouteImport.update({
+  id: '/labs/airgap',
+  path: '/labs/airgap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabsBackgroundRoute = LabsBackgroundRouteImport.update({
   id: '/labs/background',
   path: '/labs/background',
@@ -144,9 +157,19 @@ const LabsConnectorsRoute = LabsConnectorsRouteImport.update({
   path: '/labs/connectors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LabsDrillsRoute = LabsDrillsRouteImport.update({
+  id: '/labs/drills',
+  path: '/labs/drills',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabsDurabilityRoute = LabsDurabilityRouteImport.update({
   id: '/labs/durability',
   path: '/labs/durability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsEvalsRoute = LabsEvalsRouteImport.update({
+  id: '/labs/evals',
+  path: '/labs/evals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabsLexicalRoute = LabsLexicalRouteImport.update({
@@ -162,6 +185,11 @@ const LabsLoopRoute = LabsLoopRouteImport.update({
 const LabsModelsRoute = LabsModelsRouteImport.update({
   id: '/labs/models',
   path: '/labs/models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsObservabilityRoute = LabsObservabilityRouteImport.update({
+  id: '/labs/observability',
+  path: '/labs/observability',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabsOrchestrationRoute = LabsOrchestrationRouteImport.update({
@@ -243,6 +271,26 @@ const ApiChatIndexRoute = ApiChatIndexRouteImport.update({
 const ApiChatRouterRoute = ApiChatRouterRouteImport.update({
   id: '/api/chat/router',
   path: '/api/chat/router',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronAgentQueueRoute = ApiCronAgentQueueRouteImport.update({
+  id: '/api/cron/agent-queue',
+  path: '/api/cron/agent-queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronRelayRoute = ApiCronRelayRouteImport.update({
+  id: '/api/cron/relay',
+  path: '/api/cron/relay',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronSchedulerRoute = ApiCronSchedulerRouteImport.update({
+  id: '/api/cron/scheduler',
+  path: '/api/cron/scheduler',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronSyncRoute = ApiCronSyncRouteImport.update({
+  id: '/api/cron/sync',
+  path: '/api/cron/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIngestOcrRoute = ApiIngestOcrRouteImport.update({
@@ -350,14 +398,18 @@ export interface FileRoutesByFullPath {
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/labs/acls': typeof LabsAclsRoute
+  '/labs/airgap': typeof LabsAirgapRoute
   '/labs/background': typeof LabsBackgroundRoute
   '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/drills': typeof LabsDrillsRoute
   '/labs/durability': typeof LabsDurabilityRoute
+  '/labs/evals': typeof LabsEvalsRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
+  '/labs/observability': typeof LabsObservabilityRoute
   '/labs/orchestration': typeof LabsOrchestrationRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
@@ -373,6 +425,10 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
   '/api/chat/router': typeof ApiChatRouterRoute
+  '/api/cron/agent-queue': typeof ApiCronAgentQueueRoute
+  '/api/cron/relay': typeof ApiCronRelayRoute
+  '/api/cron/scheduler': typeof ApiCronSchedulerRoute
+  '/api/cron/sync': typeof ApiCronSyncRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
@@ -404,14 +460,18 @@ export interface FileRoutesByTo {
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/labs/acls': typeof LabsAclsRoute
+  '/labs/airgap': typeof LabsAirgapRoute
   '/labs/background': typeof LabsBackgroundRoute
   '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/drills': typeof LabsDrillsRoute
   '/labs/durability': typeof LabsDurabilityRoute
+  '/labs/evals': typeof LabsEvalsRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
+  '/labs/observability': typeof LabsObservabilityRoute
   '/labs/orchestration': typeof LabsOrchestrationRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
@@ -427,6 +487,10 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
   '/api/chat/router': typeof ApiChatRouterRoute
+  '/api/cron/agent-queue': typeof ApiCronAgentQueueRoute
+  '/api/cron/relay': typeof ApiCronRelayRoute
+  '/api/cron/scheduler': typeof ApiCronSchedulerRoute
+  '/api/cron/sync': typeof ApiCronSyncRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
@@ -461,14 +525,18 @@ export interface FileRoutesById {
   '/api/me': typeof ApiMeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/labs/acls': typeof LabsAclsRoute
+  '/labs/airgap': typeof LabsAirgapRoute
   '/labs/background': typeof LabsBackgroundRoute
   '/labs/boundary': typeof LabsBoundaryRoute
   '/labs/chunking': typeof LabsChunkingRoute
   '/labs/connectors': typeof LabsConnectorsRoute
+  '/labs/drills': typeof LabsDrillsRoute
   '/labs/durability': typeof LabsDurabilityRoute
+  '/labs/evals': typeof LabsEvalsRoute
   '/labs/lexical': typeof LabsLexicalRoute
   '/labs/loop': typeof LabsLoopRoute
   '/labs/models': typeof LabsModelsRoute
+  '/labs/observability': typeof LabsObservabilityRoute
   '/labs/orchestration': typeof LabsOrchestrationRoute
   '/labs/parsing': typeof LabsParsingRoute
   '/labs/prompt': typeof LabsPromptRoute
@@ -484,6 +552,10 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
   '/api/chat/router': typeof ApiChatRouterRoute
+  '/api/cron/agent-queue': typeof ApiCronAgentQueueRoute
+  '/api/cron/relay': typeof ApiCronRelayRoute
+  '/api/cron/scheduler': typeof ApiCronSchedulerRoute
+  '/api/cron/sync': typeof ApiCronSyncRoute
   '/api/ingest/ocr': typeof ApiIngestOcrRoute
   '/api/ingest/rasterise': typeof ApiIngestRasteriseRoute
   '/api/memory/$noteId': typeof ApiMemoryNoteIdRoute
@@ -519,14 +591,18 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/chat/$conversationId'
     | '/labs/acls'
+    | '/labs/airgap'
     | '/labs/background'
     | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
+    | '/labs/drills'
     | '/labs/durability'
+    | '/labs/evals'
     | '/labs/lexical'
     | '/labs/loop'
     | '/labs/models'
+    | '/labs/observability'
     | '/labs/orchestration'
     | '/labs/parsing'
     | '/labs/prompt'
@@ -542,6 +618,10 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/automations/$automationId'
     | '/api/chat/router'
+    | '/api/cron/agent-queue'
+    | '/api/cron/relay'
+    | '/api/cron/scheduler'
+    | '/api/cron/sync'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
@@ -573,14 +653,18 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/chat/$conversationId'
     | '/labs/acls'
+    | '/labs/airgap'
     | '/labs/background'
     | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
+    | '/labs/drills'
     | '/labs/durability'
+    | '/labs/evals'
     | '/labs/lexical'
     | '/labs/loop'
     | '/labs/models'
+    | '/labs/observability'
     | '/labs/orchestration'
     | '/labs/parsing'
     | '/labs/prompt'
@@ -596,6 +680,10 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/automations/$automationId'
     | '/api/chat/router'
+    | '/api/cron/agent-queue'
+    | '/api/cron/relay'
+    | '/api/cron/scheduler'
+    | '/api/cron/sync'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
@@ -629,14 +717,18 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/chat/$conversationId'
     | '/labs/acls'
+    | '/labs/airgap'
     | '/labs/background'
     | '/labs/boundary'
     | '/labs/chunking'
     | '/labs/connectors'
+    | '/labs/drills'
     | '/labs/durability'
+    | '/labs/evals'
     | '/labs/lexical'
     | '/labs/loop'
     | '/labs/models'
+    | '/labs/observability'
     | '/labs/orchestration'
     | '/labs/parsing'
     | '/labs/prompt'
@@ -652,6 +744,10 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/automations/$automationId'
     | '/api/chat/router'
+    | '/api/cron/agent-queue'
+    | '/api/cron/relay'
+    | '/api/cron/scheduler'
+    | '/api/cron/sync'
     | '/api/ingest/ocr'
     | '/api/ingest/rasterise'
     | '/api/memory/$noteId'
@@ -685,14 +781,18 @@ export interface RootRouteChildren {
   MeRoute: typeof MeRoute
   ApiMeRoute: typeof ApiMeRoute
   LabsAclsRoute: typeof LabsAclsRoute
+  LabsAirgapRoute: typeof LabsAirgapRoute
   LabsBackgroundRoute: typeof LabsBackgroundRoute
   LabsBoundaryRoute: typeof LabsBoundaryRoute
   LabsChunkingRoute: typeof LabsChunkingRoute
   LabsConnectorsRoute: typeof LabsConnectorsRoute
+  LabsDrillsRoute: typeof LabsDrillsRoute
   LabsDurabilityRoute: typeof LabsDurabilityRoute
+  LabsEvalsRoute: typeof LabsEvalsRoute
   LabsLexicalRoute: typeof LabsLexicalRoute
   LabsLoopRoute: typeof LabsLoopRoute
   LabsModelsRoute: typeof LabsModelsRoute
+  LabsObservabilityRoute: typeof LabsObservabilityRoute
   LabsOrchestrationRoute: typeof LabsOrchestrationRoute
   LabsParsingRoute: typeof LabsParsingRoute
   LabsPromptRoute: typeof LabsPromptRoute
@@ -705,6 +805,10 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutomationsAutomationIdRoute: typeof ApiAutomationsAutomationIdRouteWithChildren
   ApiChatRouterRoute: typeof ApiChatRouterRoute
+  ApiCronAgentQueueRoute: typeof ApiCronAgentQueueRoute
+  ApiCronRelayRoute: typeof ApiCronRelayRoute
+  ApiCronSchedulerRoute: typeof ApiCronSchedulerRoute
+  ApiCronSyncRoute: typeof ApiCronSyncRoute
   ApiIngestOcrRoute: typeof ApiIngestOcrRoute
   ApiIngestRasteriseRoute: typeof ApiIngestRasteriseRoute
   ApiMemoryNoteIdRoute: typeof ApiMemoryNoteIdRoute
@@ -810,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabsAclsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/labs/airgap': {
+      id: '/labs/airgap'
+      path: '/labs/airgap'
+      fullPath: '/labs/airgap'
+      preLoaderRoute: typeof LabsAirgapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/labs/background': {
       id: '/labs/background'
       path: '/labs/background'
@@ -838,11 +949,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabsConnectorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/labs/drills': {
+      id: '/labs/drills'
+      path: '/labs/drills'
+      fullPath: '/labs/drills'
+      preLoaderRoute: typeof LabsDrillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/labs/durability': {
       id: '/labs/durability'
       path: '/labs/durability'
       fullPath: '/labs/durability'
       preLoaderRoute: typeof LabsDurabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/evals': {
+      id: '/labs/evals'
+      path: '/labs/evals'
+      fullPath: '/labs/evals'
+      preLoaderRoute: typeof LabsEvalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/labs/lexical': {
@@ -864,6 +989,13 @@ declare module '@tanstack/react-router' {
       path: '/labs/models'
       fullPath: '/labs/models'
       preLoaderRoute: typeof LabsModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/observability': {
+      id: '/labs/observability'
+      path: '/labs/observability'
+      fullPath: '/labs/observability'
+      preLoaderRoute: typeof LabsObservabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/labs/orchestration': {
@@ -976,6 +1108,34 @@ declare module '@tanstack/react-router' {
       path: '/api/chat/router'
       fullPath: '/api/chat/router'
       preLoaderRoute: typeof ApiChatRouterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/agent-queue': {
+      id: '/api/cron/agent-queue'
+      path: '/api/cron/agent-queue'
+      fullPath: '/api/cron/agent-queue'
+      preLoaderRoute: typeof ApiCronAgentQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/relay': {
+      id: '/api/cron/relay'
+      path: '/api/cron/relay'
+      fullPath: '/api/cron/relay'
+      preLoaderRoute: typeof ApiCronRelayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/scheduler': {
+      id: '/api/cron/scheduler'
+      path: '/api/cron/scheduler'
+      fullPath: '/api/cron/scheduler'
+      preLoaderRoute: typeof ApiCronSchedulerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/sync': {
+      id: '/api/cron/sync'
+      path: '/api/cron/sync'
+      fullPath: '/api/cron/sync'
+      preLoaderRoute: typeof ApiCronSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ingest/ocr': {
@@ -1165,14 +1325,18 @@ const rootRouteChildren: RootRouteChildren = {
   MeRoute: MeRoute,
   ApiMeRoute: ApiMeRoute,
   LabsAclsRoute: LabsAclsRoute,
+  LabsAirgapRoute: LabsAirgapRoute,
   LabsBackgroundRoute: LabsBackgroundRoute,
   LabsBoundaryRoute: LabsBoundaryRoute,
   LabsChunkingRoute: LabsChunkingRoute,
   LabsConnectorsRoute: LabsConnectorsRoute,
+  LabsDrillsRoute: LabsDrillsRoute,
   LabsDurabilityRoute: LabsDurabilityRoute,
+  LabsEvalsRoute: LabsEvalsRoute,
   LabsLexicalRoute: LabsLexicalRoute,
   LabsLoopRoute: LabsLoopRoute,
   LabsModelsRoute: LabsModelsRoute,
+  LabsObservabilityRoute: LabsObservabilityRoute,
   LabsOrchestrationRoute: LabsOrchestrationRoute,
   LabsParsingRoute: LabsParsingRoute,
   LabsPromptRoute: LabsPromptRoute,
@@ -1185,6 +1349,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutomationsAutomationIdRoute: ApiAutomationsAutomationIdRouteWithChildren,
   ApiChatRouterRoute: ApiChatRouterRoute,
+  ApiCronAgentQueueRoute: ApiCronAgentQueueRoute,
+  ApiCronRelayRoute: ApiCronRelayRoute,
+  ApiCronSchedulerRoute: ApiCronSchedulerRoute,
+  ApiCronSyncRoute: ApiCronSyncRoute,
   ApiIngestOcrRoute: ApiIngestOcrRoute,
   ApiIngestRasteriseRoute: ApiIngestRasteriseRoute,
   ApiMemoryNoteIdRoute: ApiMemoryNoteIdRoute,

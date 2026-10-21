@@ -24,9 +24,9 @@ const runRerank = createServerFn({ method: "POST" })
   .validator(z.object({ question: z.string().trim().min(1).max(500), depth: z.number().int().min(1).max(50) }))
   .handler(async ({ context, data }) => {
     const { rerankRun } = await import("@/components/labs/rerank-server");
-    const { embedderFromEnv, rerankerFromEnv, rewriterFromEnv } = await import("@/lib/retrieval.server");
+    const { retrievalDepsFromEnv } = await import("@/lib/retrieval.server");
     const { withTenant } = await import("@/db/tenant");
-    const deps = { withTenant, embedder: embedderFromEnv(), reranker: rerankerFromEnv(), rewriter: rewriterFromEnv() };
+    const deps = { withTenant, ...retrievalDepsFromEnv() };
     return rerankRun(deps, scopeOf(context.viewer), data.question, data.depth);
   });
 

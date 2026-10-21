@@ -9,15 +9,22 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import type { DrillEntry, Fault } from "@/core/drills/types";
+
+import { DRILLS } from "@/core/drills/catalog";
+import { unseal } from "@/core/drills/seal";
+
+import type { Checked } from "../../../scripts/ex/drill";
 import type { SectionRow, StepRow } from "../../../scripts/ex/list";
 import type { StepRun, Target, TestProgress } from "../../../scripts/ex/testing";
 import type { FileDiff } from "../../../scripts/ex/workspace";
 
 import { codeFiles, findStep, loadCatalog } from "../../../scripts/ex/catalog";
+import { fill, readJournal } from "../../../scripts/ex/drill";
 import { listSections, nextFor } from "../../../scripts/ex/list";
 import { parseHints, type Hint } from "./hints";
 
-export type { FileDiff, SectionRow, StepRow, StepRun, Target, TestProgress };
+export type { Checked, FileDiff, SectionRow, StepRow, StepRun, Target, TestProgress };
 
 export const TARGETS = ["playground", "problem", "solution"] as const satisfies readonly Target[];
 
@@ -62,9 +69,59 @@ export type StepPage = {
   lab: string | null;
   previous: StepLink | null;
   next: StepLink | null;
+  /** Section 20's steps: the drill the step is about (its slug), and where it stands. */
+  drill: DrillView | null;
 };
 
-export function readStepPage(root: string, stepId: string): StepPage | null {
+/** A drill as its step's page shows it, from `ex drill`'s journal. Never the cause: only what `ex` prints. */
+export type DrillView = {
+  id: string;
+  title: string;
+  /** This drill is planted now. */
+  planted: boolean;
+  /** When it was planted, and the symptom `ex drill <id>` printed. */
+  plantedAt: string | null;
+  symptom: string | null;
+  /** Another drill is planted, so planting this one is refused until it's reset. */
+  other: string | null;
+  /** `ex drill check` passed for it once. */
+  passed: boolean;
+  /** A plant or a reset stopped partway, or the journal can't be read: reset puts things back. */
+  needsReset: boolean;
+};
+
+/** The section whose steps are drills: each step's slug is its drill's id. */
+const DRILL_SECTION = "drills";
+
+export function readDrill(root: string, id: string, drills: readonly DrillEntry[] = DRILLS): DrillView | null {
+  const drill = drills.find((candidate) => candidate.id === id);
+  if (!drill) return null;
+  const view: DrillView = {
+    id,
+    title: drill.title,
+    planted: false,
+    plantedAt: null,
+    symptom: null,
+    other: null,
+    passed: false,
+    needsReset: false,
+  };
+  let journal: ReturnType<typeof readJournal>;
+  try {
+    journal = readJournal(root);
+  } catch {
+    return { ...view, needsReset: true };
+  }
+  const active = journal.active;
+  view.passed = journal.passed.includes(id);
+  if (!active) return view;
+  if (active.id !== id) return { ...view, other: active.id };
+  if (active.phase !== "planted") return { ...view, planted: true, plantedAt: active.plantedAt, needsReset: true };
+  const symptom = fill(unseal<Fault>(id, drill.sealed).symptom, active.vars, "text");
+  return { ...view, planted: true, plantedAt: active.plantedAt, symptom };
+}
+
+export function readStepPage(root: string, stepId: string, drills: readonly DrillEntry[] = DRILLS): StepPage | null {
   const sections = listSections(root);
   const order = sections.flatMap((section) => section.steps.map((step) => ({ section, step })));
   const at = order.findIndex(({ step }) => step.id === stepId);
@@ -83,6 +140,7 @@ export function readStepPage(root: string, stepId: string): StepPage | null {
     lab: lab ? new URL(lab).pathname : null,
     previous: link(at - 1),
     next: link(at + 1),
+    drill: section.slug === DRILL_SECTION ? readDrill(root, step.slug, drills) : null,
   };
 }
 
@@ -195,12 +253,15 @@ function claim(what: string): () => void {
 
 export const SWAPS = ["start", "reset", "solution"] as const;
 export type SwapCommand = (typeof SWAPS)[number];
+/** `ex drill <id>` and `ex drill reset` pause and restart the dev server as a swap does, so they run as jobs too. */
+export type DrillCommand = "plant" | "reset";
+export type JobCommand = SwapCommand | `drill-${DrillCommand}`;
 
 export type SwapJob = {
   id: string;
   /** The user who started it: only they can poll it. */
   owner: string;
-  command: SwapCommand;
+  command: JobCommand;
   step: string;
   force: boolean;
   state: "running" | "done" | "failed";
@@ -223,7 +284,30 @@ export function startSwap(
   run: ExRunner,
   { command, step, force = false, owner }: { command: SwapCommand; step: string; force?: boolean; owner: string },
 ): SwapJob {
-  const release = claim(`\`ex ${command} ${step}\` is still running`);
+  const args = [command, step, ...(command === "start" && force ? ["--force"] : [])];
+  return startJob(run, { command, step, force, owner, args });
+}
+
+/** Plants the step's drill (`ex drill <id>`), or puts it back (`ex drill reset`), as a job the page polls. */
+export function startDrillJob(
+  run: ExRunner,
+  { command, drill, step, owner }: { command: DrillCommand; drill: string; step: string; owner: string },
+): SwapJob {
+  const args = ["drill", command === "plant" ? drill : "reset"];
+  return startJob(run, { command: `drill-${command}`, step, force: false, owner, args });
+}
+
+function startJob(
+  run: ExRunner,
+  {
+    command,
+    step,
+    force,
+    owner,
+    args,
+  }: { command: JobCommand; step: string; force: boolean; owner: string; args: string[] },
+): SwapJob {
+  const release = claim(`\`ex ${args.join(" ")}\` is still running`);
   const job: SwapJob = {
     id: randomUUID(),
     owner,
@@ -239,7 +323,6 @@ export function startSwap(
   };
   registry.jobs.set(job.id, job);
   for (const id of [...registry.jobs.keys()].slice(0, -JOBS_KEPT)) registry.jobs.delete(id);
-  const args = [command, step, ...(command === "start" && force ? ["--force"] : [])];
   void run(args)
     .then(({ code, json }) => {
       const failure = failureOf(json);
@@ -312,6 +395,19 @@ export async function runTests(
     const failure = failureOf(json);
     if (failure) emit({ type: "failed", error: failure });
     else emit({ type: "done", run: json as StepRun });
+  } finally {
+    release();
+  }
+}
+
+/** `ex drill check`: whether the symptom is gone and the fault's test passes, or why it couldn't check. */
+export type DrillCheck = { checked: Checked } | ExFailure;
+
+export async function runDrillCheck(run: ExRunner): Promise<DrillCheck> {
+  const release = claim("`ex drill check` is running");
+  try {
+    const { json } = await run(["drill", "check"]);
+    return failureOf(json) ?? { checked: json as Checked };
   } finally {
     release();
   }

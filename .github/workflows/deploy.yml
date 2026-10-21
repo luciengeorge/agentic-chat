@@ -1,0 +1,121 @@
+# Deploys after CI passes (section 22.4). It does nothing until the repo has the secrets below, so today every run
+# stops at its first job with a notice. Two shapes, pick one:
+#
+# - Vercel's Git integration builds every push itself: a preview per branch and PR, production from main. Then leave
+#   the VERCEL_* secrets unset and this workflow only runs the migrations (when DATABASE_* are set).
+# - This workflow deploys instead, and only once CI is green: set VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID
+#   (from `.vercel/project.json` after `vercel link`), and turn the Git integration's deploys off with
+#   `"git": { "deploymentEnabled": false }` in vercel.json, or both will deploy.
+#
+# Secrets (Settings, Secrets and variables, Actions):
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID   deploys
+#   DATABASE_ADMIN_URL, DATABASE_URL                 migrations on main, before production (pnpm db:migrate:remote)
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+env:
+  VERCEL_CLI: vercel@63.1.2
+
+jobs:
+  # A workflow_run job runs with the repo's secrets, whoever opened the PR, so it only deploys branches of this repo,
+  # never a fork's code.
+  plan:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      vercel: ${{ steps.check.outputs.vercel }}
+      migrate: ${{ steps.check.outputs.migrate }}
+      production: ${{ steps.check.outputs.production }}
+    steps:
+      - id: check
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          vercel=false; migrate=false; production=false
+          [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ] && vercel=true
+          [ -n "$DATABASE_ADMIN_URL" ] && [ -n "$DATABASE_URL" ] && migrate=true
+          [ "$EVENT" = push ] && [ "$BRANCH" = main ] && production=true
+          echo "vercel=$vercel" >> "$GITHUB_OUTPUT"
+          echo "migrate=$migrate" >> "$GITHUB_OUTPUT"
+          echo "production=$production" >> "$GITHUB_OUTPUT"
+          [ "$vercel" = true ] || echo "::notice::No Vercel secrets: nothing deployed (section 22.4)"
+          [ "$migrate" = true ] || echo "::notice::No database secrets: no migrations run"
+
+  migrate:
+    needs: plan
+    if: needs.plan.outputs.migrate == 'true' && needs.plan.outputs.production == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate:remote
+        env:
+          DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  deploy:
+    needs: [plan, migrate]
+    # Production waits for its migrations (skipped when there are no database secrets); a preview doesn't.
+    if: >-
+      always() && needs.plan.result == 'success' && needs.plan.outputs.vercel == 'true' &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ needs.plan.outputs.production == 'true' && 'production' || 'preview' }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      TARGET: ${{ needs.plan.outputs.production == 'true' && 'production' || 'preview' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The project's settings and its environment's variables (VITE_SITE_URL is read at build time).
+      - run: npx --yes "$VERCEL_CLI" pull --yes --environment="$TARGET" --token="$VERCEL_TOKEN"
+      - run: npx --yes "$VERCEL_CLI" build $([ "$TARGET" = production ] && echo --prod) --token="$VERCEL_TOKEN"
+      - id: deploy
+        run: |
+          url=$(npx --yes "$VERCEL_CLI" deploy --prebuilt $([ "$TARGET" = production ] && echo --prod) --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "$TARGET: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "Check it: pnpm ex smoke --target $url" >> "$GITHUB_STEP_SUMMARY"

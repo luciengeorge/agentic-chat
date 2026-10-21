@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import type { AgentTool } from "#learn/agent/types";
 
 import { rememberTool } from "#learn/agent/memory";
+import { modelProvider } from "#learn/local/config";
 import { aiSdkChatModel } from "#learn/model/ai-sdk";
 import { CHAT_MODEL, CHAT_REASONING_EFFORT } from "#learn/model/config";
 import { costUsd, report, runScenario, type ScenarioResult } from "#learn/redteam/run";
@@ -68,6 +69,9 @@ async function main() {
     ...s,
     user: swaps.get(s.user) ?? s.user,
   }));
+  if (modelProvider() === "local") {
+    throw new Error("the red-team grades the hosted model and prices it: unset MODEL_PROVIDER=local to run it");
+  }
   if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY must be set: the red-team runs live");
 
   const base = workspaceUrl().replace(/\/$/, "");

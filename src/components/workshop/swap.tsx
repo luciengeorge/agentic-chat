@@ -17,7 +17,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
-import type { StepRow, SwapCommand, SwapJob } from "./workshop-server";
+import type { JobCommand, StepRow, SwapCommand, SwapJob } from "./workshop-server";
 
 /** A job as the page sees it: `switching` while the server answers 503 or not at all, `lost` if it forgot the job. */
 export type JobView = SwapJob | { state: "switching" } | { state: "lost" };
@@ -97,13 +97,22 @@ export function ConfirmDialog({
   );
 }
 
-const DONE_TEXT: Record<SwapCommand, (step: string) => string> = {
+const DONE_TEXT: Record<JobCommand, (step: string) => string> = {
   start: (step) => `Started ${step}.`,
   reset: (step) => `Started ${step} over.`,
   solution: (step) => `Copied the ${step} solution into playground/.`,
+  "drill-plant": () => "Planted the drill. Its report is in the Drill panel.",
+  "drill-reset": () => "Put the drill's code and data back.",
 };
 
-type SwapResult = { files?: string[]; skipped?: string[]; restarted?: string[]; already_active?: boolean };
+type SwapResult = {
+  files?: string[];
+  skipped?: string[];
+  restarted?: string[];
+  already_active?: boolean;
+  /** `ex drill reset`: undo actions that failed, which a second reset retries. */
+  failures?: string[];
+};
 
 /** Where a switch stands: under way, done (with what `ex` skipped), or refused, with `--force` behind a confirm. */
 export function SwapStatus({
@@ -117,12 +126,20 @@ export function SwapStatus({
 }) {
   const [confirming, setConfirming] = useState(false);
   if (!job || job.state === "running" || job.state === "switching") {
+    const drill = job && "command" in job && job.command.startsWith("drill-");
     return (
       <Notice icon={<Spinner className="size-4" />}>
-        <p className="font-medium">Switching steps…</p>
+        <p className="font-medium">{drill ? "Changing the app's code…" : "Switching steps…"}</p>
         <p className="text-muted-foreground">
-          <code>ex</code> pauses the dev server, swaps the files in <code>playground/</code> and restarts it. This page
-          reloads by itself when the server is back.
+          <code>ex</code> pauses the dev server,{" "}
+          {drill ? (
+            "changes the app's files"
+          ) : (
+            <>
+              swaps the files in <code>playground/</code>
+            </>
+          )}{" "}
+          and restarts it. This page reloads by itself when the server is back.
         </p>
       </Notice>
     );
@@ -158,6 +175,11 @@ export function SwapStatus({
             Skipped {reason}
           </p>
         ))}
+        {result.failures?.length ? (
+          <p className="text-muted-foreground">
+            Some of the drill's data couldn't be put back ({result.failures.join("; ")}). Reset again to retry.
+          </p>
+        ) : null}
       </Notice>
     );
   }

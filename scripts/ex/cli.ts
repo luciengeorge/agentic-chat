@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import type { Step } from "./catalog";
+import type { Checked, DrillDeps, Planted, Reset } from "./drill";
 import type { Next } from "./list";
 import type { SmokeTargets } from "./smoke";
 import type { SlotSwitch, Switched } from "./switch";
@@ -11,11 +12,14 @@ import type { StepRun, Target, TestProgress } from "./testing";
 
 import { SlotError } from "../../vite-plugins/learn-slots";
 import { findStep } from "./catalog";
+import { checkDrill, defaultDrillDeps, listDrills, plantDrill, resetDrill } from "./drill";
+import { refuseWhileDrillPlanted } from "./drill-guard";
 import { ExError } from "./errors";
 import { runGate } from "./gate";
 import { listSections, nextFor } from "./list";
 import { compose, up } from "./services";
 import { runChecks, smokeChecks, smokeTargets } from "./smoke";
+import { remoteChecks, remoteTargets } from "./smoke-target";
 import { readState } from "./state";
 import { switchSlots } from "./switch";
 import { TARGETS, runStepTests } from "./testing";
@@ -30,7 +34,14 @@ import {
 } from "./workspace";
 
 export type Io = { out(text: string): void; err(text: string): void };
-export type Context = { root: string; io: Io; slotSwitch: SlotSwitch; json: boolean; smoke?: SmokeTargets };
+export type Context = {
+  root: string;
+  io: Io;
+  slotSwitch: SlotSwitch;
+  json: boolean;
+  smoke?: SmokeTargets;
+  drills?: DrillDeps;
+};
 type Outcome = { payload: unknown; text: string; ok: boolean };
 type Values = Record<string, string | boolean | undefined>;
 
@@ -123,6 +134,92 @@ function switchedText(title: string, result: Switched): string {
   return lines.join("\n");
 }
 
+function switchLines({
+  cancelled,
+  restarted,
+  skipped,
+}: {
+  cancelled: string[];
+  restarted: string[];
+  skipped: string[];
+}) {
+  return [
+    ...(cancelled.length ? [`cancelled ${cancelled.length} open workflow run(s)`] : []),
+    ...(restarted.length ? [`restarted the ${restarted.join(", ")}`] : []),
+    ...skipped.map((reason) => `skipped ${reason}`),
+  ];
+}
+
+function plantedText(planted: Planted): string {
+  return [
+    `planted drill ${planted.drill}: ${planted.title}`,
+    ...switchLines(planted),
+    "",
+    planted.symptom,
+    "",
+    "Find the cause and fix it, then run `pnpm ex drill check`. Restart `pnpm dev` after a code change, as a deploy",
+    "would. `pnpm ex drill reset` puts everything back.",
+    "Spoilers: src/core/drills/, scripts/ex/drill*.ts and .ex/ hold the answer, and the dev server's terminal may",
+    "have just printed a reload line naming the file the drill changed. Clear that terminal before you start.",
+  ].join("\n");
+}
+
+function checkedText(checked: Checked): string {
+  const { test } = checked;
+  const passedTests = test.tests.filter((t) => t.outcome === "passed").length;
+  const lines = [
+    `drill ${checked.drill}: ${checked.passed ? "fixed" : "not fixed yet"}`,
+    checked.symptom.gone ? "✓ the symptom is gone" : "✗ the symptom is still there",
+    ...checked.symptom.probes.filter((probe) => !probe.ok).map((probe) => `  ${probe.detail}`),
+    test.passed
+      ? `✓ the fault's test passes (${passedTests} of ${test.tests.length})`
+      : `✗ the fault's test fails (${passedTests} of ${test.tests.length} pass)`,
+  ];
+  if (test.error)
+    lines.push(
+      ...test.error
+        .split("\n")
+        .slice(0, 6)
+        .map((line) => `  ${line}`),
+    );
+  for (const result of test.tests) {
+    if (result.outcome === "passed") continue;
+    lines.push(
+      `  ${result.outcome === "skipped" ? "-" : "✗"} ${result.name}${result.outcome === "skipped" ? " (skipped: is ParadeDB up?)" : ""}`,
+    );
+    if (result.message)
+      lines.push(
+        ...result.message
+          .split("\n")
+          .slice(0, 4)
+          .map((line) => `      ${line}`),
+      );
+  }
+  lines.push(...checked.warnings.map((warning) => `warning: ${warning}`));
+  if (checked.passed) lines.push("", "`pnpm ex drill reset` puts the original code back before the next drill.");
+  return lines.join("\n");
+}
+
+function resetText(reset: Reset): string {
+  if (reset.drill === null) {
+    return reset.restored
+      ? [
+          `no drill was planted; put back ${reset.restored} file(s) a drill had left hidden`,
+          ...switchLines(reset),
+        ].join("\n")
+      : "no drill is planted";
+  }
+  const lines = [`reset drill ${reset.drill}`, ...switchLines(reset)];
+  if (reset.failures.length) {
+    lines.push(
+      "the code is back, but some of the drill's data couldn't be undone:",
+      ...reset.failures.map((failure) => `  ${failure}`),
+      "fix that, then run `pnpm ex drill reset` again",
+    );
+  }
+  return lines.join("\n");
+}
+
 const COMMANDS: Record<string, Command> = {
   list: {
     usage: "list [--all]",
@@ -181,6 +278,7 @@ const COMMANDS: Record<string, Command> = {
     args: ["step"],
     options: { target: { type: "string", default: "playground" }, progress: { type: "boolean", default: false } },
     async run({ root, json, io }, [id], values) {
+      refuseWhileDrillPlanted(root);
       const target = values.target as Target;
       if (!TARGETS.includes(target)) throw new ExError(`--target must be one of ${TARGETS.join(", ")}`);
       const step = findStep(root, id!);
@@ -237,6 +335,7 @@ const COMMANDS: Record<string, Command> = {
     usage: "gate",
     summary: "Check every graded step: its tests fail on the problem code and pass on the solution",
     async run({ root }) {
+      refuseWhileDrillPlanted(root);
       const results = await runGate(root);
       const passed = results.every((result) => result.passed);
       const lines = results.flatMap((result) => [
@@ -252,6 +351,31 @@ const COMMANDS: Record<string, Command> = {
         ),
       ]);
       return { payload: { passed, steps: results }, text: lines.join("\n") || "no graded steps", ok: passed };
+    },
+  },
+  drill: {
+    usage: "drill <id>|list|check|reset",
+    summary:
+      "Section 20: `drill <id>` plants a hidden fault and shows its symptom, `check` grades your fix, `reset` puts everything back",
+    args: ["drill"],
+    async run(context, [what]) {
+      const { root, slotSwitch } = context;
+      const deps = context.drills ?? defaultDrillDeps();
+      if (what === "list") {
+        const listed = listDrills(root, deps);
+        const lines = listed.drills.map((row) => `  ${row.id.padEnd(12)} ${row.title}  [${row.status}]`);
+        return { payload: listed, text: ["drills:", ...lines].join("\n"), ok: true };
+      }
+      if (what === "check") {
+        const checked = await checkDrill(root, deps);
+        return { payload: checked, text: checkedText(checked), ok: checked.passed };
+      }
+      if (what === "reset") {
+        const { ok, ...reset } = await resetDrill(root, slotSwitch, deps);
+        return { payload: reset, text: resetText(reset), ok };
+      }
+      const planted = await plantDrill(root, slotSwitch, deps, what!);
+      return { payload: planted, text: plantedText(planted), ok: true };
     },
   },
   up: {
@@ -276,10 +400,15 @@ const COMMANDS: Record<string, Command> = {
     },
   },
   smoke: {
-    usage: "smoke",
-    summary: "Check the running stack end to end",
-    async run({ root, smoke }) {
-      const checks = await runChecks(smokeChecks(root, smoke ?? smokeTargets(root)));
+    usage: "smoke [--target <url>]",
+    summary: "Check the running stack end to end, or a deploy over HTTP with --target",
+    options: { target: { type: "string" } },
+    async run({ root, smoke }, _, { target }) {
+      const checks = await runChecks(
+        typeof target === "string"
+          ? remoteChecks(smoke ?? remoteTargets(target), { cronSecret: process.env.SMOKE_CRON_SECRET?.trim() })
+          : smokeChecks(root, smoke ?? smokeTargets(root)),
+      );
       const passed = checks.every((check) => check.passed);
       const lines = checks.map((c) => `${c.passed ? "ok  " : "FAIL"} ${c.name}${c.detail ? `  ${c.detail}` : ""}`);
       return { payload: { passed, checks }, text: lines.join("\n"), ok: passed };

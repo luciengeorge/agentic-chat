@@ -17,8 +17,11 @@ export default defineConfig({
     globals: true,
     // Setup and teardown create and drop whole databases; on a busy laptop that outlasts the 10 s default.
     hookTimeout: 30_000,
+    // OCR, the ONNX reranker and workflow bundles are CPU-heavy: on every core at once they starve each other.
+    maxWorkers: "50%",
     setupFiles: ["./src/test/setup.ts"],
-    globalSetup: ["./src/db/test/global-setup.ts"],
+    // The drill guard first: while a drill is planted, the suite refuses (scripts/ex/drill-guard.ts).
+    globalSetup: ["./scripts/ex/drill-guard.ts", "./src/db/test/global-setup.ts"],
     css: false,
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts", "vite-plugins/**/*.test.ts", "servers/**/*.test.ts"],
     exclude: ["node_modules", ".output", ".tanstack", "dist", ".vercel"],
@@ -39,7 +42,8 @@ export default defineConfig({
           include: ["src/workflows/**/*.test.ts"],
           environment: "node",
           hookTimeout: 30_000,
-          globalSetup: ["./src/db/test/global-setup.ts"],
+          maxWorkers: "50%",
+          globalSetup: ["./scripts/ex/drill-guard.ts", "./src/db/test/global-setup.ts"],
         },
       },
     ],

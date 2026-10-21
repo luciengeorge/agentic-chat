@@ -4,6 +4,7 @@ import { enqueueTenantSyncs, onRelayKick, relayOnce } from "@/db/outbox";
 import { appDb, systemDb } from "@/db/pool";
 import { acEnv } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { processConversationLogPass } from "@/lib/observability.server";
 
 import { deliver } from "./relay-deliver";
 
@@ -44,6 +45,9 @@ function startLoop(syncMs: number): () => void {
         }
         if (published.length === BATCH) again = true;
       } while (again && !stopped);
+      // Log rows a sink error left unclaimed get no second delivery: each pass drains them, bounded.
+      const log = await processConversationLogPass()?.();
+      if (log && (log.exported || log.gone || log.error)) logger.info("conversation log pass", { ...log });
     } catch (error) {
       logger.error("relay pass failed", { error });
     } finally {
