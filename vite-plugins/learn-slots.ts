@@ -213,6 +213,8 @@ export function learnSlots(options: { env?: Env; drainMs?: number } = {}): Plugi
         server.config.logger.info(`learn-slots: active step is now ${next ?? "none"}; restarting`, { timestamp: true });
         void restart();
       };
+      // Linux watchers miss a directory made during the initial scan, and with it `.ex/state.json`.
+      mkdirSync(dirname(state), { recursive: true });
       server.watcher.add([state, ...slotted]);
       server.watcher.on("add", onChange).on("change", onChange).on("unlink", onChange);
     },
