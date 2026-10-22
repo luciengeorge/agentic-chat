@@ -25,7 +25,8 @@ change the defaults (`src/core/local/config.ts`).
 
 ## A chat model
 
-No chat model is downloaded right now, so the answer eval on local models hasn't been run. To run it, download one
+The answer eval on local models ran on 22 Oct 2026 with Qwen3 8B (`reports/2026-10-22-full-local.md`): no leaks, 21 of 40
+answers cite a labelled document (gpt-6-luna: 40 of 40), one abstain case answered, 56 minutes. To run it, download a model
 that fits a 32 GB machine with other work on it. For example, Qwen3 8B at 4 bits is about 5 GB on disk and 6 to 7 GB
 in memory with a 16k context:
 
