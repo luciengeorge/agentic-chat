@@ -193,6 +193,7 @@ export function learnSlots(options: { env?: Env; drainMs?: number } = {}): Plugi
       const slotted = new Set(resolver.slots.values());
       const onChange = (file: string) => {
         const path = resolve(file);
+        console.error("PROBE onChange", path, "state", state, "switching", control.switching(), "step", resolver.step);
         // A switch in progress restarts the server when it ends.
         if (control.switching()) return;
         if (slotted.has(path)) {
@@ -209,6 +210,7 @@ export function learnSlots(options: { env?: Env; drainMs?: number } = {}): Plugi
         } catch {
           next = undefined; // restart anyway, so the error shows
         }
+        console.error("PROBE next", next);
         if (next === resolver.step) return;
         server.config.logger.info(`learn-slots: active step is now ${next ?? "none"}; restarting`, { timestamp: true });
         void restart();

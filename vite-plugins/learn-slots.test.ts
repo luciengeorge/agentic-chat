@@ -365,8 +365,12 @@ describe("pausing the dev server for a switch", () => {
       },
     };
     const { server, entry } = await listen(root, { plugins: [slowRestart] });
+    console.error("PROBE root", root, "state", state(root), "watched", JSON.stringify(server.watcher.getWatched()));
+    server.watcher.on("all", (e: string, f: string) => console.error("PROBE all", e, f));
     await writeUntilWatched(server, state(root), '{"active_step": "_s.1", "passed": []}');
+    console.error("PROBE seen");
     await restarting;
+    console.error("PROBE restarting began");
 
     let settled = false;
     const pausing = pauseDevServer(root, { pollMs: 10 }).finally(() => (settled = true));
