@@ -25,6 +25,17 @@ export const Route = createFileRoute("/workshop")({
 
 function WorkshopLayout() {
   const { gate } = Route.useRouteContext();
+  if (gate.state === "db-down") {
+    return (
+      <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center gap-3 px-6">
+        <h1 className="text-xl font-semibold tracking-tight">The database isn't running</h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          The workshop needs Postgres to know who you are. Start OrbStack (or Docker), then run <code>pnpm ex up</code>{" "}
+          and reload this page.
+        </p>
+      </main>
+    );
+  }
   if (gate.state !== "ok") {
     return (
       <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center gap-3 px-6">
