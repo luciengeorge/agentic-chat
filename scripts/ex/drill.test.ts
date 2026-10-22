@@ -292,7 +292,7 @@ describe("ex drill", () => {
   it("refuses a drill whose edits no longer apply", async () => {
     const { root, ex } = setup();
     writeFileSync(join(root, THING), "export const answer = (): number => 7;\n");
-    gitIn(root, ["commit", "-qam", "seven", "--author", "t <t@example.com>"]);
+    gitIn(root, ["-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-qam", "seven"]);
     expect((await ex(["drill", "demo"], { ok: false })).error).toBe("drill demo no longer applies to this code");
   });
 
