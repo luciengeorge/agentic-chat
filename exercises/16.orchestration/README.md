@@ -6,7 +6,7 @@ title: "Agents: orchestration"
 
 Sections 13 to 15 built one agent run: a loop, its state in Postgres, and a runner that survives a killed server. Kestrel's assistant now needs more than one run at a time. A chat message has to be sent down the right path. A request that splits in two can hand each half to a helper. A digest has to start itself every Monday, once, and run one agent per new document without flooding anything. **Orchestration** is deciding which runs exist, who starts them, what each may do, and what they cost together.
 
-The course's main goal names "autonomous agent orchestration and state management" as the gap. This section is the orchestration half, with numbers from this app for each mechanism.
+Autonomous agent orchestration and state management are the course's main goal. This section is the orchestration half, with numbers from this app for each mechanism.
 
 ## Terms
 

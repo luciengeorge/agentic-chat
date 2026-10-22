@@ -6,7 +6,7 @@ title: "Agents: the loop"
 
 Sections 06 to 10 built one answer: a question goes in, retrieval finds passages, one model call writes the reply. Kestrel's people also ask for things that take several steps: "email Tom the payment terms of KPC-2026-0142" means find the contract, read it, look Tom up, draft the mail, and wait for the user to approve it. An **agent** does that. It's a model in a loop: the model asks for a tool, the app runs it, the model reads the result and asks again, until it answers.
 
-This section builds the loop by hand, one piece at a time, on the app's real tools and a real recorded run. The course's main goal names this as the gap: autonomous agent orchestration and state management. By the end of the section you can say exactly how a run decides its next step, what stops it, and what happens when something fails.
+This section builds the loop by hand, one piece at a time, on the app's real tools and a real recorded run. This is the heart of autonomous agent orchestration and state management. By the end of the section you can say exactly how a run decides its next step, what stops it, and what happens when something fails.
 
 ## Terms
 

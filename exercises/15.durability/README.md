@@ -6,7 +6,7 @@ title: "Agents: durability"
 
 Grace Adeyemi asks the agent to email Tom Whitfield a two-line summary of contract KPC-2026-0142's payment terms. Her run plans, searches, reads the contract, drafts the mail and waits for her approval. She approves. While the mail is on its way to Kestrel's Microsoft 365, the server running her run dies. When it comes back, the run must carry on by itself, finish, and Tom must get one mail: not none, not two.
 
-Section 14 made the run a record in Postgres. This section makes it survive: a crash, a deploy, a week-long wait, a cancel in the middle of a model call. The course's main goal names "autonomous agent orchestration and state management" as the gap; durability is where the two meet. `pnpm agent:kill-proof` checks the whole of it live on the dev stack: one mail under the key `agent:<run>:<stepId>`.
+Section 14 made the run a record in Postgres. This section makes it survive: a crash, a deploy, a week-long wait, a cancel in the middle of a model call. Durability is where agent orchestration and state management meet. `pnpm agent:kill-proof` checks the whole of it live on the dev stack: one mail under the key `agent:<run>:<stepId>`.
 
 ## Terms
 

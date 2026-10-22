@@ -94,4 +94,4 @@ http://localhost:3000/labs lists them: one page per section, each running the ap
 
 - `pnpm ex smoke` names the part that isn't answering.
 - "Postgres is unreachable" from `pnpm ex test`: run `pnpm ex up`.
-- `PLAN.md` explains why the app is built the way it is; `HANDOFF.md` is its history.
+- `PLAN.md` explains why the app is built the way it is; `docs/agent-notes.md` holds the traps in this environment.

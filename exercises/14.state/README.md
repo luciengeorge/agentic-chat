@@ -6,7 +6,7 @@ title: "Agents: state"
 
 Leo Martin asks the agent to email Tom Whitfield a two-line summary of contract KPC-2026-0142's payment terms. The run plans, searches, reads the contract, looks Tom up, drafts the mail, and stops: it needs Leo's approval, and that can take a minute or a week. Meanwhile Leo reloads the page, approves from the inbox in another tab, and sends a follow-up ("copy Amara too") at the same moment the approval lands. A week later the run picks up where it stopped, as if nothing happened in between.
 
-That only works if the run is a record, kept in Postgres, that every part of the app reads and writes the same way. This section builds that record. The course's main goal names "state management" as the gap: these six steps are what the phrase means for an agent.
+That only works if the run is a record, kept in Postgres, that every part of the app reads and writes the same way. This section builds that record. "State management" is the phrase people use for this part of agent work: these six steps are what it means for an agent.
 
 ## Terms
 

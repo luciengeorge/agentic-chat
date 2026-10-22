@@ -5,7 +5,7 @@ A hands-on workshop for building a production-grade AI application: a small vers
 that runs the whole way through.
 
 - [`PLAN.md`](./PLAN.md): what we're building and why, the curriculum and the milestones.
-- [`HANDOFF.md`](./HANDOFF.md): how the project came about, and the traps in this environment.
+- [`docs/agent-notes.md`](./docs/agent-notes.md): how the learner learns, the house rules, and the traps in this environment.
 - [`AGENTS.md`](./AGENTS.md): the code conventions, for coding agents and people alike.
 
 The app started from [`tanstack-starter-template`](https://github.com/luciengeorge/tanstack-starter-template), with

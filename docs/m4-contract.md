@@ -20,7 +20,7 @@ M4 carves sections 13 to 17 out of the M2 agent runtime, the same way M3 carved 
 - the front door (`exercises/README.md`) and the `/labs` index list sections 13 to 17;
 - fresh reviewers have read every README.
 
-**Why these sections matter most.** They are the course's main goal: "autonomous agent orchestration and state management". Each step should leave Lucien able to explain the mechanism cold, in an interview, with a number from this corpus. The 🦉 hints carry that.
+**Why these sections matter most.** They cover the course's main goal: autonomous agent orchestration and state management. Each step should leave Lucien able to explain the mechanism cold, in an interview, with a number from this corpus. The 🦉 hints carry that.
 
 | Wave | Lanes |
 |---|---|

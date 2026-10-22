@@ -10,7 +10,7 @@ fintech, Kestrel Pay. The learner builds the AI layers (parsing, chunking, embed
 hand, one step at a time, against a finished reference app that runs the whole way through.
 
 - `PLAN.md` is the source of truth for what to build: architecture, decisions, curriculum, milestones.
-- `HANDOFF.md` is the history, how Lucien learns, and the traps in this environment.
+- `docs/agent-notes.md` is how Lucien learns, the house rules, and the traps in this environment.
 
 The app started from Lucien's `tanstack-starter-template`, with Convex, Sentry, PostHog, Resend, react-email and Polar
 removed. Auth went out with Convex; it comes back on better-auth and Drizzle.
@@ -178,7 +178,7 @@ sentence length, no em dashes, and no "not X, but Y".
 - `pnpm-lock.yaml`: managed by pnpm
 - `fixtures/corpus/build/**`: the committed corpus, content-addressed. Re-render it from the `python-m0b` tag (see
   `fixtures/corpus/README.md`)
-- `docs/interview-prep/**`, `docs/m0a-contract.md`, `docs/m0b-contract.md`: history
+- `docs/m0a-contract.md`, `docs/m0b-contract.md`: history
 
 ## Scripts to know
 
@@ -194,7 +194,7 @@ pnpm test             # vitest
 pnpm typecheck        # tsgo --noEmit
 pnpm lint             # oxfmt formats, then oxlint reports lint problems (it doesn't fix them)
 pnpm lint:check       # CI: no writes
-pnpm format:check     # oxfmt over the repo (skips PLAN.md, HANDOFF.md, docs/ and fixtures/)
+pnpm format:check     # oxfmt over the repo (skips PLAN.md, docs/ and fixtures/)
 pnpm dlx shadcn@latest add <component>   # add a shadcn component
 ```
 
