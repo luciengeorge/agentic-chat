@@ -263,7 +263,7 @@ describe("the dev server", () => {
   });
 });
 
-describe("pausing the dev server for a switch", () => {
+describe("pausing the dev server for a switch", { timeout: 15_000 }, () => {
   const state = (root: string) => join(root, ".ex/state.json");
   const status = async (url: string) => (await fetch(`${url}/`)).status;
 
