@@ -2,15 +2,11 @@
 
 A hands-on workshop for building a production-grade AI application: a small version of Cohere's North. You build the AI layers yourself, one step at a time, against a finished reference app that runs the whole way through.
 
-Status: **restarting on TypeScript** (1 Oct 2026, branch `ts-restart`). The Python stack got as far as M0b and is tagged: `python-m0a` (merged to `main`) and `python-m0b` (reviewed, not merged). `HANDOFF.md` §6 to §8 tells that story. Next: M0, below.
+Status: **built.** Every milestone in the build plan (M0 to M5) is merged to `main`: the reference app, sections 00 to 22, the labs and the workshop UI. An earlier Python stack got as far as M0b and is tagged `python-m0a` and `python-m0b`.
 
 ## Why this exists
 
-The goal is hands-on depth in what makes production AI systems hard.
-
-
-
-So retrieval is covered properly, and agents (sections 13 to 17) get the most depth. By the end you will have built:
+The goal is hands-on depth in what makes production AI systems hard, above all autonomous agent orchestration and state management. So retrieval is covered properly, and agents (sections 13 to 17) get the most depth. By the end you will have built:
 
 - an agent run stored as a state machine plus an append-only event log
 - a run that crashes mid-tool-call and resumes without repeating a side effect
@@ -192,7 +188,7 @@ These are where the pieces meet, and where a naive build breaks.
 
 ```
 agentic-chat/
-  PLAN.md  HANDOFF.md  README.md
+  PLAN.md  README.md  AGENTS.md
   package.json  vite.config.ts  drizzle.config.ts  compose.yaml
   src/                       the app
     routes/                  pages and server routes (streams, webhooks, workflow starts)
@@ -219,7 +215,7 @@ agentic-chat/
     ex.ts                    the step CLI; every command takes --json
     slots.ts                 the Vite plugin behind #learn/<module>
   docs/
-    interview-prep/          the Spotify and Cohere prep this curriculum draws on
+    agent-notes.md           how the learner learns, house rules, environment traps
     m0a-contract.md  m0b-contract.md   the Python milestones' contracts, kept as history
 ```
 

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -8,7 +8,7 @@ import { parseSync } from "vite";
 import type { Step } from "./catalog";
 
 import { REFERENCE_DIR } from "../../vite-plugins/learn-slots";
-import { codeFiles, isTestFile, isWorkflowTestFile, stepFiles } from "./catalog";
+import { isTestFile, isWorkflowTestFile, stepFiles } from "./catalog";
 import { ExError } from "./errors";
 import { run } from "./process";
 import { progressLines } from "./progress";
@@ -37,26 +37,34 @@ export function targetDir(root: string, step: Step, target: Target): string {
   return target === "playground" ? playground(root) : target === "problem" ? step.problemDir : step.solutionDir;
 }
 
-/** Every module a file imports or re-exports from, by the specifier it's written with. */
-function importSpecifiers(file: string): string[] {
+/**
+ * Every module a file imports or re-exports from, by the specifier it's written with, and how many
+ * of its `import()` calls compute their path, so no specifier can be read.
+ */
+function importSpecifiers(file: string): { specifiers: string[]; computed: number } {
   const source = readFileSync(file, "utf8");
   const { module } = parseSync(file, source);
-  const dynamic = module.dynamicImports
-    .map(({ moduleRequest }) => source.slice(moduleRequest.start, moduleRequest.end))
-    .filter((text) => /^(["'`])[^"'`$]*\1$/.test(text))
-    .map((text) => text.slice(1, -1));
-  return [
-    ...module.staticImports.map((entry) => entry.moduleRequest.value),
-    ...module.staticExports.flatMap((entry) =>
-      entry.entries.flatMap((e) => (e.moduleRequest ? [e.moduleRequest.value] : [])),
-    ),
-    ...dynamic,
-  ];
+  const dynamic = module.dynamicImports.map(({ moduleRequest }) =>
+    source.slice(moduleRequest.start, moduleRequest.end),
+  );
+  const literal = dynamic.filter((text) => /^(["'`])[^"'`$]*\1$/.test(text));
+  return {
+    specifiers: [
+      ...module.staticImports.map((entry) => entry.moduleRequest.value),
+      ...module.staticExports.flatMap((entry) =>
+        entry.entries.flatMap((e) => (e.moduleRequest ? [e.moduleRequest.value] : [])),
+      ),
+      ...literal.map((text) => text.slice(1, -1)),
+    ],
+    computed: dynamic.length - literal.length,
+  };
 }
 
-/** The files a specifier can name, without extension: the aliases `@/` and `#/`, `src/`, `/src/` (Vite's root) and relative paths. */
+/** The paths a specifier can name, without extension: the aliases `@/` and `#/`, `src/`, `/src/` (Vite's root), `/@fs/`, `file://` and relative paths. */
 function candidates(root: string, from: string, specifier: string): string[] {
-  const path = specifier.split("?")[0]!;
+  let path = specifier.split("?")[0]!;
+  if (path.startsWith("file:")) path = URL.canParse(path) ? fileURLToPath(path) : path;
+  else if (path.startsWith("/@fs/")) path = path.slice("/@fs".length);
   const found =
     path.startsWith("@/") || path.startsWith("#/")
       ? [join(root, "src", path.slice(2))]
@@ -70,23 +78,72 @@ function candidates(root: string, from: string, specifier: string): string[] {
   return found.map((file) => file.replace(/\.[cm]?[jt]sx?$/, "").replace(/\/index$/, ""));
 }
 
+/** The real path of the file a path without extension loads, in the case it has on disk (`src/Core` is `src/core` on macOS). */
+function realFile(base: string): string | null {
+  for (const file of [`${base}.ts`, `${base}.tsx`, join(base, "index.ts"), base]) {
+    try {
+      if (statSync(file).isFile()) return realpathSync.native(file);
+    } catch {
+      // not this one
+    }
+  }
+  return null;
+}
+
+const CODE_FILE = /\.[cm]?[jt]sx?$/;
+
+/** Every code file under `dir` that isn't a test, and every symlink there, recursively. */
+function walkCode(dir: string): { files: string[]; links: string[] } {
+  const files: string[] = [];
+  const links: string[] = [];
+  const walk = (at: string) => {
+    if (!existsSync(at)) return;
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+      const path = join(at, entry.name);
+      if (entry.isSymbolicLink()) links.push(path);
+      else if (entry.isDirectory()) {
+        if (entry.name !== "node_modules") walk(path);
+      } else if (entry.isFile() && CODE_FILE.test(entry.name) && !isTestFile(entry.name)) files.push(path);
+    }
+  };
+  walk(dir);
+  return { files: files.sort(), links: links.sort() };
+}
+
 /**
- * Where code under test imports the reference of a module the step slots, by any path. Its tests
- * would then grade the reference: a re-export of it passes them all.
+ * Where code under test reaches the reference of a module the step slots, by any path. Its tests
+ * would then grade the reference: a re-export of it passes them all. It reads every code file under
+ * `dir`, compares real paths, and refuses what it can't follow: symlinks, `createRequire` and an
+ * `import()` of a computed path.
  */
 export function referenceImports(root: string, step: Step, dir: string): string[] {
-  const references = new Map(
-    Object.keys(step.slots).map((module) => [join(root, REFERENCE_DIR, module), module] as const),
-  );
-  return codeFiles(dir).flatMap((name) => {
-    const file = join(dir, name);
-    return importSpecifiers(file).flatMap((specifier) => {
-      const module = candidates(root, file, specifier)
-        .map((path) => references.get(path))
-        .find(Boolean);
-      return module ? [`${relative(root, file)} imports ${specifier}, the reference for ${module}`] : [];
-    });
-  });
+  const references = new Map<string, string>();
+  for (const module of Object.keys(step.slots)) {
+    const file = realFile(join(root, REFERENCE_DIR, module));
+    if (file) references.set(file, module);
+  }
+  const { files, links } = walkCode(dir);
+  return [
+    ...links.map((link) => `${relative(root, link)} is a symlink`),
+    ...files.flatMap((file) => {
+      const rel = relative(root, file);
+      const { specifiers, computed } = importSpecifiers(file);
+      const found = [
+        ...(/\bcreateRequire\b/.test(readFileSync(file, "utf8"))
+          ? [`${rel} uses createRequire, which loads modules around the slots`]
+          : []),
+        ...(computed ? [`${rel} imports a computed path, which \`ex\` can't check; write the path out`] : []),
+      ];
+      for (const specifier of specifiers) {
+        const module = candidates(root, file, specifier)
+          .map((path) => realFile(path))
+          .map((path) => (path === null ? undefined : references.get(path)))
+          .find(Boolean);
+        if (module) found.push(`${rel} imports ${specifier}, the reference for ${module}`);
+      }
+      return found;
+    }),
+  ];
 }
 
 type JsonReport = {

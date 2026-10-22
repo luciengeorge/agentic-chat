@@ -6,6 +6,7 @@ import { parseArgs } from "node:util";
 import type { Step } from "./catalog";
 import type { Checked, DrillDeps, Planted, Reset } from "./drill";
 import type { Next } from "./list";
+import type { RecordDeps } from "./record";
 import type { SmokeTargets } from "./smoke";
 import type { SlotSwitch, Switched } from "./switch";
 import type { StepRun, Target, TestProgress } from "./testing";
@@ -17,6 +18,7 @@ import { refuseWhileDrillPlanted } from "./drill-guard";
 import { ExError } from "./errors";
 import { runGate } from "./gate";
 import { listSections, nextFor } from "./list";
+import { RECORDERS, UNRECORDED, record, recordText } from "./record";
 import { compose, up } from "./services";
 import { runChecks, smokeChecks, smokeTargets } from "./smoke";
 import { remoteChecks, remoteTargets } from "./smoke-target";
@@ -41,6 +43,7 @@ export type Context = {
   json: boolean;
   smoke?: SmokeTargets;
   drills?: DrillDeps;
+  recorders?: RecordDeps;
 };
 type Outcome = { payload: unknown; text: string; ok: boolean };
 type Values = Record<string, string | boolean | undefined>;
@@ -49,6 +52,8 @@ type Command = {
   usage: string;
   summary: string;
   args?: string[];
+  /** Positionals that may follow `args`. */
+  optional?: string[];
   options?: ParseArgsOptionsConfig;
   run(context: Context, args: string[], values: Values): Promise<Outcome>;
 };
@@ -399,6 +404,28 @@ const COMMANDS: Record<string, Command> = {
       return { payload: { stopped: true, volumes_removed: !!volumes }, text: "the stack is down", ok: true };
     },
   },
+  record: {
+    usage: "record [<name>|--all] [--dry-run] [--yes]",
+    summary: "Refresh the recordings tests replay: lists each recorder and its cost, and wants --yes before a paid API",
+    optional: ["name"],
+    options: {
+      all: { type: "boolean", default: false },
+      "dry-run": { type: "boolean", default: false },
+      yes: { type: "boolean", default: false },
+    },
+    async run({ root, json, recorders }, names, values) {
+      if (values.all && names.length > 0) throw new ExError("record takes a name or --all, not both");
+      const result = await record(root, recorders ?? { recorders: RECORDERS, unrecorded: UNRECORDED }, {
+        names,
+        all: !!values.all,
+        dryRun: !!values["dry-run"],
+        yes: !!values.yes,
+        capture: json,
+      });
+      const { ok, ...payload } = result;
+      return { payload, text: recordText(result), ok };
+    },
+  },
   smoke: {
     usage: "smoke [--target <url>]",
     summary: "Check the running stack end to end, or a deploy over HTTP with --target",
@@ -446,7 +473,8 @@ function parse(argv: string[]): { name: string; command: Command; args: string[]
     throw new ExError((error as Error).message, `usage: pnpm ex ${command.usage}`);
   }
   const wanted = command.args ?? [];
-  if (parsed.positionals.length !== wanted.length) {
+  const most = wanted.length + (command.optional?.length ?? 0);
+  if (parsed.positionals.length < wanted.length || parsed.positionals.length > most) {
     const problem = parsed.positionals.length < wanted.length ? `missing <${wanted.at(-1)}>` : "too many arguments";
     throw new ExError(`${name}: ${problem}`, `usage: pnpm ex ${command.usage}`);
   }

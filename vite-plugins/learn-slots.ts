@@ -154,8 +154,8 @@ export function createSlotResolver({ root, env = process.env }: { root: string; 
 }
 
 /**
- * Resolves `#learn/*` imports through the active step's slots (see PLAN.md, "Slots"). Put it before
- * vite-tsconfig-paths, which would otherwise map `#learn/*` to the reference first.
+ * Resolves `#learn/*` imports through the active step's slots (see PLAN.md, "Slots"). It runs with
+ * `enforce: "pre"`, before Vite's own tsconfig paths, which would otherwise map `#learn/*` to the reference.
  *
  * The step is read once, when the config resolves, so the dev server has to restart to change it.
  * `pnpm ex` pauses the server while it switches the slotted code and restarts it after (see
@@ -166,8 +166,7 @@ export function createSlotResolver({ root, env = process.env }: { root: string; 
 export function learnSlots(options: { env?: Env; drainMs?: number } = {}): Plugin {
   const env = options.env ?? process.env;
   let resolver: SlotResolver;
-  // Vite reuses an inline plugin across restarts, so the old server's control is still here when it closes.
-  const controls = new Set<SwitchControl>();
+  const controls = liveControls();
 
   return {
     name: "agentic-chat:learn-slots",
@@ -220,7 +219,7 @@ export function learnSlots(options: { env?: Env; drainMs?: number } = {}): Plugi
     },
     closeServer({ reason }) {
       for (const control of controls) {
-        if (!control.closed()) continue;
+        if (control.root !== resolver.root || !control.closed()) continue;
         controls.delete(control);
         control.unregister(reason);
       }
@@ -323,13 +322,26 @@ export function readDevServerEntry(root: string): DevServerEntry | null {
 }
 
 type SwitchControl = {
+  root: string;
   restart(): Promise<void>;
   /** Whether a pause or a restart is under way, so a file change needs no restart of its own. */
   switching(): boolean;
   closed(): boolean;
   /** Its server closed: mark the entry `restarting` until the next server writes its own, or remove it. */
   unregister(reason: "restart" | "close"): void;
+  /** Holds the pause of the server this one replaced, and takes the resume sent with its tokens. */
+  takeOver(pid: number, tokens: ReadonlySet<string>): void;
 };
+
+/**
+ * Every dev server's control in this process. Vite loads vite.config.ts, and this file with it, anew
+ * on each restart, so the old server's control and the next one's meet here, not in a plugin's closure.
+ */
+function liveControls(): Set<SwitchControl> {
+  const key = Symbol.for("agentic-chat.learn-slots.controls");
+  const shared = globalThis as { [key]?: Set<SwitchControl> };
+  return (shared[key] ??= new Set());
+}
 
 /**
  * Lets `pnpm ex` stop the dev server taking work while it switches the slotted code, then restart it
@@ -346,6 +358,8 @@ function switchControl(server: ViteDevServer, resolver: SlotResolver, drainMs: n
   const registry = join(root, DEV_SERVER_FILE);
   let url: string | null = null;
   let pausedBy: number | null = null;
+  /** This server's token, and those of the servers whose pause it took over. */
+  const tokens = new Set<string>([token]);
   let restarting = false;
   let closed = false;
   const admitted = new Set<ServerResponse>();
@@ -392,7 +406,7 @@ function switchControl(server: ViteDevServer, resolver: SlotResolver, drainMs: n
       res.end(body);
     };
     if (req.url?.startsWith(`${CONTROL_PATH}/`)) {
-      if (req.method !== "POST" || req.headers["x-ex-token"] !== token) return send(403);
+      if (req.method !== "POST" || !tokens.has(String(req.headers["x-ex-token"]))) return send(403);
       if (req.url === `${CONTROL_PATH}/pause`) {
         const pid = Number(req.headers["x-ex-pid"]);
         if (!Number.isInteger(pid) || pid <= 0) return send(400, "x-ex-pid must be the pid of `pnpm ex`\n");
@@ -408,6 +422,8 @@ function switchControl(server: ViteDevServer, resolver: SlotResolver, drainMs: n
       }
       if (req.url === `${CONTROL_PATH}/resume`) {
         log("switch done; restarting");
+        // Said before the answer: after a takeover, this server's entry already reads `running`.
+        register("restarting");
         res.once("finish", endSwitch);
         return send(202);
       }
@@ -434,14 +450,27 @@ function switchControl(server: ViteDevServer, resolver: SlotResolver, drainMs: n
   });
   httpServer?.once("close", () => (closed = true));
 
-  return {
+  const control: SwitchControl = {
+    root,
     restart,
     switching: () => pausedBy !== null || restarting,
     closed: () => closed,
     unregister(reason) {
+      // A restart Vite started on its own (vite.config.ts saved mid-switch): the next server keeps the pause.
+      if (reason === "restart" && pausedBy !== null && !restarting) {
+        for (const next of liveControls()) {
+          if (next !== control && next.root === root && !next.closed()) next.takeOver(pausedBy, tokens);
+        }
+      }
       if (!ours()) return;
       if (reason === "restart") register("restarting");
       else rmSync(registry, { force: true });
     },
+    takeOver(pid, from) {
+      pausedBy = pid;
+      for (const known of from) tokens.add(known);
+      log("kept the pause of the server it replaced");
+    },
   };
+  return control;
 }

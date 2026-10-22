@@ -381,6 +381,42 @@ describe("pausing the dev server for a switch", () => {
     expect(await status(next.url)).toBe(503);
   });
 
+  it("keeps its entry through a restart, reading restarting until the next server writes its own", async () => {
+    const root = repo();
+    const seen: (DevServerEntry | null)[] = [];
+    // Called once the old server is torn down and before the next one listens: the gap a reader could fall in.
+    const watch: Plugin = {
+      name: "watch-registry",
+      async closeServer() {
+        await new Promise((done) => setImmediate(done));
+        seen.push(readDevServerEntry(root));
+      },
+    };
+    const { server, entry } = await listen(root, { plugins: [watch] });
+    await server.restart();
+    expect(seen).toEqual([{ ...entry, state: "restarting" }]);
+    const next = readDevServerEntry(root)!;
+    expect(next).toMatchObject({ state: "running", step: null });
+    expect(next.token).not.toBe(entry.token);
+  });
+
+  it("stays paused through a restart Vite starts on its own, and takes the resume of the pause", async () => {
+    const root = repo();
+    const { server, entry } = await listen(root);
+    const paused = await pauseDevServer(root);
+    // As when vite.config.ts is saved mid-switch.
+    await server.restart();
+    const next = readDevServerEntry(root)!;
+    expect(next.token).not.toBe(entry.token);
+    expect(await status(next.url)).toBe(503);
+
+    await paused!.restart();
+    const after = readDevServerEntry(root)!;
+    expect(after).toMatchObject({ state: "running" });
+    expect([entry.token, next.token]).not.toContain(after.token);
+    expect(await status(after.url)).not.toBe(503);
+  });
+
   it("answers the pause once the requests it let in have answered", async () => {
     const root = repo();
     const slow = slowRoute();

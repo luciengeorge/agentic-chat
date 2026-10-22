@@ -24,7 +24,7 @@ Before it changes anything, `db:migrate:remote` refuses:
 
 Then drizzle applies the pending migrations in one transaction, `enableAppLogin` gives `ac_app` its password, and the script signs in as `ac_app` to read `documents` with no tenant set: 0 rows. Run it twice and the second says `applied 0`.
 
-**The extension notes.** The ParadeDB image ships both extensions, and the first migration runs `CREATE EXTENSION IF NOT EXISTS` for each. `pg_search` needs a superuser to create, which the image's `POSTGRES_USER` is; on a managed service, its console may have to enable it. Since 0.25, `pg_search` needs `vector` installed first. A new database gets `vector` 0.8.6, while your dev database, made earlier, still says 0.8.4: an image's newer extension only reaches an existing database through `ALTER EXTENSION vector UPDATE` (the gotcha `HANDOFF.md` notes for `pg_search`).
+**The extension notes.** The ParadeDB image ships both extensions, and the first migration runs `CREATE EXTENSION IF NOT EXISTS` for each. `pg_search` needs a superuser to create, which the image's `POSTGRES_USER` is; on a managed service, its console may have to enable it. Since 0.25, `pg_search` needs `vector` installed first. A new database gets `vector` 0.8.6, while your dev database, made earlier, still says 0.8.4: an image's newer extension only reaches an existing database through `ALTER EXTENSION vector UPDATE` (the gotcha `docs/agent-notes.md` notes for `pg_search`).
 
 ## The copy
 

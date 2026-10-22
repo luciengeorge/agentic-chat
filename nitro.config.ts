@@ -27,7 +27,11 @@ export default defineNitroConfig({
   // lacks, and its worker script and English model are files it finds on disk. The trailing * traces the whole
   // package into .output.
   // `pnpm build:local` (section 21) adds transformers.js and onnxruntime-node, which only local models need.
+  // The local world reads its own package.json for the version it stamps on `.workflow-data/`. Bundled, it finds
+  // none, says "bundled", and its start fails with `Invalid version string: "bundled"`, so `pnpm start` recovered
+  // no runs. Traced, it's loaded from node_modules with its package.json beside it.
   traceDeps: [
+    "@workflow/world-local",
     "tesseract.js*",
     "tesseract.js-core*",
     "@tesseract.js-data/eng*",

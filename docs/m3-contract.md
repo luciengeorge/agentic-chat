@@ -20,7 +20,7 @@ Decisions Lucien made for M3:
 
 ## Who the learner is
 
-Read `HANDOFF.md`, "How he learns", before writing a word. In short: Lucien recognises a right answer at once but struggles to produce one cold; he states the fact and stops before the mechanism; he wants plain words, with every term defined; worked examples with real numbers land. So:
+Read `docs/agent-notes.md`, "How the learner learns", before writing a word. In short: Lucien recognises a right answer at once but struggles to produce one cold; he states the fact and stops before the mechanism; he wants plain words, with every term defined; worked examples with real numbers land. So:
 
 - A README defines every term the first time it appears, in plain words. No unexplained acronyms.
 - Each step has one worked example with real numbers, from this corpus where it can be (a real document, a real page, a real token count).

@@ -1,6 +1,8 @@
 import { createMiddleware, createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 
+import { databaseDown } from "@/lib/database-status";
+
 /**
  * The signed-in user, found with the reference code (`src/core`), never through a slot. Sections 09 and 11 put
  * the session lookup and the tenant transaction in the learner's hands, and a half-written step there must not lock
@@ -47,19 +49,6 @@ export type WorkshopGate =
   | { state: "signed-out" }
   | { state: "not-dev"; env: string }
   | { state: "db-down" };
-
-/**
- * Whether the session lookup failed because Postgres isn't answering. better-auth turns that into a bare "Failed to
- * get session", so ask the database itself.
- */
-export async function databaseDown(ping: () => Promise<unknown>): Promise<boolean> {
-  try {
-    await ping();
-    return false;
-  } catch {
-    return true;
-  }
-}
 
 /** For the route guard: whether this request may see the workshop, and if not, why. */
 export const getWorkshopGate = createServerFn({ method: "GET" }).handler(async (): Promise<WorkshopGate> => {

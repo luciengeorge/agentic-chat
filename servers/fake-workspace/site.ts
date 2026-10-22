@@ -42,8 +42,9 @@ export function sha256(data: string | Uint8Array): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
+/** Python's `casefold()`, near enough: upper then lower folds ß to ss and ligatures such as ﬁ to fi. */
 export function nameKey(name: string): string {
-  return name.toLowerCase();
+  return name.toUpperCase().toLowerCase();
 }
 
 /** Tuple order, as Python compares them. */

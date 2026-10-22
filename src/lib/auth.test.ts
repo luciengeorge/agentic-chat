@@ -171,6 +171,42 @@ describe.skipIf(!postgresAvailable)("auth", () => {
       expect(await t.sql`SELECT id FROM session WHERE user_id = ${users["mia.leaving"]}`).toEqual([]);
     });
 
+    it("ends the sessions of a member who leaves, as it does for one removed", async () => {
+      await createUser("max.leaver", "kestrelpay.example");
+      await auth.api.addMember({
+        body: { userId: users["max.leaver"], organizationId: orgs.kestrel, role: "member" },
+      });
+      const max = await sessionHeaders("max.leaver@kestrelpay.example");
+      const other = await sessionHeaders("max.leaver@kestrelpay.example");
+      max.set("content-type", "application/json");
+      const left = await auth.handler(
+        new Request("http://localhost:3000/api/auth/organization/leave", {
+          method: "POST",
+          headers: max,
+          body: JSON.stringify({ organizationId: orgs.kestrel }),
+        }),
+      );
+      expect(left.status).toBe(200);
+
+      await expect(getViewer(max)).rejects.toMatchObject({ status: 401 });
+      await expect(getViewer(other)).rejects.toMatchObject({ status: 401 });
+      expect(await t.sql`SELECT id FROM session WHERE user_id = ${users["max.leaver"]}`).toEqual([]);
+    });
+
+    it("keeps the sessions of a member whose leave is refused", async () => {
+      const leo = await sessionHeaders("leo.martin@kestrelpay.example");
+      leo.set("content-type", "application/json");
+      const refused = await auth.handler(
+        new Request("http://localhost:3000/api/auth/organization/leave", {
+          method: "POST",
+          headers: leo,
+          body: JSON.stringify({ organizationId: orgs.harbour }),
+        }),
+      );
+      expect(refused.status).toBe(400);
+      expect((await getViewer(leo)).tenant.slug).toBe("kestrel");
+    });
+
     it("keeps a user's tenant after a refused set-active, which nulls the session's cache", async () => {
       const leo = await sessionHeaders("leo.martin@kestrelpay.example");
       await expect(

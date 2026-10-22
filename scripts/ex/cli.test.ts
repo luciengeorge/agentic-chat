@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { SlotSwitch } from "./switch";
@@ -33,6 +34,11 @@ test("greets by name", () => {
     "export function formatGreeting(name: string): string {\n  return `hello ${name}`;\n}\n",
 };
 const PROBLEM = "exercises/_smoke/01.problem.greeting";
+
+/** macOS's default file system, where src/Core is src/core. */
+function caseInsensitiveFs(): boolean {
+  return existsSync(join(import.meta.dirname, "../../SRC"));
+}
 const SOLUTION = "exercises/_smoke/01.solution.greeting";
 
 type SwitchEvent = { event: "pause" | "cancel" | "restart"; active: string | null; greeting: string | null };
@@ -604,6 +610,81 @@ test("runs in node, with its own workflow root", () => {
     write("playground/helper.ts", 'export const { formatGreeting } = await import("../src/core/_sample/greeting");\n');
     expect((await ex(["test", "_smoke.1"], { ok: false })).error).toMatch(
       /^playground\/helper\.ts imports \.\.\/src\/core\/_sample\/greeting, the reference for _sample\/greeting; /,
+    );
+  });
+
+  it("refuses the reference behind a file in a playground subdirectory", async () => {
+    const { ex, write, path } = setup();
+    await ex(["start", "_smoke.1"]);
+    mkdirSync(path("playground/lib"));
+    write("playground/greeting.ts", 'export { formatGreeting } from "./lib/helper";\n');
+    write("playground/lib/helper.ts", 'export { formatGreeting } from "../../src/core/_sample/greeting";\n');
+    expect((await ex(["test", "_smoke.1"], { ok: false })).error).toMatch(
+      /^playground\/lib\/helper\.ts imports \.\.\/\.\.\/src\/core\/_sample\/greeting, the reference for _sample\/greeting; /,
+    );
+  });
+
+  it("refuses a symlink in the playground, which could point at the reference", async () => {
+    const { ex, path } = setup();
+    await ex(["start", "_smoke.1"]);
+    rmSync(path("playground/greeting.ts"));
+    symlinkSync(path("src/core/_sample/greeting.ts"), path("playground/greeting.ts"));
+    expect(await ex(["test", "_smoke.1"], { ok: false })).toEqual({
+      error:
+        "playground/greeting.ts is a symlink; a slot has to hold your own code, so the tests grade it and not the reference",
+      detail: null,
+    });
+  });
+
+  it.each([
+    ["/@fs/", (root: string) => `/@fs${root}/src/core/_sample/greeting.ts`],
+    ["file://", (root: string) => pathToFileURL(`${root}/src/core/_sample/greeting.ts`).href],
+  ])("refuses the reference imported through %s", async (_, specifier) => {
+    const { ex, write, root } = setup();
+    await ex(["start", "_smoke.1"]);
+    write("playground/greeting.ts", `export { formatGreeting } from "${specifier(root)}";\n`);
+    // ex shortens the repo's paths in its messages.
+    expect((await ex(["test", "_smoke.1"], { ok: false })).error).toBe(
+      `playground/greeting.ts imports ${specifier(root).replace(`${root}/`, "")}, the reference for _sample/greeting; ` +
+        "a slot has to hold your own code, so the tests grade it and not the reference",
+    );
+  });
+
+  it.skipIf(!caseInsensitiveFs())("refuses the reference under another case, src/Core", async () => {
+    const { ex, write } = setup();
+    await ex(["start", "_smoke.1"]);
+    write("playground/greeting.ts", 'export { formatGreeting } from "../src/Core/_sample/greeting";\n');
+    expect((await ex(["test", "_smoke.1"], { ok: false })).error).toMatch(
+      /^playground\/greeting\.ts imports \.\.\/src\/Core\/_sample\/greeting, the reference for _sample\/greeting; /,
+    );
+  });
+
+  it("refuses createRequire, which loads modules around the slots", async () => {
+    const { ex, write } = setup();
+    await ex(["start", "_smoke.1"]);
+    write(
+      "playground/greeting.ts",
+      'import { createRequire } from "node:module";\n' +
+        "const require = createRequire(import.meta.url);\n" +
+        'export const { formatGreeting } = require("../src/core/_sample/greeting.ts");\n',
+    );
+    expect((await ex(["test", "_smoke.1"], { ok: false })).error).toBe(
+      "playground/greeting.ts uses createRequire, which loads modules around the slots; " +
+        "a slot has to hold your own code, so the tests grade it and not the reference",
+    );
+  });
+
+  it("refuses an import of a computed path, which it can't follow", async () => {
+    const { ex, write } = setup();
+    await ex(["start", "_smoke.1"]);
+    write(
+      "playground/greeting.ts",
+      'const where = ["..", "src", "core", "_sample", "greeting"].join("/");\n' +
+        "export const { formatGreeting } = await import(where);\n",
+    );
+    expect((await ex(["test", "_smoke.1"], { ok: false })).error).toBe(
+      "playground/greeting.ts imports a computed path, which `ex` can't check; write the path out; " +
+        "a slot has to hold your own code, so the tests grade it and not the reference",
     );
   });
 

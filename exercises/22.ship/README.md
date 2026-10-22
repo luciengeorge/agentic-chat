@@ -22,7 +22,7 @@ You do the deploying. The steps are walkthroughs: commands to copy, and what you
 | In `pnpm dev`                                                  | On Vercel                                                                                              |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Server plugins loop forever: relay, scheduler, sync, job queue | No process stays up. Four cron routes (`/api/cron/*`), each one bounded pass, called by Vercel Cron    |
-| A kick after commit wakes the relay at once                    | The kick has no listener in another function: rows wait for the next minute's relay                    |
+| A kick after commit wakes the relay at once                    | The kick runs one relay pass in the same function, after the response (`waitUntil`)                    |
 | Workflow's local world: files on disk, a queue in memory       | Vercel's world: runs stored by Vercel, steps delivered through Vercel Queues, each in its own function |
 | `.env.local`, with public dev secrets                          | Variables in Vercel's settings; the server refuses to start without them, and names each one missing   |
 | ParadeDB in Docker, migrated by `pnpm db:migrate`              | ParadeDB on Fly, migrated by `pnpm db:migrate:remote`, with the same image and the same `ac_app` role  |

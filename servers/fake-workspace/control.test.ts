@@ -97,6 +97,23 @@ describe("the control header", () => {
     }
   });
 
+  it("isn't enough for a request addressed to another host, as a DNS-rebound page sends", async () => {
+    const client = fw.client();
+    for (const host of ["evil.example", "localhost.evil.example:8100", "10.0.0.5:8100"]) {
+      for (const path of ["/_control/deliveries", `${SITE}/root/children`]) {
+        const response = await client.get(path, { headers: { Host: host } });
+        expect(response.status).toBe(403);
+        expect((await response.json()).error).toEqual({
+          code: "accessDenied",
+          message: `fake-workspace answers only requests addressed to this machine, not to ${host}.`,
+        });
+      }
+    }
+    for (const host of ["localhost:8100", "127.0.0.1:8100", "[::1]:8100", "localhost"]) {
+      expect((await client.get("/_control/deliveries", { headers: { Host: host } })).status).toBe(200);
+    }
+  });
+
   it("carries the app's own token", async () => {
     const client = fw.client({ controlToken: "mine" });
     expect((await client.post("/_control/reset")).status).toBe(200);
@@ -284,6 +301,17 @@ describe("mutations", () => {
     const response = await fw.client().request(method, CONTROL + fill(path), { json: fill(body) });
     expect(response.status, await response.clone().text()).toBe(status);
     expect((await response.json()).error.code).toBe(code);
+  });
+
+  it("compare names casefolded, as Python's casefold() did: Straße and STRASSE are one name", async () => {
+    const client = fw.client();
+    const create = (name: string) => client.post(CONTROL, { json: { ...NEW_FILE, name } });
+    expect((await create("Straße.md")).status).toBe(201);
+    const clash = await create("STRASSE.md");
+    expect(clash.status).toBe(409);
+    expect((await clash.json()).error.code).toBe("nameAlreadyExists");
+    expect((await create("ﬁle.md")).status).toBe(201);
+    expect((await create("FILE.md")).status).toBe(409);
   });
 
   it("are 404 on an unknown site", async () => {

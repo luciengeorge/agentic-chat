@@ -24,6 +24,16 @@ describe("assertSafeSecrets", () => {
     expect(() => assertSafeSecrets({ AC_ENV: "prod", ...REAL, TOAST_SECRET: "c".repeat(32) })).not.toThrow();
   });
 
+  it("refuses a TOAST_SECRET shorter than 32 characters in dev and test too, before the first toast throws", () => {
+    for (const AC_ENV of ["dev", "test"]) {
+      expect(() => assertSafeSecrets({ AC_ENV, ...DEV_SECRETS, TOAST_SECRET: "short" })).toThrow(
+        "TOAST_SECRET is 5 characters; the toast cookie's seal needs at least 32. .env.example has a dev value",
+      );
+      expect(() => assertSafeSecrets({ AC_ENV, ...DEV_SECRETS, TOAST_SECRET: "c".repeat(32) })).not.toThrow();
+      expect(() => assertSafeSecrets({ AC_ENV, BETTER_AUTH_SECRET: DEV_SECRETS.BETTER_AUTH_SECRET })).not.toThrow();
+    }
+  });
+
   it("refuses the dev secrets in a production build with no AC_ENV", () => {
     expect(() => assertSafeSecrets({ ...DEV_SECRETS }, "production")).toThrow(/BETTER_AUTH_SECRET/);
   });
