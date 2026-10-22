@@ -359,6 +359,7 @@ describe("pausing the dev server for a switch", () => {
     const slowRestart: Plugin = {
       name: "slow-restart",
       async config() {
+        console.error("PROBE config call", creations, new Error().stack?.split("\n").slice(2, 7).join(" | "));
         if (creations++ === 0) return;
         began();
         await released;
@@ -367,6 +368,10 @@ describe("pausing the dev server for a switch", () => {
     const { server, entry } = await listen(root, { plugins: [slowRestart] });
     console.error("PROBE root", root, "state", state(root), "watched", JSON.stringify(server.watcher.getWatched()));
     server.watcher.on("all", (e: string, f: string) => console.error("PROBE all", e, f));
+    server.watcher.on("ready", () => console.error("PROBE ready"));
+    server.watcher.on("error", (e: unknown) => console.error("PROBE error", e));
+    server.watcher.on("raw", (e: string, f: string) => console.error("PROBE raw", e, f));
+    setTimeout(() => console.error("PROBE watched2s", JSON.stringify(server.watcher.getWatched()), "options", JSON.stringify((server.watcher as any).options)), 2000);
     await writeUntilWatched(server, state(root), '{"active_step": "_s.1", "passed": []}');
     console.error("PROBE seen");
     await restarting;
