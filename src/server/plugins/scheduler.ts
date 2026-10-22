@@ -4,6 +4,7 @@ import { appDb, systemDb } from "@/db/pool";
 import { agentRunner } from "@/lib/agent-runtime";
 import { acEnv } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { pollLoop } from "@/lib/poll-loop";
 import { reconcileCancelledRuns } from "@/workflows/agent-run-start";
 import { tickSchedules } from "@/workflows/automation-start";
 
@@ -21,26 +22,13 @@ const LOOP = Symbol.for("agentic-chat.scheduler-loop");
  * would otherwise stay live forever. Both cross tenants, so they read on the owner's pool.
  */
 function startLoop(): () => void {
-  let running = false;
   async function tick() {
-    if (running) return;
-    running = true;
-    try {
-      await tickSchedules(systemDb());
-      const reconciled = await reconcileCancelledRuns(systemDb(), appDb());
-      if (reconciled.length) logger.info("runs reconciled", { runs: reconciled });
-    } catch (error) {
-      logger.error("scheduler tick failed", { error });
-    } finally {
-      running = false;
-    }
+    await tickSchedules(systemDb());
+    const reconciled = await reconcileCancelledRuns(systemDb(), appDb());
+    if (reconciled.length) logger.info("runs reconciled", { runs: reconciled });
   }
-  const timer = setInterval(() => void tick(), TICK_MS);
-  const first = setTimeout(() => void tick(), 5_000);
-  return () => {
-    clearInterval(timer);
-    clearTimeout(first);
-  };
+  // The tick is already the backoff's cap: while Postgres is down it keeps its pace and logs once.
+  return pollLoop({ name: "scheduler", intervalMs: TICK_MS, maxMs: TICK_MS, firstMs: 5_000, pass: tick, logger }).stop;
 }
 
 export default definePlugin(() => {

@@ -104,6 +104,8 @@ describe("the production build", () => {
       // The cron routes are in the build, and refuse a caller without the secret.
       const cron = await fetch(`http://localhost:${port}/api/cron/relay`, { signal: AbortSignal.timeout(10_000) });
       expect(cron.status, output).toBe(401);
+      // The local world starts from the build, so `pnpm start` recovers runs after a restart.
+      expect(output).not.toContain("world start failed");
     } finally {
       server.kill("SIGKILL");
     }

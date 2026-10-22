@@ -12,7 +12,17 @@ const MIN_SECRET_LENGTH = 32;
 type Env = Record<string, string | undefined>;
 
 export function assertSafeSecrets(env: Env = process.env, build?: Build) {
-  if (acEnv(env, build) !== "prod") return;
+  if (acEnv(env, build) !== "prod") {
+    // iron-session refuses a shorter password, but only when the first toast is sealed, mid-request.
+    const toast = env.TOAST_SECRET;
+    if (toast && toast.length < MIN_SECRET_LENGTH) {
+      throw new Error(
+        `TOAST_SECRET is ${toast.length} characters; the toast cookie's seal needs at least ${MIN_SECRET_LENGTH}. ` +
+          ".env.example has a dev value",
+      );
+    }
+    return;
+  }
   for (const [name, devValue] of Object.entries(DEV_SECRETS)) {
     const value = env[name];
     if (!value || value === devValue || value.length < MIN_SECRET_LENGTH) {

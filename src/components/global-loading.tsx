@@ -1,5 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSpinDelay } from "spin-delay";
 
 import { cn } from "@/lib/utils";
@@ -17,38 +17,34 @@ export function GlobalLoading() {
 
   const [progress, setProgress] = useState(0);
   const [visible, setVisible] = useState(false);
-  const startedRef = useRef(false);
+  // The bar starts and finishes when `pending` changes, set during render rather than in an effect.
+  const [wasPending, setWasPending] = useState(false);
+  if (pending !== wasPending) {
+    setWasPending(pending);
+    setProgress(pending ? START : 100);
+    if (pending) setVisible(true);
+  }
 
   useEffect(() => {
-    if (pending) {
-      if (!startedRef.current) {
-        startedRef.current = true;
-        setProgress(START);
-      }
-      setVisible(true);
+    if (!pending) return;
+    const trickle = window.setInterval(() => {
+      setProgress((p) => {
+        if (p >= TRICKLE_CAP) return p;
+        const step = Math.max(0.6, (TRICKLE_CAP - p) * 0.12);
+        return Math.min(TRICKLE_CAP, p + step);
+      });
+    }, TRICKLE_MS);
+    return () => window.clearInterval(trickle);
+  }, [pending]);
 
-      const trickle = window.setInterval(() => {
-        setProgress((p) => {
-          if (p >= TRICKLE_CAP) return p;
-          const step = Math.max(0.6, (TRICKLE_CAP - p) * 0.12);
-          return Math.min(TRICKLE_CAP, p + step);
-        });
-      }, TRICKLE_MS);
-
-      return () => window.clearInterval(trickle);
-    }
-
-    if (!startedRef.current) return;
-    startedRef.current = false;
-
-    setProgress(100);
+  useEffect(() => {
+    if (pending || !visible) return;
     const hide = window.setTimeout(() => {
       setVisible(false);
       setProgress(0);
     }, FADE_MS);
-
     return () => window.clearTimeout(hide);
-  }, [pending]);
+  }, [pending, visible]);
 
   return (
     <div

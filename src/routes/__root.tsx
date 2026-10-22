@@ -5,6 +5,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
+import { AppError } from "@/components/app-error";
 import { GlobalLoading } from "@/components/global-loading";
 import { Toaster } from "@/components/ui/sonner";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     return { serverToast };
   },
   component: RootComponent,
+  errorComponent: AppError,
   // The page's CSP carries this response's nonce, so it's set here rather than in nitro.config.ts.
   headers: ({ ssr }) =>
     ssr?.nonce ? { "Content-Security-Policy": contentSecurityPolicy(ssr.nonce, acEnv()) } : undefined,

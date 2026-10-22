@@ -1,6 +1,6 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import { admin, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
@@ -61,6 +61,15 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendVerificationEmail: ({ user, url }) => sendEmail({ to: user.email, subject: "Verify your email", url }),
+  },
+  hooks: {
+    // Leaving fires no organization hook (better-auth 1.7), so the member it returns ends their sessions here.
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/organization/leave") return;
+      const left = ctx.context.returned as { userId?: unknown } | undefined;
+      if (!left || isAPIError(left) || typeof left.userId !== "string") return;
+      await endSessions(left.userId);
+    }),
   },
   databaseHooks: {
     session: {

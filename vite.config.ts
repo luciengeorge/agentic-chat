@@ -4,7 +4,6 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig, type Plugin } from "vite";
-import viteTsConfigPaths from "vite-tsconfig-paths";
 import { workflow } from "workflow/vite";
 
 import { LOCAL_ONLY_PACKAGES, localBuild, NO_LOCAL_MODELS } from "./src/core/local/build.ts";
@@ -38,13 +37,23 @@ const localModels: Plugin = {
   },
 };
 
+// In dev, @workflow/nitro's two route handlers import the bundle it rebuilds from a path known only at runtime, and
+// Vite warns that it "cannot be analyzed" for each. Mark just those imports @vite-ignore; other warnings stay.
+const workflowDevImports: Plugin = {
+  name: "agentic-chat:workflow-dev-imports",
+  apply: "serve",
+  transform: {
+    filter: { id: /^#workflow\/(webhook|workflows)\.mjs$/ },
+    handler: (code) => code.replace("import(currentImportPath)", "import(/* @vite-ignore */ currentImportPath)"),
+  },
+};
+
 const config = defineConfig({
   plugins: [
     workflow(),
     learnSlots(),
     devtools(),
     nitro(),
-    viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
     tailwindcss(),
     tanstackStart(),
     viteReact({
@@ -52,7 +61,9 @@ const config = defineConfig({
     }),
     nodeOnly,
     localModels,
+    workflowDevImports,
   ],
+  resolve: { tsconfigPaths: true },
   clearScreen: false,
 });
 

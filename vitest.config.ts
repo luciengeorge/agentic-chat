@@ -1,5 +1,4 @@
 import { workflow } from "@workflow/vitest";
-import viteTsConfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 import { setWorkflowEsbuildPlugins } from "./src/workflows/esbuild-plugins.ts";
@@ -11,7 +10,8 @@ process.env.AC_ACTIVE_STEP ||= NO_STEP;
 setWorkflowEsbuildPlugins([learnSlotsEsbuild({ root: import.meta.dirname })]);
 
 export default defineConfig({
-  plugins: [learnSlots(), viteTsConfigPaths({ projects: ["./tsconfig.json"] })],
+  plugins: [learnSlots()],
+  resolve: { tsconfigPaths: true },
   test: {
     environment: "jsdom",
     globals: true,
@@ -35,8 +35,8 @@ export default defineConfig({
         plugins: [
           workflow({ rootDir: process.env.AC_WORKFLOW_TEST_ROOT ?? "node_modules/.cache/workflow-vitest" }),
           learnSlots(),
-          viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
         ],
+        resolve: { tsconfigPaths: true },
         test: {
           name: "workflows",
           include: ["src/workflows/**/*.test.ts"],

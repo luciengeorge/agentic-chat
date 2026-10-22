@@ -46,6 +46,11 @@ function fromThisMachine(origin: string): boolean {
   return hostname !== undefined && LOOPBACK.has(hostname);
 }
 
+/** A `Host` header that names this machine, port or not. */
+export function addressedHere(host: string): boolean {
+  return fromThisMachine(`http://${host}`);
+}
+
 export function controlRoutes(app: Hono, rt: Runtime): void {
   app.use("/_control/*", async (c, next) => {
     if (rt.env !== "dev") throw new GraphError(403, "accessDenied", "The control API only runs when AC_ENV=dev.");

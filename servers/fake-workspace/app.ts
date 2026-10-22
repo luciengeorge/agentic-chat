@@ -5,7 +5,7 @@ import { DEFAULT_WORLD_PATH } from "@/fixtures/world";
 import { createLogger } from "@/lib/logger";
 
 import { Clock } from "./clock";
-import { DEV_CONTROL_TOKEN, controlRoutes } from "./control";
+import { DEV_CONTROL_TOKEN, addressedHere, controlRoutes } from "./control";
 import { CorpusError, Workspace } from "./corpus";
 import { DEFAULT_POLICY, type DeliveryPolicy, Notifier } from "./delivery";
 import { directoryRoutes } from "./directory";
@@ -68,6 +68,19 @@ export function createApp(options: AppOptions = {}): { app: Hono; runtime: Runti
   }
 
   const app = new Hono();
+  // A page on another site can reach 127.0.0.1 through a DNS name it controls (DNS rebinding), but its requests
+  // still carry that name in `Host`. In-process requests carry no `Host` at all.
+  app.use("*", async (c, next) => {
+    const host = c.req.header("host");
+    if (host !== undefined && !addressedHere(host)) {
+      throw new GraphError(
+        403,
+        "accessDenied",
+        `fake-workspace answers only requests addressed to this machine, not to ${host}.`,
+      );
+    }
+    await next();
+  });
   /** Always 200, so a supervisor sees the service up while the corpus is still missing. */
   app.get("/health", (c) => c.json({ status: "ok", service: SERVICE, corpus_loaded: runtime.workspace.loaded }));
   driveRoutes(app, runtime);
