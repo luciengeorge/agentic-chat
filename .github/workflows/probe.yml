@@ -16,4 +16,4 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: AC_ENV=test pnpm vitest run vite-plugins/learn-slots.test.ts -t "pausing the dev server" --testTimeout 8000
+      - run: AC_ENV=test pnpm vitest run vite-plugins/learn-slots.test.ts --testTimeout 8000
