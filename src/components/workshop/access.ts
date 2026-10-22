@@ -45,7 +45,21 @@ export const workshopMiddleware = createMiddleware().server(async ({ next, reque
 export type WorkshopGate =
   | { state: "ok"; viewer: { name: string; email: string } }
   | { state: "signed-out" }
-  | { state: "not-dev"; env: string };
+  | { state: "not-dev"; env: string }
+  | { state: "db-down" };
+
+/**
+ * Whether the session lookup failed because Postgres isn't answering. better-auth turns that into a bare "Failed to
+ * get session", so ask the database itself.
+ */
+export async function databaseDown(ping: () => Promise<unknown>): Promise<boolean> {
+  try {
+    await ping();
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 /** For the route guard: whether this request may see the workshop, and if not, why. */
 export const getWorkshopGate = createServerFn({ method: "GET" }).handler(async (): Promise<WorkshopGate> => {
@@ -56,6 +70,8 @@ export const getWorkshopGate = createServerFn({ method: "GET" }).handler(async (
     return { state: "ok", viewer: { name, email } };
   } catch (error) {
     if (error instanceof Response && error.status === 401) return { state: "signed-out" };
+    const [{ appDb }, { sql }] = await Promise.all([import("@/db/pool"), import("drizzle-orm")]);
+    if (await databaseDown(() => appDb().execute(sql`select 1`))) return { state: "db-down" };
     throw error;
   }
 });
